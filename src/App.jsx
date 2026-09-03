@@ -4,9 +4,7 @@ import QuestionCard from './QuestionCard';
 import ResultPage from './ResultPage';
 
 // 👇 部署 Google Apps Script 後，把這裡換成你的 Web App URL（.../exec 結尾）
-const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzO6VZNZH_5pQIIsQlMKy3dnPgldaUbnFFPrcXgN_Fa3a9cOAgY1lHHgWmF_Aj-Wteu/exec';
-
-
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwj5d78eLM7-CElG6ev3aMsTlhX0Yq5Q3YJvYpC0czwGsEfjg35BCL8oGtrO8IPki7S/exec';
 
 // 產生一個此次填答的唯一識別碼，讓後端可以判斷「更新既有紀錄」還是「新增一筆」
 function generateSessionId() {
