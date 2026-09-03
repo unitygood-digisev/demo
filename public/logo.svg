@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">優樂地永續健檢 Logo</title>
+  <desc id="logoDesc">以葉片與長條圖意象結合 ESG 字樣，象徵企業永續成長。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#86efac" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="url(#bg)" />
+
+  <g fill="#ffffff" opacity="0.95">
+    <rect x="126" y="286" width="36" height="90" rx="10" />
+    <rect x="186" y="246" width="36" height="130" rx="10" />
+    <rect x="246" y="218" width="36" height="158" rx="10" />
+  </g>
+
+  <path d="M332 182c20-44 66-63 112-62-3 53-32 99-78 116-27 10-54 7-82-3 16-15 34-30 48-51z" fill="url(#leaf)" />
+  <path d="M288 190c8 35 35 57 73 65" fill="none" stroke="#dcfce7" stroke-width="10" stroke-linecap="round" />
+
+  <text x="126" y="188" fill="#ffffff" font-family="Verdana, Tahoma, sans-serif" font-size="86" font-weight="700" letter-spacing="4">ESG</text>
+</svg>
