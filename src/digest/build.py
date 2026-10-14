@@ -14,10 +14,11 @@ DASH = "—"
 
 
 def _safe_url(u: object) -> bool:
-    if not isinstance(u, str) or not u or any(ch.isspace() or ch in "<>[]()\"'`" for ch in u):
+    if not isinstance(u, str) or not u or any(ch.isspace() or ch in "<>[]\"'`" for ch in u):
         return False
     parts = urlsplit(u)
-    return parts.scheme in ("http", "https") and bool(parts.netloc)
+    # 不接受「帳號@網域」的寫法（看起來像 A 網站，實際連到 B 網站）
+    return parts.scheme in ("http", "https") and bool(parts.hostname) and "@" not in parts.netloc
 
 
 def _short(t: object, n: int = 120) -> str:
@@ -26,6 +27,8 @@ def _short(t: object, n: int = 120) -> str:
 
 
 LINE_CHARS = 50  # 一頁 A4、9.5 號字，一行約 50 個中文字
+LABEL_MAX = 12  # 指標名稱最多幾個字（表格欄位窄，一格約 9 字換行）
+UNIT_MAX = 6
 
 
 @dataclass
@@ -59,15 +62,17 @@ class Digest:
 
     def body_size(self, line_chars: int = LINE_CHARS) -> int:
         """估算版面：每段依實際換行占幾行，再換算成字數（短的一行也算一整行）。"""
-        paras = list(self.sentences) + [
-            " ".join([m.label, m.this, m.prev, m.change, m.unit]) for m in self.metrics
-        ]
+        size = 0
+        for m in self.metrics:  # 表格每列依最寬的一格換行數計
+            rows = max(1, -(-len(m.label) // 9), -(-len(m.this) // 9), -(-len(m.unit) // 5))
+            size += rows * line_chars
+        paras = list(self.sentences)
         paras += (
             self.decisions + [f"{i['title']} {i['url']}" for i in self.intel] + self.data_quality
         )
         paras += [self.intel_note] if self.intel_note else []
         paras += ["（其餘…）"] * (bool(self.decisions_more) + bool(self.data_quality_more))
-        return sum(max(1, -(-len(p) // line_chars)) * line_chars for p in paras)
+        return size + sum(max(1, -(-len(p) // line_chars)) * line_chars for p in paras)
 
     def body_text(self) -> str:
         parts = list(self.sentences)
@@ -115,6 +120,7 @@ def _metric_rows(inputs: list[SystemInput], metric_cfg: list[dict]) -> list[Metr
     rows: list[MetricRow] = []
     shown_not_launched: set[str] = set()
     for m in metric_cfg:
+        m = {**m, "label": _short(m["label"], LABEL_MAX)}
         system = by_key.get(m["system"])
         if system is None:
             rows.append(
@@ -143,7 +149,7 @@ def _metric_rows(inputs: list[SystemInput], metric_cfg: list[dict]) -> list[Metr
                 fmt_value(found.value),
                 fmt_value(found.prev_value),
                 fmt_change(found.value, found.prev_value),
-                found.unit,
+                _short(found.unit, UNIT_MAX),
                 m["key"],
                 found.value,
             )
@@ -199,6 +205,13 @@ def build(
         if (n := sum(1 for a in s.summary.alerts if a.level not in ("紅", "黃")))
     ]
     dq_all += bad_levels
+    for s in ok:
+        keys = [m.key for m in s.summary.metrics]
+        dups = sorted({k for k in keys if keys.count(k) > 1})
+        if dups:
+            dq_all.append(
+                f"［{s.cfg.name}］指標 {'、'.join(dups)} 重複出現，週報採用第一筆，請檢查該系統"
+            )
     reds = [
         f"［{s.cfg.name}］{a.subject}：{a.why}"
         + (f" → 建議跟 {a.suggested_owner} 確認" if a.suggested_owner else "")
@@ -236,18 +249,25 @@ def build(
     n_dq, n_intel, n_dec = dcfg.data_quality_max, dcfg.intel_max, dcfg.decisions_max
     missing: list[str] = []
 
-    def make() -> Digest:
+    def make(cap: int | None = None) -> Digest:
+        """cap：條數縮到最少仍太長時，每條文字最多幾個字。"""
+
+        def cut(items: list[str]) -> list[str]:
+            return [_short(x, cap) for x in items] if cap else items
+
         return Digest(
             as_of=as_of,
             period_start=as_of - dt.timedelta(days=6),
             level=level,
-            sentences=sentences,
+            sentences=cut(sentences) if cap and cap < 100 else sentences,
             metrics=_metric_rows(inputs, metric_cfg),
-            decisions=reds[:n_dec],
+            decisions=cut(reds[:n_dec]),
             decisions_more=max(0, len(reds) - n_dec),
-            intel=intel_items[:n_intel],
+            intel=[
+                {**i, "title": _short(i["title"], cap)} if cap else i for i in intel_items[:n_intel]
+            ],
             intel_note=intel_note,
-            data_quality=dq_all[:n_dq],
+            data_quality=cut(dq_all[:n_dq]),
             data_quality_more=max(0, len(dq_all) - n_dq),
             input_refs=[
                 f"{s.cfg.key}/summary.json（{s.summary.run_id}）"
@@ -265,6 +285,10 @@ def build(
         else:
             n_dec -= 1
         d = make()
+    for cap in (100, 60, 45):
+        if d.body_size() <= dcfg.max_chars:
+            break
+        d = make(cap)
     if d.body_size() > dcfg.max_chars:
         missing.append(f"內文仍超過 {dcfg.max_chars} 字上限，請主管確認是否放寬")
 

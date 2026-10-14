@@ -49,21 +49,38 @@ class DigestConfigError(Exception):
     """週報設定有誤（訊息為白話中文）。"""
 
 
-def _one_line(v: Any) -> Any:
-    if isinstance(v, str):
-        v = " ".join(v.split())
-        if len(v) > TEXT_MAX:
-            v = v[: TEXT_MAX - 1] + "…"
-    return v
+NUMBER_MAX = 10**15  # 超過這個大小的數字視為資料錯誤
+
+
+def _one_line_n(n: int):
+    def f(v: Any) -> Any:
+        if isinstance(v, str):
+            v = " ".join(v.split())
+            if len(v) > n:
+                v = v[: n - 1] + "…"
+        return v
+
+    return f
+
+
+_one_line = _one_line_n(TEXT_MAX)
 
 
 def _finite(v):
-    if v is not None and not math.isfinite(v):
+    if v is None:
+        return v
+    if isinstance(v, int):
+        if abs(v) > NUMBER_MAX:
+            raise ValueError("數值過大")
+        return v
+    if not math.isfinite(v) or abs(v) > NUMBER_MAX:
         raise ValueError("數值必須是有限的數字")
     return v
 
 
 Text = Annotated[str, BeforeValidator(_one_line)]
+ShortText = Annotated[str, BeforeValidator(_one_line_n(12))]
+Headline = Annotated[str, BeforeValidator(_one_line_n(100))]
 Number = Annotated[StrictInt | StrictFloat | None, AfterValidator(_finite)]
 
 
@@ -72,7 +89,7 @@ class Metric(BaseModel):
     key: str
     label: Text
     value: Number
-    unit: Text = ""
+    unit: ShortText = ""
     prev_value: Number = None
     source_ref: Text = ""
 
@@ -94,7 +111,7 @@ class Summary(BaseModel):
     run_id: Text
     as_of: dt.date
     classification: str
-    headline: Text
+    headline: Headline
     metrics: list[Metric]
     alerts: list[AlertItem]
     data_quality: list[Text]

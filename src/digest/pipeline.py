@@ -13,6 +13,13 @@ from shared import logging as runlog
 from shared.config import PROJECT_ROOT, threshold
 from shared.report import make_run_id
 
+try:
+    from importlib.metadata import version as _version
+
+    VERSION = _version("unity-mgmt-suite")
+except Exception:  # 未安裝成套件時
+    VERSION = "未知"
+
 
 @dataclass
 class RunConfig:
@@ -48,11 +55,13 @@ def run(cfg: RunConfig) -> RunResult:
             s = type(s)(s.key, s.name, cfg.summary_overrides[s.key], s.launched)
         inputs.append(read_system(s, cfg.as_of, stale_days, failed=s.key in cfg.failed_systems))
     d = build(inputs, metric_cfg, dcfg, cfg.as_of, metrics_status, stale_days)
-    used = [s.cfg.path for s in inputs if s.summary is not None and s.cfg.path is not None]
+    # 執行編號：所有存在的摘要檔內容（含讀取失敗的）一起算雜湊
+    used = [s.cfg.path for s in inputs if s.cfg.path is not None and s.cfg.path.exists()]
     d.run_id = make_run_id("digest", cfg.as_of, used)
     log = runlog.get_logger(d.run_id, cfg.log_dir)
+    log.info("程式版本 %s；週報日期 %s", VERSION, cfg.as_of.isoformat())
     for s in inputs:
-        log.info("%s：%s %s", s.cfg.key, s.status, s.reason)
+        log.info("輸入 %s：%s（%s）%s", s.cfg.key, s.cfg.path, s.status, s.reason)
     for m in d.missing:
         log.warning("待補：%s", m)
     files = output.write_all(d, cfg.out_dir)

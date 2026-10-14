@@ -127,6 +127,7 @@ def env(tmp_path):
             out_dir=tmp_path / "out",
             config_dir=cfg,
             summary_overrides=overrides,
+            log_dir=tmp_path / "logs",
             **kw,
         )
 
@@ -527,3 +528,124 @@ def test_value_format_no_scientific(v, s):
     from digest.build import fmt_value
 
     assert fmt_value(v) == s
+
+
+@pytest.mark.parametrize("big", ["1" + "0" * 400, "-1" + "0" * 400, "1e400"])
+def test_huge_numbers_do_not_crash(env, big):
+    raw = json.dumps(PROGRESS, ensure_ascii=False).replace('"value": 11', f'"value": {big}', 1)
+    env["progress"].write_text(raw, encoding="utf-8")
+    res = run(env["make"]())
+    assert res.inputs[0].status == "invalid" and set(res.files) == {"docx", "md", "txt"}
+
+
+def test_urls_userinfo_rejected_parentheses_allowed(env):
+    write(
+        env["intel"],
+        {
+            **INTEL,
+            "highlights": [
+                {"title": "維基", "url": "https://zh.wikipedia.org/wiki/碳費_(臺灣)"},
+                {"title": "假", "url": "https://good.com@evil.com/"},
+            ],
+        },
+    )
+    d = run(env["make"]()).digest
+    assert [i["title"] for i in d.intel] == ["維基"]
+
+
+def test_duplicate_metric_key_reported(env):
+    write(env["progress"], {**PROGRESS, "metrics": PROGRESS["metrics"] + [PROGRESS["metrics"][0]]})
+    d = run(env["make"]()).digest
+    assert (
+        any("progress.red_alerts 重複出現" in x for x in d.data_quality + d.missing)
+        or d.data_quality_more
+    )
+
+
+def test_long_units_and_labels_cut(env):
+    data = json.loads(json.dumps(PROGRESS))
+    for m in data["metrics"]:
+        m["unit"] = "單位" * 80
+    write(env["progress"], data)
+    d = run(env["make"]()).digest
+    assert all(len(m.unit) <= 12 for m in d.metrics)
+
+
+def test_run_id_changes_with_broken_file_and_log_has_inputs(env):
+    write(env["progress"], "{壞1")
+    a = run(env["make"]()).digest.run_id
+    write(env["progress"], "{壞2")
+    b = run(env["make"]()).digest.run_id
+    assert a != b
+    log = (env["tmp"] / "logs" / f"run_{b}.log").read_text(encoding="utf-8")
+    assert "程式版本" in log and "progress.json" in log
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None, reason="需要 LibreOffice 才能轉 PDF")
+def test_three_systems_extreme_still_one_page(env, tmp_path):
+    cfg = env["cfg"]
+    d = yaml.safe_load((cfg / "digest.yaml").read_text(encoding="utf-8"))
+    d["systems"][2]["launched"] = True
+    (cfg / "digest.yaml").write_text(yaml.safe_dump(d, allow_unicode=True), encoding="utf-8")
+    ms = [
+        {"key": f"{s}.m{i}", "label": "很長的指標名稱" * 10, "system": s}
+        for s in ("progress", "intel", "finance")
+        for i in range(3)
+    ][:8]
+    m = yaml.safe_load((cfg / "metrics.yaml").read_text(encoding="utf-8"))
+    m["metrics"] = ms
+    (cfg / "metrics.yaml").write_text(yaml.safe_dump(m, allow_unicode=True), encoding="utf-8")
+
+    def full(key):
+        return summary(
+            key,
+            level="內部敏感",
+            headline="非常長的結論" * 40,
+            metrics=[
+                {
+                    "key": f"{key}.m{i}",
+                    "label": "x",
+                    "value": 123456789,
+                    "unit": "單位" * 80,
+                    "prev_value": 1,
+                }
+                for i in range(3)
+            ],
+            alerts=[
+                {
+                    "level": "紅",
+                    "rule": "R",
+                    "why": "原因" * 80,
+                    "subject": "案" * 50,
+                    "suggested_owner": "人" * 30,
+                }
+            ]
+            * 50,
+            data_quality=["品質" * 80] * 50,
+            highlights=[{"title": "標題" * 200, "url": "https://example.com/x"}] * 10,
+        )
+
+    paths = {
+        k: write(tmp_path / f"{k}_full.json", full(k)) for k in ("progress", "intel", "finance")
+    }
+    res = run(env["make"](overrides=paths))
+    assert res.digest.body_size() <= 1400
+    out = tmp_path / "pdf"
+    subprocess.run(
+        [
+            "soffice",
+            "--headless",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(out),
+            str(res.files["docx"]),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=180,
+    )
+    info = subprocess.run(
+        ["pdfinfo", str(next(out.glob("*.pdf")))], capture_output=True, text=True
+    ).stdout
+    assert re.search(r"Pages:\s+1\b", info), info
