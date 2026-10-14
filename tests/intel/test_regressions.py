@@ -148,6 +148,7 @@ def test_unreadable_tracking_is_backed_up_and_reported(make_cfg, damage):
     # 使用者在資料夾裡複製了備份檔：不中斷，也不當成系統備份
     (path.parent / "情報追蹤表_備份_20261014_1 - 複本.xlsx").write_bytes(before)
     (path.parent / "情報追蹤表_備份_20261014_副本.xlsx").write_bytes(before)
+    (path.parent / "情報追蹤表_備份_20261014_１.xlsx").write_bytes(before)  # 全形數字
     res5 = run(make_cfg())
     assert res5.files["daily"].read_text(encoding="utf-8") == md4
 

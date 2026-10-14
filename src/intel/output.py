@@ -263,7 +263,7 @@ def write_tracking(
         shutil.copyfile(path, out_dir / f"{prefix}{n}.xlsx")
     # 當天只要有備份，每次產生都持續提醒（同一天重跑也不會消失）
     # 只認「…_數字.xlsx」；使用者自己複製出來的檔案（例如「- 複本」）不理會
-    numbered = [p for p in out_dir.glob(f"{prefix}*.xlsx") if p.stem[len(prefix) :].isdigit()]
+    numbered = [p for p in out_dir.glob(f"{prefix}*.xlsx") if re.fullmatch(r"[0-9]+", p.stem[len(prefix) :])]
     for b in sorted(numbered, key=lambda p: int(p.stem[len(prefix) :])):
         warnings.append(
             f"舊追蹤表曾無法讀取（損壞或欄位被改），已備份為 {b.name}；「已讀」標記可能沒有保留，請對照補回"
