@@ -147,12 +147,9 @@ def sync(cfg: SyncConfig) -> SyncResult:
         existing = (
             client.read(hist_title, formulas=True) if hist_title in client.tab_titles() else []
         )
-        merged, hist_notes = merge_history(existing, h_header, h_row)
+        cells, hist_notes = merge_history(existing, h_header, h_row)
         notes += hist_notes
-        if not hist_notes:
-            client.write(
-                hist_title, merged, user_entered=True
-            )  # 保留主管自己的公式；數字以數字寫入
+        client.update_cells(hist_title, cells)  # 只寫本週那一列，其他格子不碰
         written.append(hist_title)
     except SyncError:
         raise

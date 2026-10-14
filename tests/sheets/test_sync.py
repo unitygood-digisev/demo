@@ -174,7 +174,6 @@ def test_history_full_flow_and_numbers(cfg, work):
     rows = fake.tabs["指標歷史"]
     assert len(rows) == 2 and rows[1][0] == "2026-10-14"
     assert isinstance(rows[1][1], int)  # 數字以數字寫入，才能畫趨勢
-    assert fake.modes["指標歷史"] is True and fake.modes["週報"] is False
     # 下一週：改週報資料的日期模擬下週
     d = digest_json(work)
     d["as_of"] = "2026-10-21"
@@ -185,22 +184,33 @@ def test_history_full_flow_and_numbers(cfg, work):
     assert [r[0] for r in fake.tabs["指標歷史"][1:]] == ["2026-10-14", "2026-10-21"]
 
 
+def _apply(existing, cells):
+    fake = FakeClient({"x": existing})
+    fake.update_cells("x", cells)
+    return fake.tabs["x"]
+
+
 def test_history_keeps_manager_content():
     h = ["週報日期", "紅", "資料等級"]
     existing = [
         ["週報日期", "紅", "資料等級", "主管備註欄"],
         ["2026/10/07", 2, "內部一般", "第一週"],
         [],
-        ["", "這是主管的註記", "", ""],
+        ["", "這是主管的註記", "-5% 待確認", "007"],
         ["2026-10-14", "=B2+1", "內部一般", "公式要保留", "表頭外的格子"],
     ]
-    out, notes = merge_history(existing, h, ["2026-10-14", 3, "內部一般"])
+    cells, notes = merge_history(existing, h, ["2026-10-14", 3, "內部一般"])
     assert notes == []
-    assert out[0] == ["週報日期", "紅", "資料等級", "主管備註欄"]
-    # 不同寫法視為同一週、正規化；日期加單引號以文字寫入（Google 不會轉成日期序號）
-    assert out[1] == ["'2026-10-07", 2, "內部一般", "第一週"]
-    assert out[2] == ["'2026-10-14", 3, "內部一般", "公式要保留", "表頭外的格子"]
-    assert ["", "這是主管的註記", "", ""] in out  # 主管註記列保留
+    # 只改本週那一列的系統欄位，其他格子（含主管的公式、文字、註記列）一個都不碰
+    assert {(r, c) for r, c, _ in cells} == {(4, 0), (4, 1), (4, 2)}
+    out = _apply(existing, cells)
+    assert out[4] == ["2026-10-14", 3, "內部一般", "公式要保留", "表頭外的格子"]
+    assert out[:4] == existing[:4]
+    # 新的一週接在最後一列之後；2026/10/07 視為已有的那一週
+    cells, _ = merge_history(out, h, ["2026-10-21", 4, "內部一般"])
+    assert {r for r, _, _ in cells} == {5}
+    cells, _ = merge_history(out, h, ["2026-10-07", 9, "內部一般"])
+    assert {r for r, _, _ in cells} == {1}
 
 
 @pytest.mark.parametrize("first", [["日期", "紅"], ["", "", ""]])
@@ -215,7 +225,8 @@ def test_history_unknown_layout_not_touched(cfg, first):
 def test_history_column_renamed_keeps_both(cfg):
     h = ["週報日期", "紅色預警項目數", "資料等級"]
     existing = [["週報日期", "紅色預警（舊名）", "資料等級"], ["2026-10-07", 2, "內部一般"]]
-    out, _ = merge_history(existing, h, ["2026-10-14", 3, "內部一般"])
+    cells, _ = merge_history(existing, h, ["2026-10-14", 3, "內部一般"])
+    out = _apply(existing, cells)
     assert out[0] == ["週報日期", "紅色預警（舊名）", "資料等級", "紅色預警項目數"]
     assert out[1][1] == 2 and out[2][3] == 3
 
@@ -363,10 +374,10 @@ def test_missing_progress_report_noted(cfg, tmp_path):
 # ---- 寫入失敗 ----
 def test_partial_write_failure_lists_tabs(cfg):
     class Broken(FakeClient):
-        def write(self, title, rows, user_entered=False):
+        def write(self, title, rows):
             if title == "進度明細":
                 raise ConnectionError("x")
-            super().write(title, rows, user_entered)
+            super().write(title, rows)
 
     with pytest.raises(
         SyncError,
@@ -396,14 +407,39 @@ def test_gspread_write_overwrites_without_clearing():
     from gspread.utils import ValueInputOption
 
     c = object.__new__(GspreadClient)
-    c._raw, c._user = ValueInputOption.raw, ValueInputOption.user_entered
+    c._raw = ValueInputOption.raw
     c._ws = lambda title: WS()
     c.write("x", [["=HYPERLINK(1)", 5, None], ["a"]])
     assert calls["opt"] == ValueInputOption.raw
     assert calls["values"][0] == ["=HYPERLINK(1)", 5, "", ""] and len(calls["values"]) == 5
     assert calls["values"][4] == ["", "", "", ""]  # 舊內容多出的列被空白蓋掉
-    c.write("x", [["a"]], user_entered=True)
-    assert calls["opt"] == ValueInputOption.user_entered
+
+
+def test_gspread_update_cells_raw_only_given_cells():
+    calls = {}
+
+    class WS:
+        row_count, col_count = 3, 3
+
+        def resize(self, **kw):
+            calls["resize"] = kw
+
+        def batch_update(self, data, value_input_option):
+            calls.update(data=data, opt=value_input_option)
+
+    from gspread.utils import ValueInputOption
+
+    c = object.__new__(GspreadClient)
+    c._raw = ValueInputOption.raw
+    c._ws = lambda title: WS()
+    c.update_cells("x", [(4, 0, "2026-10-14"), (4, 3, "=IMPORTXML(1)"), (4, 1, 5)])
+    assert calls["opt"] == ValueInputOption.raw  # 原樣：日期是文字、= 開頭不會變公式
+    assert calls["data"] == [
+        {"range": "A5", "values": [["2026-10-14"]]},
+        {"range": "D5", "values": [["=IMPORTXML(1)"]]},
+        {"range": "B5", "values": [[5]]},
+    ]
+    assert calls["resize"] == {"rows": 5, "cols": 4}
 
 
 def test_pad_grows_to_cover_old():
@@ -492,11 +528,24 @@ def test_history_date_serial_not_duplicated(cfg, old):
     assert [r[0] for r in rows[1:] if r and r[0]] == ["2026-10-14"]
 
 
-def test_history_text_values_not_formulas():
-    out, _ = merge_history(
-        [["週報日期", "備註"]], ["週報日期", "備註"], ["2026-10-14", "=IMPORTXML(1)"]
+def test_history_first_write_is_cells_too():
+    # 分頁還是空的：表頭＋本週一列，同樣用「原樣」寫格子
+    cells, _ = merge_history([], ["週報日期", "備註"], ["2026-10-14", "=IMPORTXML(1)"])
+    assert _apply([], cells) == [["週報日期", "備註"], ["2026-10-14", "=IMPORTXML(1)"]]
+
+
+@pytest.mark.parametrize("v", ["2026年10月14日", "2026-10-14 00:00:00", "2026/10/14"])
+def test_history_other_date_displays_same_week(v):
+    cells, _ = merge_history([["週報日期", "紅"], [v, 1]], ["週報日期", "紅"], ["2026-10-14", 2])
+    assert {r for r, _, _ in cells} == {1}
+
+
+def test_history_ambiguous_date_not_guessed():
+    # 10/14/2026 月日順序不確定，不猜：保留原列，本週另寫一列
+    cells, _ = merge_history(
+        [["週報日期", "紅"], ["10/14/2026", 1]], ["週報日期", "紅"], ["2026-10-14", 2]
     )
-    assert out[1] == ["'2026-10-14", "'=IMPORTXML(1)"]
+    assert {r for r, _, _ in cells} == {2}
 
 
 def test_gspread_read_formulas_asks_for_text_dates():
@@ -562,3 +611,28 @@ def test_progress_header_shift_is_plain(cfg, work):
     with pytest.raises(SyncError, match="缺少欄位"):
         sync(cfg(fake))
     assert fake.writes == []
+
+
+def test_dotenv_last_value_wins_and_plain_errors(tmp_path, monkeypatch):
+    monkeypatch.delenv("X_DUP", raising=False)
+    env = tmp_path / ".env"
+    env.write_text("X_DUP=first\nX_DUP=second\n", encoding="utf-8")
+    load_dotenv(env)
+    assert os.environ["X_DUP"] == "second"
+    env.write_text('X_BAD="abc\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="第 1 行的引號沒有成對"):
+        load_dotenv(env)
+    env.write_text("X_NUL=a\x00b\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="特殊字元"):
+        load_dotenv(env)
+
+
+@pytest.mark.parametrize("bad", [None, [], {"status": None}, "ok"])
+def test_digest_systems_items_checked(cfg, work, bad):
+    d = digest_json(work)
+    d["systems"]["progress"] = bad
+    (work / "digest" / "管理層週報_資料_20261014.json").write_text(
+        json.dumps(d, ensure_ascii=False), encoding="utf-8"
+    )
+    with pytest.raises(SyncError, match="systems"):
+        sync(cfg(FakeClient()))

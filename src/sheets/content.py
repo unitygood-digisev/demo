@@ -119,7 +119,10 @@ def load_digest(digest_dir: Path, as_of: dt.date) -> dict:
         )
     if d["as_of"] != as_of.isoformat():
         raise SyncError(f"週報資料檔 {p.name} 裡的日期（{d['as_of']}）和檔名不符，請重新產生週報")
-    if not isinstance(d.get("systems", {}), dict):
+    systems = d.get("systems", {})
+    if not isinstance(systems, dict) or not all(
+        isinstance(v, dict) and isinstance(v.get("status"), str) for v in systems.values()
+    ):
         raise SyncError(f"週報資料檔 {p.name} 缺少或寫錯欄位：systems，請重新產生週報")
     return d
 
@@ -239,72 +242,62 @@ _SHEETS_EPOCH = dt.date(1899, 12, 30)  # Google 試算表的日期序號起點
 
 
 def _date_key(v: object) -> str | None:
-    """日期欄的各種寫法（含 Google 的日期序號）都轉成 YYYY-MM-DD；不是日期回傳 None。"""
+    """日期欄的各種寫法（含 Google 的日期序號）都轉成 YYYY-MM-DD；不是日期回傳 None。
+
+    「10/14/2026」這類月日順序不確定的寫法不猜，回傳 None。
+    """
     if isinstance(v, (int, float)) and not isinstance(v, bool) and 30000 <= v <= 80000:
         return (_SHEETS_EPOCH + dt.timedelta(days=int(v))).isoformat()
     s = str(v).strip().lstrip("'")
     if re.fullmatch(r"\d{5}(\.0+)?", s) and 30000 <= float(s) <= 80000:
         return (_SHEETS_EPOCH + dt.timedelta(days=int(float(s)))).isoformat()
+    s = re.sub(r"\s+0?0:00(:00)?$", "", s)  # 2026-10-14 00:00:00
+    m = re.fullmatch(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日", s)
+    if m:
+        s = "-".join(m.groups())
     try:
         return parse_date(s).isoformat()
     except DateParseError:
         return None
 
 
-def _as_text(v: object) -> object:
-    """以「使用者輸入」方式寫入時，本系統寫的文字一律維持文字（不變成公式或被轉成日期）。"""
-    if (
-        isinstance(v, str)
-        and v[:1] in ("=", "+", "-", "@", "'")
-        or isinstance(v, str)
-        and _date_key(v)
-    ):
-        return "'" + v
-    return v
+Cell = tuple[int, int, object]  # （列, 欄, 值），從 0 起算
 
 
 def merge_history(
     existing: list[list], header: list[str], row: list
-) -> tuple[list[list], list[str]]:
-    """把本週那一列併入指標歷史。
+) -> tuple[list[Cell], list[str]]:
+    """算出指標歷史要改哪些格子：只寫本週那一列（和新增的表頭），其他格子一律不碰。
 
-    - 同一週覆蓋、不同週新增；日期寫法不同（例如 2026/10/07）視為同一週。
-    - 第一欄不是日期的列（例如主管的註記）原樣保留在最後；超出表頭的格子原樣保留。
+    - 同一週覆蓋、不同週接在最後一列之後；日期寫法不同（例如 2026/10/07、日期序號）視為同一週。
+    - 主管自己的欄、註記列、公式、本週那一列表頭以外的格子都不改。
     - 看不懂的格式（第 1 列不是「週報日期」開頭）不改動，回傳提醒。
+    - 寫入時用「原樣」：日期是文字、以「=」開頭的文字不會變成公式，數字仍是數字。
     """
-    existing = [list(r) for r in existing]
-    while existing and not any(str(c).strip() for c in existing[-1]):
-        existing.pop()
-    if not existing:
-        return [list(header), list(row)], []
-    old_header = [str(c).strip() for c in existing[0]]
+    rows = [list(r) for r in existing]
+    while rows and not any(str(c).strip() for c in rows[-1]):
+        rows.pop()
+    if not rows:
+        cells = [(0, j, v) for j, v in enumerate(header)]
+        return cells + [(1, j, v) for j, v in enumerate(row)], []
+    old_header = [str(c).strip() for c in rows[0]]
     if not old_header or old_header[0] != HISTORY_MARK:
-        return existing, [
+        return [], [
             "「指標歷史」分頁的第 1 列不是系統的表頭（第一格應為「週報日期」），本週未更新這一頁"
         ]
     cols = list(old_header)
-    for c in header:
-        if c not in cols:
-            cols.append(c)
-    records: dict[str, list] = {}
-    others: list[list] = []
-    for r in existing[1:]:
-        key = _date_key(r[0]) if r and str(r[0]).strip() else None
-        if key is None:
-            others.append(r)
-            continue
-        rec = list(r) + [""] * max(0, len(cols) - len(r))
-        rec[0] = key
-        records[key] = rec
-    cur = records.get(row[0], [row[0]] + [""] * (len(cols) - 1))
-    cur = cur + [""] * max(0, len(cols) - len(cur))
-    for name, v in zip(header, row, strict=True):
-        cur[cols.index(name)] = v
-    records[row[0]] = cur
-    for rec in records.values():
-        rec[0] = "'" + rec[0]  # 日期以文字寫入，下次讀回仍是 YYYY-MM-DD
-    for name in header[1:]:  # 本週那一列由本系統寫入的文字值防公式
-        i = cols.index(name)
-        cur[i] = _as_text(cur[i])
-    out = [cols] + [records[k] for k in sorted(records)] + others
-    return out, []
+    cells: list[Cell] = []
+    for name in header:
+        if name not in cols:
+            cols.append(name)
+            cells.append((0, len(cols) - 1, name))
+    target = next(
+        (
+            i
+            for i, r in enumerate(rows)
+            if i > 0 and r and str(r[0]).strip() and _date_key(r[0]) == row[0]
+        ),
+        len(rows),
+    )
+    cells += [(target, cols.index(name), v) for name, v in zip(header, row, strict=True)]
+    return cells, []

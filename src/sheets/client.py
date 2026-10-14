@@ -11,7 +11,9 @@ from sheets.content import SyncError
 class SheetClient(Protocol):
     def tab_titles(self) -> list[str]: ...
     def read(self, title: str, formulas: bool = False) -> list[list]: ...
-    def write(self, title: str, rows: list[list], user_entered: bool = False) -> None: ...
+    def write(self, title: str, rows: list[list]) -> None: ...
+
+    def update_cells(self, title: str, cells: list[tuple[int, int, object]]) -> None: ...
 
 
 def _text(v: object) -> object:
@@ -39,7 +41,7 @@ class GspreadClient:
         from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 
         self._gspread = gspread
-        self._raw, self._user = ValueInputOption.raw, ValueInputOption.user_entered
+        self._raw = ValueInputOption.raw
         self._formula = ValueRenderOption.formula
         self._date_text = DateTimeOption.formatted_string
         try:
@@ -82,16 +84,28 @@ class GspreadClient:
             else ws.get_all_values()
         )
 
-    def write(self, title: str, rows: list[list], user_entered: bool = False) -> None:
+    def write(self, title: str, rows: list[list]) -> None:
         ws = self._ws(title)
         old = ws.get_all_values()
         values = _pad(rows, len(old), max((len(r) for r in old), default=0))
         if len(values) > ws.row_count or (values and len(values[0]) > ws.col_count):
             ws.resize(rows=max(len(values), ws.row_count), cols=max(len(values[0]), ws.col_count))
-        ws.update(
-            values=values,
-            range_name="A1",
-            value_input_option=self._user if user_entered else self._raw,
+        ws.update(values=values, range_name="A1", value_input_option=self._raw)
+
+    def update_cells(self, title: str, cells: list[tuple[int, int, object]]) -> None:
+        """只改指定的格子（原樣寫入），其他格子不動。"""
+        from gspread.utils import rowcol_to_a1
+
+        if not cells:
+            return
+        ws = self._ws(title)
+        need_r = max(r for r, _, _ in cells) + 1
+        need_c = max(c for _, c, _ in cells) + 1
+        if need_r > ws.row_count or need_c > ws.col_count:
+            ws.resize(rows=max(need_r, ws.row_count), cols=max(need_c, ws.col_count))
+        ws.batch_update(
+            [{"range": rowcol_to_a1(r + 1, c + 1), "values": [[_text(v)]]} for r, c, v in cells],
+            value_input_option=self._raw,
         )
 
 
@@ -108,7 +122,6 @@ class FakeClient:
             k: [list(r) for r in v] for k, v in (tabs or {}).items()
         }
         self.writes: list[str] = []
-        self.modes: dict[str, bool] = {}
 
     def tab_titles(self) -> list[str]:
         return list(self.tabs)
@@ -116,14 +129,15 @@ class FakeClient:
     def read(self, title: str, formulas: bool = False) -> list[list]:
         return [list(r) for r in self.tabs.get(title, [])]
 
-    def write(self, title: str, rows: list[list], user_entered: bool = False) -> None:
+    def write(self, title: str, rows: list[list]) -> None:
         self.writes.append(title)
-        self.modes[title] = user_entered
-        # 和 Google 一樣：USER_ENTERED 時，開頭的單引號只是「當文字存」的記號，不會存進格子
-        self.tabs[title] = [
-            [_entered(_text(v)) if user_entered else _text(v) for v in r] for r in rows
-        ]
+        self.tabs[title] = [[_text(v) for v in r] for r in rows]
 
-
-def _entered(v):
-    return v[1:] if isinstance(v, str) and v.startswith("'") else v
+    def update_cells(self, title: str, cells: list[tuple[int, int, object]]) -> None:
+        self.writes.append(title)
+        rows = self.tabs.setdefault(title, [])
+        for r, c, v in cells:
+            while len(rows) <= r:
+                rows.append([])
+            rows[r] += [""] * max(0, c + 1 - len(rows[r]))
+            rows[r][c] = _text(v)
