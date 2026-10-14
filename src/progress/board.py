@@ -54,11 +54,11 @@ class BoardConfig:
             "項目看板",
             (
                 ColumnSpec("案子"),
-                ColumnSpec("類別", required=False),
+                ColumnSpec("類別", required=False, must_exist=True),
                 ColumnSpec("階段", "enum", allowed=self.stages),
-                ColumnSpec("負責人", required=False),
-                ColumnSpec("下一步", required=False),
-                ColumnSpec("下一個日期", "date", required=False),
+                ColumnSpec("負責人", required=False, must_exist=True),
+                ColumnSpec("下一步", required=False, must_exist=True),
+                ColumnSpec("下一個日期", "date", required=False, must_exist=True),
             ),
             unique_key="案子",
         )
@@ -73,13 +73,25 @@ class Board:
     duplicates: set[str] = field(default_factory=set)
 
 
-def find_input(raw_dir: Path, cfg: BoardConfig) -> Path:
-    files = sorted(raw_dir.glob(cfg.input_glob))
+def find_input(raw_dir: Path, cfg: BoardConfig) -> tuple[Path, list[str]]:
+    """回傳 (要讀的看板, 提醒)。只讀 .xlsx；同名開頭的其他格式檔案會提醒被略過。"""
+    files = sorted(p for p in raw_dir.glob(cfg.input_glob) if not p.name.startswith("~$"))
+    stem_glob = cfg.input_glob.rsplit(".", 1)[0] + ".*"
+    others = sorted(
+        p.name
+        for p in raw_dir.glob(stem_glob)
+        if p.suffix.lower() != ".xlsx" and not p.name.startswith("~$")
+    )
+    notes = (
+        [f"data/raw 裡有不是 .xlsx 的看板檔（{'、'.join(others)}），系統只讀 .xlsx，已略過"]
+        if others
+        else []
+    )
     if not files:
         raise ProgressDataError(
             f"在 {raw_dir} 找不到符合「{cfg.input_glob}」的看板檔案，請先把看板放進去"
         )
-    return files[-1]
+    return files[-1], notes
 
 
 def _board_date(path: Path, cfg: BoardConfig) -> dt.date | None:
@@ -90,17 +102,19 @@ def _board_date(path: Path, cfg: BoardConfig) -> dt.date | None:
     except Exception:
         return None
     pat = re.compile(cfg.board_date_pattern)
-    for row in ws.iter_rows(max_row=10, values_only=True):
+    texts: list[str] = []
+    for row in ws.iter_rows(max_row=100, values_only=True):  # 掃到標題列為止
         cells = [str(c).strip() for c in row if c is not None]
-        if cfg.header_anchor in cells:
-            break
-        for text in cells:
-            m = pat.search(text)
-            if m:
-                try:
-                    return dt.date(*(int(x) for x in m.groups()))
-                except ValueError:
-                    continue
+        if cfg.header_anchor in cells and len(set(cells) & set(cfg.columns)) >= 2:
+            break  # 到標題列為止（說明文字剛好寫了錨點的那一列不算）
+        texts.extend(cells)
+    # 優先取寫有「來源」的那一格，其次才是其他說明文字裡的第一個日期
+    for text in sorted(texts, key=lambda t: "來源" not in t):
+        for m in pat.finditer(text):
+            try:
+                return dt.date(*(int(x) for x in m.groups()))
+            except ValueError:
+                continue
     return None
 
 
@@ -115,7 +129,12 @@ def _clean(v):
 
 def load_board(path: Path, cfg: BoardConfig) -> Board:
     res = load_table(
-        path, cfg.spec(), cfg.columns, sheet=cfg.sheet, header_anchor=cfg.header_anchor
+        path,
+        cfg.spec(),
+        cfg.columns,
+        sheet=cfg.sheet,
+        header_anchor=cfg.header_anchor,
+        header_expect=tuple(cfg.columns),
     )
     rows = [{k: _clean(v) for k, v in r.items()} for r in res.data.to_dict("records")]
     rows = [r for r in rows if r.get("案子")]

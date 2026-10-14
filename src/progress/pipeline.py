@@ -36,9 +36,30 @@ class RunResult:
     files: dict[str, Path] = field(default_factory=dict)
 
 
+TH_MIN = {
+    "P02_due_soon_days": 0,
+    "P04_unchanged_days": 1,
+    "P05_max_active_projects": 0,
+    "board_stale_days": 0,
+}
+
+
+def _thresholds(config_dir: Path | None) -> dict:
+    th = {}
+    for k in TH_KEYS:
+        v = threshold("progress", k, config_dir)[0]
+        if v is not None and (isinstance(v, bool) or not isinstance(v, int) or v < TH_MIN[k]):
+            raise ProgressDataError(
+                f"config/thresholds.yaml 的 progress.{k} 應為 {TH_MIN[k]} 以上的整數"
+                f"（目前是「{v}」），請修正後再跑"
+            )
+        th[k] = v
+    return th
+
+
 def run(cfg: RunConfig) -> RunResult:
     bcfg = BoardConfig.load(cfg.config_dir)
-    th = {k: threshold("progress", k, cfg.config_dir)[0] for k in TH_KEYS}
+    th = _thresholds(cfg.config_dir)
     hist = History(cfg.interim_dir)
     latest = hist.latest_run_date()
     if latest and cfg.as_of < latest:
@@ -46,10 +67,25 @@ def run(cfg: RunConfig) -> RunResult:
             f"指定的日期 {cfg.as_of.isoformat()} 早於已處理過的最新日期 {latest.isoformat()}。"
             "往前補跑會打亂歷次紀錄，已停止執行，沒有改動任何檔案。"
         )
-    path = cfg.input_path or find_input(cfg.raw_dir, bcfg)
+    input_notes: list[str] = []
+    if cfg.input_path is None:
+        path, input_notes = find_input(cfg.raw_dir, bcfg)
+    else:
+        path = cfg.input_path
     if not path.exists():
         raise ProgressDataError(f"找不到看板檔案 {path.name}")
+    if path.suffix.lower() != ".xlsx":
+        raise ProgressDataError(f"看板必須是 .xlsx 檔（收到 {path.name}），請用 Excel 另存為 .xlsx")
     board = load_board(path, bcfg)
+    # 整份看板讀不到、缺欄位、沒有資料：停止，不產生「沒有需要注意」的誤導報表，也不寫紀錄
+    fatal = [
+        i.problem + (f"：{i.column}" if i.column else "") for i in board.issues if i.row is None
+    ]
+    if fatal or not board.rows:
+        raise ProgressDataError(
+            f"看板 {path.name} 無法正確讀取（{'；'.join(fatal) or '沒有任何案子'}），"
+            "已停止，沒有產生報表也沒有改動紀錄。請檢查看板或 config/progress_columns.yaml"
+        )
     run_id = make_run_id("progress", cfg.as_of, [path])
     log = runlog.get_logger(run_id, cfg.log_dir)
 
@@ -63,10 +99,19 @@ def run(cfg: RunConfig) -> RunResult:
     bad_dates = {i.row for i in board.issues if i.column == "下一個日期"}
     ev.quality = [q for q in ev.quality if not (q.field == "下一個日期" and q.row in bad_dates)]
 
-    notes = list(ev.notes)
+    notes = input_notes + list(ev.notes)
     board_note = None
+    same_day = hist.run_on(cfg.as_of)
+    if same_day and same_day.get("input_file") not in (None, path.name):
+        notes.append(
+            f"今天稍早已用另一份看板（{same_day['input_file']}）執行過，本次結果已取代那一次的紀錄"
+        )
     if board.board_date is None:
         notes.append("看板上沒有標示資料日期（標題列上方的說明文字中找不到日期）")
+    elif board.board_date > cfg.as_of:
+        notes.append(
+            f"看板資料日期 {board.board_date.isoformat()} 晚於執行日期，請確認日期是否寫錯"
+        )
     elif (
         th["board_stale_days"] is not None
         and (cfg.as_of - board.board_date).days > th["board_stale_days"]
@@ -115,7 +160,9 @@ def run(cfg: RunConfig) -> RunResult:
 
     files = output.write_all(data, board, ev, bcfg, cfg.out_dir, cfg.as_of)
     hist.save(
-        cfg.as_of, board, {k: data[k] for k in ("as_of", "run_id", "alerts", "projects", "metrics")}
+        cfg.as_of,
+        board,
+        {k: data[k] for k in ("as_of", "run_id", "alerts", "projects", "metrics", "input_file")},
     )
     runlog.close_logger(log)
     return RunResult(run_id, data, files)

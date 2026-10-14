@@ -124,6 +124,14 @@ def _cell(v: object) -> object:
     return v
 
 
+def _append(ws, values: list) -> None:
+    """寫入一列；以「=」開頭的文字維持為文字，不變成 Excel 公式。"""
+    ws.append(values)
+    for cell in ws[ws.max_row]:
+        if isinstance(cell.value, str) and cell.value.startswith("="):
+            cell.data_type = "s"
+
+
 LIGHT_FILL = {"紅": "F8CBAD", "黃": "FFE699", "綠": "C6E0B4"}
 
 
@@ -154,7 +162,7 @@ def write_xlsx(
     ws.append([LEVEL_BANNER.get(footer.level, footer.level)])
     ws["A1"].font = Font(bold=True, color="C00000")
     for i, line in enumerate(headline.splitlines() or [headline]):
-        ws.append([line])
+        _append(ws, [line])
         ws.cell(row=ws.max_row, column=1).font = Font(bold=True, size=13 if i == 0 else 11)
     ws.append([])
     if overview is not None:
@@ -165,11 +173,11 @@ def write_xlsx(
             ws.cell(row=hdr, column=c).font = Font(bold=True)
             ws.cell(row=hdr, column=c).fill = PatternFill("solid", fgColor="DDEBF7")
         for row in ov.itertuples(index=False):
-            ws.append(list(row))
+            _append(ws, list(row))
         _color_lights(ws, hdr, ov)
         ws.append([])
     for line in footer.lines():
-        ws.append([line])
+        _append(ws, [line])
     for name, df in sheets.items():
         sh = wb.create_sheet(name[:_SHEET_NAME_MAX])
         sh.append([LEVEL_BANNER.get(footer.level, footer.level)])
@@ -179,11 +187,11 @@ def write_xlsx(
             sh.cell(row=2, column=c).font = Font(bold=True)
             sh.cell(row=2, column=c).fill = PatternFill("solid", fgColor="DDEBF7")
         for row in df.itertuples(index=False):
-            sh.append(list(row))
+            _append(sh, list(row))
         _color_lights(sh, 2, df)
         sh.append([])
         for line in footer.lines():
-            sh.append([line])
+            _append(sh, [line])
         for i, col in enumerate(df.columns, start=1):
             sh.column_dimensions[get_column_letter(i)].width = max(
                 10, min(40, len(str(col)) * 2 + 4)

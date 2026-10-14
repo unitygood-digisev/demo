@@ -30,6 +30,7 @@ class ColumnSpec:
     required: bool = True
     allowed: tuple[str, ...] = ()
     label: str = ""  # 繁體中文說明，出現在錯誤訊息
+    must_exist: bool = False  # 值可以空白，但欄位本身一定要有（缺欄位會列出）
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,10 @@ class _LayoutError(ValueError):
 
 
 def _read_raw(
-    path: Path, sheet: str | None = None, header_anchor: str | None = None
+    path: Path,
+    sheet: str | None = None,
+    header_anchor: str | None = None,
+    header_expect: tuple[str, ...] = (),
 ) -> tuple[pd.DataFrame, int]:
     """讀檔時不讓 pandas 處理標題列，避免同名欄位被自動改名成「.1」而漏掉。
 
@@ -161,7 +165,13 @@ def _read_raw(
         ]
         if not found:
             raise _LayoutError(f"找不到標題列（標題列應有「{header_anchor}」這一欄）")
-        h = found[0]
+
+        def overlap(i: int) -> int:
+            cells = {str(c).strip() for c in grid.iloc[i] if not _is_blank(c)}
+            return len(cells & set(header_expect))
+
+        # 有多列含錨點時（例如說明文字剛好也寫了這個詞），取最像標題列的那一列
+        h = max(found, key=lambda i: (overlap(i), -i))
     header = ["" if _is_blank(c) else str(c).strip() for c in grid.iloc[h]]
     data = grid.iloc[h + 1 :].reset_index(drop=True)
     data.columns = header
@@ -174,6 +184,7 @@ def load_table(
     column_map: dict[str, str] | None = None,
     sheet: str | None = None,
     header_anchor: str | None = None,
+    header_expect: tuple[str, ...] = (),
 ) -> LoadResult:
     """讀檔並檢查。不會因為資料錯誤而中斷；錯誤都放在 issues。
 
@@ -187,7 +198,7 @@ def load_table(
         issues.append(ValidationIssue(fname, None, None, "找不到檔案"))
         return LoadResult(pd.DataFrame(columns=["_row"]), issues)
     try:
-        raw, header_row = _read_raw(path, sheet, header_anchor)
+        raw, header_row = _read_raw(path, sheet, header_anchor, header_expect)
     except _LayoutError as e:
         issues.append(ValidationIssue(fname, None, None, str(e)))
         return LoadResult(pd.DataFrame(columns=["_row"]), issues)
@@ -212,7 +223,7 @@ def load_table(
     for c in dup_cols:
         issues.append(ValidationIssue(fname, None, c, "欄位名稱重複，無法判斷要用哪一欄"))
     for c in spec.columns:
-        if c.required and c.name not in raw.columns:
+        if (c.required or c.must_exist) and c.name not in raw.columns:
             issues.append(ValidationIssue(fname, None, c.name, "缺少欄位（必填）"))
     if dup_cols:
         # 不知道該用哪一欄，資料列不讀，避免默默讀錯

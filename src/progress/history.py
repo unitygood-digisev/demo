@@ -79,12 +79,32 @@ class History:
         if not runs:
             return None
         d, p = runs[-1]
+        return d, self._read_run(p)
+
+    def run_on(self, day: dt.date) -> dict | None:
+        p = self.run_dir / f"{day.strftime('%Y%m%d')}.json"
+        return self._read_run(p) if p.exists() else None
+
+    @staticmethod
+    def _read_run(p: Path) -> dict:
+        msg = f"中間檔 {p.name} 已損壞（可刪除此檔，但會少一次比較紀錄）"
         try:
-            return d, json.loads(p.read_text(encoding="utf-8"))
+            data = json.loads(p.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            raise ProgressDataError(
-                f"中間檔 {p.name} 已損壞（可刪除此檔，但會少一次比較紀錄）"
-            ) from e
+            raise ProgressDataError(msg) from e
+        ok = (
+            isinstance(data, dict)
+            and isinstance(data.get("alerts"), list)
+            and all(
+                isinstance(a, dict) and {"rule", "subject", "level"} <= set(a)
+                for a in data["alerts"]
+            )
+            and isinstance(data.get("metrics"), dict)
+            and isinstance(data.get("projects"), list)
+        )
+        if not ok:
+            raise ProgressDataError(msg)
+        return data
 
     # ---- 計算 ----
     def unchanged_since(
@@ -126,15 +146,30 @@ def compare(prev: dict | None, cur_alerts: list[dict], cur_projects: list[str]) 
     """與上次比較：預警新增／解除／持續；案子新增／消失。"""
     if prev is None:
         return {"available": False}
-    key = lambda a: (a["rule"], a["subject"])  # noqa: E731
-    prev_alerts = {key(a): a for a in prev["alerts"]}
-    cur = {key(a): a for a in cur_alerts}
+
+    # 同一個 (規則, 對象) 可能有多筆（例如案名重複），按筆數比較，不合併
+    def group(alerts: list[dict]) -> dict[tuple, list[dict]]:
+        out: dict[tuple, list[dict]] = {}
+        for a in alerts:
+            out.setdefault((a["rule"], a["subject"]), []).append(a)
+        return out
+
+    prev_g, cur_g = group(prev["alerts"]), group(cur_alerts)
+    new: list[dict] = []
+    resolved: list[dict] = []
+    ongoing: list[dict] = []
+    for k, items in cur_g.items():
+        n_prev = len(prev_g.get(k, []))
+        ongoing += items[:n_prev]
+        new += items[n_prev:]
+    for k, items in prev_g.items():
+        resolved += items[len(cur_g.get(k, [])) :]
     prev_projects = set(prev.get("projects", []))
     return {
         "available": True,
-        "new": [cur[k] for k in cur if k not in prev_alerts],
-        "resolved": [prev_alerts[k] for k in prev_alerts if k not in cur],
-        "ongoing": [cur[k] for k in cur if k in prev_alerts],
+        "new": new,
+        "resolved": resolved,
+        "ongoing": ongoing,
         "added_projects": sorted(p for p in cur_projects if p not in prev_projects),
         "removed_projects": sorted(p for p in prev_projects if p not in set(cur_projects)),
     }

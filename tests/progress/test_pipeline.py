@@ -211,19 +211,61 @@ def test_header_found_anywhere_and_row_numbers_real(make_cfg, tmp_path):
 
 @pytest.mark.parametrize(
     "kind, expect",
-    [("no_sheet", "找不到分頁"), ("no_header", "找不到標題列"), ("empty", "檔案沒有資料列")],
+    [
+        ("no_sheet", "找不到分頁"),
+        ("no_header", "找不到標題列"),
+        ("empty", "檔案沒有資料列"),
+        ("missing_date_col", "缺少欄位（必填）：下一個日期"),
+        ("missing_owner_col", "缺少欄位（必填）：負責人"),
+    ],
 )
-def test_layout_problems_are_loud(make_cfg, tmp_path, kind, expect):
+def test_unreadable_board_stops_without_writing(make_cfg, tmp_path, kind, expect):
+    run(make_cfg(as_of=WEEKS[0], input_path=sample_board(WEEKS[0])))
+    before = sorted(p.name for p in (tmp_path / "interim").rglob("*"))
     p = tmp_path / "b.xlsx"
+    header = ["客戶／案子", "類別", "階段", "負責人", "近期下一步", "下一個日期"]
     if kind == "no_sheet":
-        _board(p, sheet="別的分頁")
+        _board(p, sheet="別的分頁", rows=[["A", "x", "進行中", "甲", "s", None]])
     elif kind == "no_header":
-        _board(p, header=["案名", "階段"])
-    else:
+        _board(p, header=["案名", "階段"], rows=[["A", "進行中"]])
+    elif kind == "empty":
         _board(p)
+    elif kind == "missing_date_col":
+        _board(
+            p,
+            header=[h if h != "下一個日期" else "下一個 日期" for h in header],
+            rows=[["A", "x", "進行中", "甲", "s", None]],
+        )
+    else:
+        _board(
+            p, header=[h for h in header if h != "負責人"], rows=[["A", "x", "進行中", "s", None]]
+        )
+    with pytest.raises(ProgressDataError, match=expect):
+        run(make_cfg(as_of=WEEKS[1], input_path=p))
+    assert sorted(p.name for p in (tmp_path / "interim").rglob("*")) == before
+    assert not list((tmp_path / "out").glob("*20261007*"))
+
+
+def test_non_xlsx_input_refused(make_cfg, tmp_path):
+    p = tmp_path / "項目進度看板.csv"
+    p.write_text("說明\n客戶／案子,階段\nA,進行中\n", encoding="utf-8")
+    with pytest.raises(ProgressDataError, match="必須是 .xlsx"):
+        run(make_cfg(input_path=p))
+
+
+def test_header_picks_real_header_row(make_cfg, tmp_path):
+    p = tmp_path / "b.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "項目看板"
+    ws.append(["客戶／案子"])  # 說明文字剛好也寫了錨點
+    ws.append(["來源：2026/10/14 會議紀錄"])
+    ws.append(["客戶／案子", "類別", "階段", "負責人", "近期下一步", "下一個日期"])
+    ws.append(["A", "x", "卡關", "甲", "s", None])
+    wb.save(p)
     res = run(make_cfg(input_path=p))
-    assert expect in all_cells(res.files["xlsx"])
-    assert res.data["metrics"]["total_projects"] == 0
+    assert res.data["metrics"]["total_projects"] == 1 and res.data["alerts"][0]["rule"] == "P03"
+    assert res.data["board_date"] == "2026-10-14"
 
 
 def test_missing_input_is_loud(make_cfg, tmp_path):
@@ -266,3 +308,89 @@ def test_sample_is_marked_fake():
         names = [r[0] for r in ws.iter_rows(min_row=5, values_only=True) if r[0]]
         assert names and all(n.startswith("（假資料）") for n in names)
     assert "假資料" in (SAMPLE.parent / "README.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("value", ["七", "7", -1, True, 1.5])
+def test_bad_threshold_is_plain_error(make_cfg, config_dir, value):
+    set_threshold(config_dir, "P02_due_soon_days", value)
+    with pytest.raises(ProgressDataError, match="progress.P02_due_soon_days 應為 0 以上的整數"):
+        run(make_cfg())
+
+
+@pytest.mark.parametrize(
+    "content",
+    ['{"metrics": {}, "projects": []}', "[1, 2]", '{"alerts": [1], "metrics": {}, "projects": []}'],
+)
+def test_runs_with_wrong_structure_is_loud(make_cfg, tmp_path, content):
+    run(make_cfg(as_of=WEEKS[0], input_path=sample_board(WEEKS[0])))
+    (tmp_path / "interim" / "runs" / "20260930.json").write_text(content, encoding="utf-8")
+    with pytest.raises(ProgressDataError, match="20260930.json"):
+        run(make_cfg())
+
+
+def test_other_formats_in_raw_are_reported(make_cfg, tmp_path):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "項目進度看板_20261007.xlsx").write_bytes(sample_board(WEEKS[1]).read_bytes())
+    (raw / "項目進度看板_20261014.xls").write_bytes(b"old excel")
+    (raw / "~$項目進度看板_20261014.xlsx").write_bytes(b"lock")
+    res = run(make_cfg(input_path=None))
+    assert res.data["input_file"] == "項目進度看板_20261007.xlsx"
+    assert any("項目進度看板_20261014.xls" in n and "已略過" in n for n in res.data["notes"])
+
+
+def test_formula_like_text_stays_text(make_cfg, tmp_path):
+    p = _board(
+        tmp_path / "b.xlsx", rows=[['=HYPERLINK("http://x")', "x", "卡關", "甲", "=1+1", None]]
+    )
+    # 模擬使用者在看板輸入以「=」開頭的文字（儲存格是文字型態，不是公式）
+    wb0 = load_workbook(p)
+    for c in wb0["項目看板"][5]:
+        if isinstance(c.value, str) and c.value.startswith("="):
+            c.data_type = "s"
+    wb0.save(p)
+    res = run(make_cfg(input_path=p))
+    wb = load_workbook(res.files["xlsx"])
+    cells = [
+        c
+        for ws in wb
+        for row in ws.iter_rows()
+        for c in row
+        if isinstance(c.value, str) and c.value.startswith("=")
+    ]
+    assert cells and all(c.data_type == "s" for c in cells)
+
+
+def test_duplicate_alerts_counted_in_changes(make_cfg, tmp_path):
+    rows = [["A", "x", "卡關", "甲", "s", None], ["B", "x", "進行中", "甲", "s", None]]
+    run(make_cfg(as_of=WEEKS[0], input_path=_board(tmp_path / "w1.xlsx", rows=rows)))
+    rows2 = [["A", "x", "卡關", "甲", "s", None], ["A", "x", "卡關", "乙", "t", None]]
+    res = run(make_cfg(as_of=WEEKS[1], input_path=_board(tmp_path / "w2.xlsx", rows=rows2)))
+    assert len([a for a in res.data["alerts"] if a["rule"] == "P03"]) == 2
+    ch = res.data["changes"]
+    assert len(ch["new"]) == 1 and len(ch["ongoing"]) == 1
+
+
+def test_same_day_different_board_is_noted(make_cfg, tmp_path):
+    run(make_cfg())
+    other = tmp_path / "另一份.xlsx"
+    other.write_bytes(sample_board(AS_OF).read_bytes())
+    res = run(make_cfg(input_path=other))
+    assert any("今天稍早已用另一份看板" in n for n in res.data["notes"])
+
+
+def test_board_date_prefers_source_line_and_future_date(make_cfg, tmp_path):
+    p = tmp_path / "b.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "項目看板"
+    ws.append(["規則自 2025/1/1 起適用"])
+    for _ in range(14):
+        ws.append(["說明"])
+    ws.append(["來源：2026/10/20 會議紀錄"])  # 第 16 列，超過舊版只看 10 列的範圍
+    ws.append(["客戶／案子", "類別", "階段", "負責人", "近期下一步", "下一個日期"])
+    ws.append(["A", "x", "進行中", "甲", "s", None])
+    wb.save(p)
+    res = run(make_cfg(input_path=p))
+    assert res.data["board_date"] == "2026-10-20"
+    assert any("晚於執行日期" in n for n in res.data["notes"])
