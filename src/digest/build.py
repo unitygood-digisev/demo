@@ -59,6 +59,7 @@ class Digest:
     missing: list[str] = field(default_factory=list)
     method: list[str] = field(default_factory=list)
     run_id: str = ""
+    systems: dict = field(default_factory=dict)  # 各系統本週狀態，給其他出口判斷資料是否為本週
 
     def body_size(self, line_chars: int = LINE_CHARS) -> int:
         """估算版面：每段依實際換行占幾行，再換算成字數（短的一行也算一整行）。"""

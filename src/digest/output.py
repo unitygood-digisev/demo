@@ -113,6 +113,7 @@ def to_data(d: Digest) -> dict:
         "data_quality": d.data_quality,
         "data_quality_more": d.data_quality_more,
         "footer": _footer(d).lines(),
+        "systems": d.systems,
     }
 
 

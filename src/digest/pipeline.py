@@ -82,6 +82,15 @@ def run(cfg: RunConfig) -> RunResult:
             s = type(s)(s.key, s.name, cfg.summary_overrides[s.key], s.launched)
         inputs.append(read_system(s, cfg.as_of, stale_days, failed=s.key in cfg.failed_systems))
     d = build(inputs, metric_cfg, dcfg, cfg.as_of, metrics_status, stale_days)
+    d.systems = {
+        s.cfg.key: {
+            "name": s.cfg.name,
+            "status": s.status,
+            "text": s.status_text or "本週已更新",
+            "as_of": s.summary.as_of.isoformat() if s.summary is not None else None,
+        }
+        for s in inputs
+    }
     # 執行編號：所有存在的摘要檔內容（含讀取失敗的）一起算雜湊
     used = [
         s.cfg.path

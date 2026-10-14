@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
 from scripts import run_digest, run_intel, run_progress, sync_sheets  # noqa: E402
+from shared.dates import DateParseError, parse_date  # noqa: E402
 
 # (系統代號, 名稱, 執行函式, 額外參數)
 STEPS = [
@@ -43,6 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="每週一鍵執行")
     ap.add_argument("--as-of", default=None, help="日期 YYYY-MM-DD，預設台灣今天")
     args = ap.parse_args(argv)
+    if args.as_of:
+        try:
+            parse_date(args.as_of)
+        except DateParseError:
+            print(f"未執行：日期「{args.as_of}」看不懂，請寫成 2026-10-14")
+            return 1
     date_args = ["--as-of", args.as_of] if args.as_of else []
     failed: list[tuple[str, str]] = []
     for key, name, fn, extra in STEPS:
@@ -53,10 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     digest_args = date_args + (["--failed", ",".join(k for k, _ in failed)] if failed else [])
     digest_failed = _call(DIGEST[0], DIGEST[1], digest_args)
     sheets_failed = False
+    sheets_note = "（週報沒有產生，所以沒有同步 Google 試算表）" if digest_failed else ""
     if not digest_failed:
         print(f"=== {SHEETS[0]} ===")
         code = _call(SHEETS[0], SHEETS[1], date_args)
         sheets_failed = code not in (0, sync_sheets.SKIPPED)  # 尚未設定 → 略過，不算失敗
+        if code == sync_sheets.SKIPPED:
+            sheets_note = "（Google 試算表尚未設定或已停用，本週沒有同步）"
     print("=== 結果 ===")
     names = (
         [n for _, n in failed]
@@ -64,10 +74,10 @@ def main(argv: list[str] | None = None) -> int:
         + ([SHEETS[0]] if sheets_failed else [])
     )
     if not names:
-        print("全部完成。")
+        print(f"全部完成。{sheets_note}")
         return 0
     note = "（週報中已標示為「本週執行失敗，未納入」）" if failed and not digest_failed else ""
-    print(f"以下步驟未完成：{'、'.join(names)}{note}")
+    print(f"以下步驟未完成：{'、'.join(names)}{note}{sheets_note}")
     return 1
 
 
