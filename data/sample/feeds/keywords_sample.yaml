@@ -1,0 +1,22 @@
+# 假資料：系統 7 離線測試用的關鍵字。不是正式關鍵字，正式關鍵字寫在 config/keywords.yaml。
+keywords:
+  - 詞: 碳費
+    類別: 法規與準則
+    權重: 5
+    同義詞: [carbon fee]
+  - 詞: 永續報告書
+    類別: 法規與準則
+    權重: 4
+    同義詞: [sustainability report]
+  - 詞: 白鷺示範企業
+    類別: 客戶
+    權重: 5
+    同義詞: []
+  - 詞: climate disclosure
+    類別: 法規與準則
+    權重: 4
+    同義詞: [氣候揭露]
+  - 詞: carbon accounting
+    類別: 同業
+    權重: 3
+    同義詞: [碳盤查]

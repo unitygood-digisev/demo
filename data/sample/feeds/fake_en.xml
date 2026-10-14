@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fake data: fictional source and articles for offline tests only. URLs use reserved example domains. -->
+<rss version="2.0">
+  <channel>
+    <title>(FAKE) Example Sustainability Standards Board</title>
+    <link>https://example.org/fake-board</link>
+    <description>Fake RSS</description>
+    <item>
+      <title>(FAKE) Example Board issues amendments to climate disclosure standard</title>
+      <link>https://example.org/fake-board/news/2001</link>
+      <pubDate>Mon, 12 Oct 2026 14:00:00 +0000</pubDate>
+      <description>(FAKE) The Example Board published targeted amendments to its climate disclosure standard, including relief for Scope 3 category 15.</description>
+    </item>
+    <item>
+      <!-- 與 fake_zh.xml 的 1002 為同一網址（僅追蹤參數不同），應判定為重複 -->
+      <title>示範主管機關說明永續報告書查核新制</title>
+      <link>https://example.com/fake-agency/news/1002?utm_source=partner</link>
+      <pubDate>Tue, 13 Oct 2026 03:00:00 +0000</pubDate>
+      <description>(FAKE) Mirror of the agency announcement.</description>
+    </item>
+    <item>
+      <!-- 標題與 2001 高度相似、網址不同，應合併為同一事件 -->
+      <title>(FAKE) Example Board issues amendments to its climate disclosure standard</title>
+      <link>https://example.net/fake-wire/9001</link>
+      <pubDate>Mon, 12 Oct 2026 16:00:00 +0000</pubDate>
+      <description>(FAKE) Wire report on the amendments.</description>
+    </item>
+    <item>
+      <title>(FAKE) Example consultancy peer launches carbon accounting tool</title>
+      <link>https://example.org/fake-board/news/2002</link>
+      <pubDate>Tue, 13 Oct 2026 09:00:00 +0000</pubDate>
+      <description>(FAKE) A fictional peer consultancy announced a carbon accounting software product.</description>
+    </item>
+    <item>
+      <title>(FAKE) Example Board schedules biodiversity roundtable</title>
+      <link>https://example.org/fake-board/news/2003</link>
+      <pubDate>Wed, 14 Oct 2026 01:00:00 +0000</pubDate>
+      <description>(FAKE) Roundtable on nature-related disclosures scheduled for next month.</description>
+    </item>
+  </channel>
+</rss>

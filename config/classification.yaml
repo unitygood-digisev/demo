@@ -1,0 +1,34 @@
+# 四級資料分類與允許的處理方式（CLAUDE.md 第 4 節）
+# rank 越大越敏感。不認得的等級，程式一律當作「客戶機密」處理。
+# 修改本檔前請先取得主管同意。
+
+levels:
+  公開:
+    rank: 0
+    說明: 官網、已發布報告書
+    allowed_processing: [cloud_llm, company_cloud_llm, local_llm]
+  內部一般:
+    rank: 1
+    說明: 一般簡報、流程說明
+    allowed_processing: [company_cloud_llm, local_llm]
+  內部敏感:
+    rank: 2
+    說明: SOP、報價單、財務、工時
+    allowed_processing: [local_llm]
+  客戶機密:
+    rank: 3
+    說明: 客戶未公開資料、合約、聯絡名單
+    allowed_processing: [local_llm, deidentified_cloud_llm]
+
+# 不確定等級時的預設等級
+default_level: 客戶機密
+
+# 處理方式說明
+processing:
+  cloud_llm: 雲端大模型（任何帳號）
+  company_cloud_llm: 雲端大模型（限公司統一帳號）
+  local_llm: 本地模型，資料不離開公司電腦
+  deidentified_cloud_llm: 去識別後才可送雲端（目前尚無去識別流程，視同不允許）
+
+# 系統 6 案例庫第一版允許匯入的等級
+casebase_allowed: [公開, 內部一般]

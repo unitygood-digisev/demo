@@ -1,0 +1,28 @@
+# 原始、中間、輸出資料：不提交
+data/raw/*
+data/interim/*
+data/out/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/out/.gitkeep
+
+# 日誌
+logs/*
+!logs/.gitkeep
+
+# 機密
+.env
+.env.*
+!.env.example
+
+# Python／環境
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 系統檔
+.DS_Store
+~$*.xlsx
+~$*.docx

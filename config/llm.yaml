@@ -1,0 +1,49 @@
+# 大模型設定（CLAUDE.md 第 4、7 節）
+# 所有呼叫都經過 src/shared/llm_client.py。金鑰放環境變數，不寫在這裡。
+
+temperature: 0
+
+# 預設使用的後端。階段 0 只有 mock（模擬，不連任何服務）。
+default_backend: mock
+
+backends:
+  mock:
+    說明: 模擬回應，供開發與測試；不連網路
+    processing: mock
+    model: mock-echo
+    endpoint: null
+  cloud_public:
+    說明: 雲端大模型（尚未設定，待主管確認帳號）
+    processing: cloud_llm
+    model: null
+    endpoint: null
+    api_key_env: LLM_API_KEY
+  cloud_company:
+    說明: 雲端大模型，公司統一帳號（尚未設定）
+    processing: company_cloud_llm
+    model: null
+    endpoint: null
+    api_key_env: LLM_API_KEY
+  local:
+    說明: 本地模型（尚未確認公司是否有可用電腦）
+    processing: local_llm
+    model: null
+    endpoint: null
+
+# mock 可用於任何等級，因為資料不離開本機。
+mock_allowed_for_all_levels: true
+
+# 每個用途允許的最高資料等級。未列在這裡的用途一律拒絕。
+purposes:
+  intel_summary:
+    說明: 系統 7 外部情報兩句摘要
+    max_level: 公開
+  casebase_page:
+    說明: 系統 6 Wiki 頁面生成
+    max_level: 內部一般
+  test:
+    說明: 僅供自動化測試
+    max_level: 客戶機密
+
+cache_dir: data/interim/llm_cache
+call_log: logs/model_calls.jsonl

@@ -1,0 +1,26 @@
+# 假資料：系統 7 離線測試用的來源清單。不是正式來源，正式來源寫在 config/sources.yaml。
+sources:
+  - id: fake_agency_zh
+    名稱: （假資料）示範環境主管機關新聞稿
+    類型: rss
+    網址: data/sample/feeds/fake_zh.xml
+    語言: zh-TW
+    分類: 法規與準則
+  - id: fake_board_en
+    名稱: （假資料）Example Sustainability Standards Board
+    類型: rss
+    網址: data/sample/feeds/fake_en.xml
+    語言: en
+    分類: 法規與準則
+  - id: fake_broken
+    名稱: （假資料）壞掉的來源
+    類型: rss
+    網址: data/sample/feeds/broken.xml
+    語言: zh-TW
+    分類: 其他
+  - id: fake_missing
+    名稱: （假資料）不存在的來源
+    類型: rss
+    網址: data/sample/feeds/does_not_exist.xml
+    語言: zh-TW
+    分類: 其他

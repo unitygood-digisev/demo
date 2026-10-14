@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 假資料：虛構來源與文章，僅供離線測試。網址均為 example.com 保留網域。 -->
+<rss version="2.0">
+  <channel>
+    <title>（假資料）示範環境主管機關新聞稿</title>
+    <link>https://example.com/fake-agency</link>
+    <description>假資料 RSS</description>
+    <item>
+      <title>（假資料）示範主管機關公告碳費收費辦法修正草案</title>
+      <link>https://example.com/fake-agency/news/1001</link>
+      <pubDate>Mon, 12 Oct 2026 09:00:00 +0800</pubDate>
+      <description>（假資料）示範主管機關今日預告碳費收費辦法修正草案，調整自主減量計畫審查程序，草案公告期間六十日。</description>
+    </item>
+    <item>
+      <title>（假資料）示範主管機關說明永續報告書查核新制</title>
+      <link>https://example.com/fake-agency/news/1002?utm_source=rss</link>
+      <pubDate>Tue, 13 Oct 2026 10:30:00 +0800</pubDate>
+      <description>（假資料）新制要求上市櫃公司永續報告書第三方確信範圍擴大至範疇三，明年起分階段實施。</description>
+    </item>
+    <item>
+      <title>（假資料）示範主管機關舉辦淨零轉型說明會</title>
+      <link>https://example.com/fake-agency/news/1003</link>
+      <pubDate>Wed, 14 Oct 2026 08:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>（假資料）白鷺示範企業獲頒永續獎項</title>
+      <link>https://example.com/fake-agency/news/1004</link>
+      <pubDate>Tue, 13 Oct 2026 15:00:00 +0800</pubDate>
+      <description>（假資料）白鷺示範企業以供應鏈減碳成果獲頒年度永續獎項。</description>
+    </item>
+    <item>
+      <title>（假資料）示範主管機關公布年度空品統計</title>
+      <link>https://example.com/fake-agency/news/1005</link>
+      <pubDate>Fri, 09 Oct 2026 11:00:00 +0800</pubDate>
+      <description>（假資料）年度空氣品質統計顯示細懸浮微粒濃度較去年下降。</description>
+    </item>
+  </channel>
+</rss>

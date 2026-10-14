@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 假資料：故意壞掉的 RSS，用來測試「來源異常」 -->
+<rss version="2.0">
+  <channel>
+    <title>（假資料）壞掉的來源
+    <item><title>未關閉的標籤

@@ -1,0 +1,85 @@
+# 預警門檻。所有數值都是起始值，status 為「待主管確認」的值在輸出中會標註。
+# 規格沒有給起始值的項目 value 為 null，代表「待補」，相關規則在補值前不會計算。
+# 改門檻只要改這個檔案，不需要改程式。
+
+intel:
+  relevance_min_score:
+    value: null
+    status: 待主管確認
+    說明: 相關度分數低於此值放「低相關」附錄；階段 1 用 30 篇人工標記文章調整
+  title_similarity_dup:
+    value: null
+    status: 待主管確認
+    說明: 標題相似度（0–1）超過此值視為同一事件；階段 1 調整
+  max_items_per_issue:
+    value: null
+    status: 待主管確認
+    說明: 每期摘要最多項數
+
+progress:
+  A02_due_soon_days:
+    value: 7
+    status: 待主管確認
+    說明: 里程碑在幾天內到期且未開始 → 黃
+  A03_no_update_days:
+    value: 14
+    status: 待主管確認
+    說明: 進行中項目超過幾天沒有更新 → 黃
+  A04_max_active_projects:
+    value: 5
+    status: 待主管確認
+    說明: 同一負責人同時進行的項目超過幾個 → 黃
+
+finance:
+  F01_overdue_days:
+    value: 90
+    status: 待主管確認
+    說明: 帳齡超過幾天的未收款 → 紅
+  F02_min_gross_margin:
+    value: null
+    status: 待主管確認
+    說明: 毛利率低於多少 → 黃（例如 0.2 代表 20%）
+  F03_cost_ratio_max:
+    value: null
+    status: 待主管確認
+    說明: 成本佔合約比超過多少（X）
+  F03_milestone_completion_min:
+    value: null
+    status: 待主管確認
+    說明: 里程碑完成率低於多少（Y）
+
+workload:
+  W01_min_fill_rate:
+    value: null
+    status: 待主管確認
+    說明: 工時填報率低於多少 → 資料品質提醒
+  W02_max_utilization:
+    value: null
+    status: 待主管確認
+    說明: 團隊利用率高於多少 → 黃
+  min_group_size_k:
+    value: 3
+    status: 待主管確認
+    說明: 群組人數少於此值時不顯示
+
+pipeline:
+  stuck_days:
+    value: 21
+    status: 待主管確認
+    說明: 在同一階段超過幾天列入卡關名單
+
+contracts:
+  C01_yellow_days:
+    value: 90
+    status: 待主管確認
+    說明: 到期天數小於等於此值 → 黃
+  C01_red_days:
+    value: 30
+    status: 待主管確認
+    說明: 到期天數小於等於此值 → 紅
+
+digest:
+  stale_days:
+    value: null
+    status: 待主管確認
+    說明: 摘要檔超過幾天未更新就在週報寫「本週未更新」

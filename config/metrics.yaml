@@ -1,0 +1,23 @@
+# 管理層週報要看的 5–8 個指標與顯示順序（系統 5）
+# 狀態：起始版，待確認。正式指標請由管理層指定（見 docs/manager_questions.md 第 4 題）。
+status: 待確認
+
+metrics:
+  - key: progress.red_alerts
+    label: 紅色預警項目數
+    system: progress
+  - key: progress.yellow_alerts
+    label: 黃色預警項目數
+    system: progress
+  - key: progress.active_projects
+    label: 進行中項目數
+    system: progress
+  - key: finance.total_outstanding
+    label: 未收款總額（元）
+    system: finance
+  - key: finance.overdue_90_amount
+    label: 逾期超過 90 天未收款（元）
+    system: finance
+  - key: intel.relevant_items
+    label: 本期相關外部情報則數
+    system: intel
