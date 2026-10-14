@@ -141,7 +141,8 @@ class LLMClient:
         try:
             text = self._call_backend(backend, prompt, input_text)
         except Exception as e:
-            self._log({**base, "status": "error", "reason": str(e), "cached": False})
+            # 只記錯誤類型；錯誤訊息可能夾帶輸入原文，不寫進日誌
+            self._log({**base, "status": "error", "reason": type(e).__name__, "cached": False})
             raise
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         cache_file.write_text(json.dumps({"text": text}, ensure_ascii=False), encoding="utf-8")

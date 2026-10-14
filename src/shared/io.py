@@ -118,14 +118,24 @@ def _convert(v: Any, col: ColumnSpec) -> Any:
 
 
 def _read_raw(path: Path) -> pd.DataFrame:
+    """讀檔時不讓 pandas 處理標題列，避免同名欄位被自動改名成「.1」而漏掉。"""
     suffix = path.suffix.lower()
     if suffix in (".xlsx", ".xlsm"):
-        return pd.read_excel(
-            path, dtype=object, engine="openpyxl", keep_default_na=False, na_values=[]
+        grid = pd.read_excel(
+            path, header=None, dtype=object, engine="openpyxl", keep_default_na=False, na_values=[]
         )
-    if suffix == ".csv":
-        return pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    raise ValueError(f"不支援的檔案格式：{path.name}（只接受 .xlsx、.csv）")
+    elif suffix == ".csv":
+        grid = pd.read_csv(
+            path, header=None, dtype=str, keep_default_na=False, encoding="utf-8-sig"
+        )
+    else:
+        raise ValueError(f"不支援的檔案格式：{path.name}（只接受 .xlsx、.csv）")
+    if grid.empty:
+        return pd.DataFrame()
+    header = ["" if _is_blank(c) else str(c).strip() for c in grid.iloc[0]]
+    data = grid.iloc[1:].reset_index(drop=True)
+    data.columns = header
+    return data
 
 
 def load_table(
@@ -146,19 +156,20 @@ def load_table(
         issues.append(ValidationIssue(fname, None, None, f"無法讀取檔案：{e}"))
         return LoadResult(pd.DataFrame(columns=["_row"]), issues)
 
-    raw.columns = [str(c).strip() for c in raw.columns]
     if column_map:
-        raw = raw.rename(columns=column_map)
-    dup_cols = sorted({c for c in raw.columns if list(raw.columns).count(c) > 1})
-    if dup_cols:
-        for c in dup_cols:
-            issues.append(ValidationIssue(fname, None, c, "欄位名稱重複，無法判斷要用哪一欄"))
-        return LoadResult(pd.DataFrame(columns=["_row"]), issues)
+        raw.columns = [column_map.get(c, c) for c in raw.columns]
+    names = [c for c in raw.columns if c]
+    dup_cols = sorted({c for c in names if names.count(c) > 1})
 
-    # 1. 欄位檢查（缺必填欄一次列完；選填欄缺少不算錯，值視為待補）
+    # 1. 欄位檢查（重名欄與缺少的必填欄一次列完；選填欄缺少不算錯，值視為待補）
+    for c in dup_cols:
+        issues.append(ValidationIssue(fname, None, c, "欄位名稱重複，無法判斷要用哪一欄"))
     for c in spec.columns:
         if c.required and c.name not in raw.columns:
             issues.append(ValidationIssue(fname, None, c.name, "缺少欄位（必填）"))
+    if dup_cols:
+        # 不知道該用哪一欄，資料列不讀，避免默默讀錯
+        return LoadResult(pd.DataFrame(columns=["_row"]), issues)
     present = [c for c in spec.columns if c.name in raw.columns]
 
     # 2. 逐列逐格檢查

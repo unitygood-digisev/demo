@@ -133,6 +133,24 @@ def test_header_only_reported_as_no_data(tmp_path):
     assert [i.problem for i in r.issues] == ["檔案沒有資料列"]
 
 
+@pytest.mark.parametrize("fmt", ["xlsx", "csv"])
+def test_exact_duplicate_header_reported_with_missing_columns(tmp_path, fmt):
+    header = ["project_id", "客戶", "project_id", "起始日", "金額", "期數", "狀態"]
+    row = ["P1", "甲", "P9", "2026-01-01", 1, 1, "進行中"]
+    if fmt == "xlsx":
+        p = _xlsx(tmp_path / "p.xlsx", header, [row])
+    else:
+        p = tmp_path / "p.csv"
+        p.write_text(",".join(header) + "\n" + ",".join(map(str, row)) + "\n", encoding="utf-8")
+    r = load_table(p, SPEC)
+    got = {(i.column, i.problem) for i in r.issues}
+    assert got == {
+        ("project_id", "欄位名稱重複，無法判斷要用哪一欄"),
+        ("負責人", "缺少欄位（必填）"),
+    }
+    assert r.data.empty
+
+
 def test_duplicate_column_names_after_strip(tmp_path):
     header = ["project_id", "project_id ", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
     rows = [["P1", "P9", "甲", "王", "2026-01-01", 1, 1, "進行中"]]

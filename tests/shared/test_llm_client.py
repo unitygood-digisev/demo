@@ -112,6 +112,21 @@ def test_allowed_but_unconfigured_backend_fails_loudly(client):
         _call(client, "內部一般", purpose="test", backend="cloud_company")
     rec = _log(client)[-1]
     assert rec["status"] == "error" and rec["backend"] == "cloud_company"
+    assert rec["reason"] == "LLMNotConfiguredError"
+
+
+def test_backend_error_message_not_logged(tmp_path):
+    def boom(prompt, text):
+        raise RuntimeError("失敗：" + text)
+
+    c = LLMClient(
+        cache_dir=tmp_path / "cache", log_path=tmp_path / "calls.jsonl", mock_responder=boom
+    )
+    with pytest.raises(RuntimeError):
+        _call(c, "公開")
+    raw = c.log_path.read_text(encoding="utf-8")
+    assert "ABC-123" not in raw and SECRET_INPUT not in raw
+    assert _log(c)[-1]["reason"] == "RuntimeError"
 
 
 def test_log_has_hash_not_full_text(client):
