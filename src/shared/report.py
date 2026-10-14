@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 from docx import Document
+from docx.shared import Cm, Pt
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -205,10 +206,28 @@ def write_xlsx(
 
 
 def write_docx(
-    path: Path, title: str, headline: str, sections: list[Section], footer: Footer
+    path: Path,
+    title: str,
+    headline: str,
+    sections: list[Section],
+    footer: Footer,
+    compact: bool = False,
 ) -> Path:
+    """compact=True：窄邊界、小字、段落不留空，用於要塞進一頁的報表（例如管理層週報）。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     doc = Document()
+    if compact:
+        sec = doc.sections[0]
+        sec.top_margin = sec.bottom_margin = Cm(1.5)
+        sec.left_margin = sec.right_margin = Cm(1.8)
+        for name in ("Normal", "Heading 1", "Heading 2", "Heading 3"):
+            st = doc.styles[name]
+            st.paragraph_format.space_before = Pt(4 if name != "Normal" else 0)
+            st.paragraph_format.space_after = Pt(2)
+        doc.styles["Normal"].font.size = Pt(9.5)
+        doc.styles["Heading 1"].font.size = Pt(15)
+        doc.styles["Heading 2"].font.size = Pt(11.5)
+        doc.styles["Heading 3"].font.size = Pt(9)
     doc.sections[0].header.paragraphs[0].text = LEVEL_BANNER.get(footer.level, footer.level)
     doc.add_heading(title, level=1)
     doc.add_paragraph(headline).runs[0].bold = True
@@ -228,7 +247,10 @@ def write_docx(
                     cells[i].text = str(v)
     doc.add_heading("頁尾資訊", level=3)
     for line in footer.lines():
-        doc.add_paragraph(line)
+        para = doc.add_paragraph(line)
+        if compact:
+            for run in para.runs:
+                run.font.size = Pt(7.5)
     doc.core_properties.author = "unity-mgmt-suite"
     doc.core_properties.created = dt.datetime(2000, 1, 1)
     doc.core_properties.modified = dt.datetime(2000, 1, 1)

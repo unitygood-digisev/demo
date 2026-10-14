@@ -1,0 +1,26 @@
+# 管理層週報（系統 5）設定
+# 週報只讀各系統的 summary.json，不讀原始資料、不用大模型。
+
+# 要讀的系統（順序＝週報中的顯示順序）
+#   summary：摘要檔路徑（相對於專案資料夾）
+#   summary_env：改從環境變數指定的資料夾讀 summary.json（用於財務等不放在專案內的系統）
+#   launched：false 表示系統尚未上線，週報顯示「系統尚未上線」，不算「未更新」
+systems:
+  - key: progress
+    name: 項目進度看板
+    summary: data/out/progress/summary.json
+    launched: true
+  - key: intel
+    name: 外部情報摘要
+    summary: data/out/intel/summary.json
+    launched: true
+  - key: finance
+    name: 項目財務總覽
+    summary_env: FINANCE_OUT_DIR
+    launched: false   # 等執行長核准、階段 3 完成後改成 true
+
+# 一頁的限制（待主管確認）
+max_chars: 1400          # 內文版面上限（每段依換行數計，一行算 50 字；不含頁尾）。實測 A4 一頁約 1450。超過時依序截短：資料品質 → 外部情報 → 需要決定的事項
+decisions_max: 5         # 需要您決定的事項：紅色預警最多幾條
+intel_max: 3             # 外部情報最多幾則
+data_quality_max: 5      # 資料品質提醒最多幾條
