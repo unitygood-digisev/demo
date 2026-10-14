@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
 from digest.pipeline import RunConfig, run  # noqa: E402
+from digest.sources import DigestConfigError  # noqa: E402
 from shared.dates import today_tw  # noqa: E402
 
 SAMPLE_DAY = dt.date(2026, 10, 14)
@@ -26,6 +27,9 @@ SAMPLE_DAY = dt.date(2026, 10, 14)
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="管理層週報")
     ap.add_argument("--as-of", default=None, help="日期 YYYY-MM-DD，預設台灣今天")
+    ap.add_argument(
+        "--failed", default="", help="本週執行失敗的系統代號，逗號分隔（由 run_weekly.py 傳入）"
+    )
     ap.add_argument(
         "--sample", action="store_true", help="用假資料試跑，輸出到 data/out/digest_sample"
     )
@@ -45,7 +49,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         cfg = RunConfig(as_of=today_tw(args.as_of))
-    result = run(cfg)
+    cfg.failed_systems = {x.strip() for x in args.failed.split(",") if x.strip()}
+    try:
+        result = run(cfg)
+    except DigestConfigError as e:
+        print(f"未執行：{e}")
+        return 1
     print(result.digest.sentences[0])
     for path in result.files.values():
         print(f"已產生：{path}")

@@ -56,6 +56,12 @@ def _make_reproducible(path: Path) -> None:
 _MD_SPECIAL = re.compile(r"([\\`*_\[\]()#<>|!~])")
 
 
+def _md_footer_line(line: str) -> str:
+    """頁尾內容可能來自其他系統（例如執行編號、原因），跳脫 markdown，但保留清單縮排。"""
+    m = re.match(r"(\s*-\s)?(.*)", line)
+    return (m.group(1) or "") + md_escape(m.group(2))
+
+
 def md_escape(text: str) -> str:
     """跳脫 markdown 符號，避免文字變成連結、標題或表格；換行壓成空白。"""
     return _MD_SPECIAL.sub(r"\\\1", " ".join(str(text).split()))
@@ -279,7 +285,7 @@ def to_markdown(title: str, headline: str, sections: list[Section], footer: Foot
                 cells = (str(v).replace("\\|", "／").replace("|", "／") for v in row)
                 out.append("| " + " | ".join(cells) + " |")
             out.append("")
-    out += ["---", ""] + [f"{line}  " for line in footer.lines()]
+    out += ["---", ""] + [f"{_md_footer_line(line)}  " for line in footer.lines()]
     return "\n".join(out) + "\n"
 
 

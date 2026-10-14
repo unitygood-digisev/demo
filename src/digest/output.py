@@ -20,7 +20,7 @@ def _footer(d: Digest) -> Footer:
     return Footer(
         as_of=d.as_of,
         input_files=d.input_refs,
-        run_id=f"digest-{d.as_of.strftime('%Y%m%d')}",
+        run_id=d.run_id or f"digest-{d.as_of.strftime('%Y%m%d')}",
         level=d.level,
         missing=d.missing,
         method=d.method,
@@ -44,7 +44,8 @@ def _sections(d: Digest, esc) -> list[Section]:
     decisions = [f"・{esc(x)}" for x in d.decisions] or ["本週沒有紅色預警。"]
     if d.decisions_more:
         decisions.append(f"（其餘 {d.decisions_more} 條紅色預警，見各系統報表）")
-    intel = [f"・{esc(i['title'])}　{i['url']}" for i in d.intel]
+    link = (lambda u: f"<{u}>") if esc is md_escape else (lambda u: u)  # noqa: E731
+    intel = [f"・{esc(i['title'])}　{link(i['url'])}" for i in d.intel]
     if d.intel_note:
         intel.append(esc(d.intel_note))
     dq = [f"・{esc(x)}" for x in d.data_quality] or ["沒有資料品質提醒。"]

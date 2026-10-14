@@ -4,12 +4,27 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit
 
 from digest.sources import NOT_LAUNCHED, DigestConfig, SystemInput
 from shared.classify import Classifier
 
 DASH = "—"
+
+
+def _safe_url(u: object) -> bool:
+    if not isinstance(u, str) or not u or any(ch.isspace() or ch in "<>[]()\"'`" for ch in u):
+        return False
+    parts = urlsplit(u)
+    return parts.scheme in ("http", "https") and bool(parts.netloc)
+
+
+def _short(t: object, n: int = 120) -> str:
+    t = " ".join(str(t).split())
+    return t if len(t) <= n else t[: n - 1] + "…"
+
+
 LINE_CHARS = 50  # 一頁 A4、9.5 號字，一行約 50 個中文字
 
 
@@ -40,6 +55,7 @@ class Digest:
     input_refs: list[str]
     missing: list[str] = field(default_factory=list)
     method: list[str] = field(default_factory=list)
+    run_id: str = ""
 
     def body_size(self, line_chars: int = LINE_CHARS) -> int:
         """估算版面：每段依實際換行占幾行，再換算成字數（短的一行也算一整行）。"""
@@ -61,27 +77,37 @@ class Digest:
         return "\n".join(parts)
 
 
+def _plain(d: Decimal) -> str:
+    """不用科學記號；極大或極小的數字才維持原樣。"""
+    if d != 0 and (abs(d) >= Decimal("1e15") or abs(d) < Decimal("1e-6")):
+        return str(d)
+    s = format(d, "f")
+    return s.rstrip("0").rstrip(".") if "." in s else s
+
+
 def fmt_value(v: object) -> str:
     if v is None:
         return "待補"
-    if isinstance(v, bool):
-        return str(v)
+    if isinstance(v, float):
+        return _plain(Decimal(str(v)))
     return str(v)
 
 
 def fmt_change(v: object, prev: object) -> str:
-    nums = (int, float)
-    if (
-        not isinstance(v, nums)
-        or not isinstance(prev, nums)
-        or isinstance(v, bool)
-        or isinstance(prev, bool)
-    ):
+    def num(x):
+        return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+    if not num(v) or not num(prev):
         return "待補"
-    d = Decimal(str(v)) - Decimal(str(prev))
+    try:
+        d = Decimal(str(v)) - Decimal(str(prev))
+    except InvalidOperation:
+        return "待補"
+    if not d.is_finite():
+        return "待補"
     if d == 0:
         return "持平"
-    return f"+{d}" if d > 0 else f"−{-d}"
+    return f"+{_plain(d)}" if d > 0 else f"−{_plain(-d)}"
 
 
 def _metric_rows(inputs: list[SystemInput], metric_cfg: list[dict]) -> list[MetricRow]:
@@ -167,6 +193,12 @@ def build(
     sentences = lines[:3]
 
     # 需要您決定的事項：紅色預警，依系統順序
+    bad_levels = [
+        f"［{s.cfg.name}］有 {n} 條預警的燈號不是「紅」或「黃」，未列入，請檢查該系統"
+        for s in ok
+        if (n := sum(1 for a in s.summary.alerts if a.level not in ("紅", "黃")))
+    ]
+    dq_all += bad_levels
     reds = [
         f"［{s.cfg.name}］{a.subject}：{a.why}"
         + (f" → 建議跟 {a.suggested_owner} 確認" if a.suggested_owner else "")
@@ -184,11 +216,19 @@ def build(
     elif not intel_in.ok:
         intel_note = f"外部情報{intel_in.status_text}。"
     else:
+        raw = intel_in.extra.get("highlights", [])
+        raw = [h for h in raw if isinstance(h, dict)] if isinstance(raw, list) else []
         intel_items = [
-            {"title": str(h.get("title", "")), "url": str(h.get("url", ""))}
-            for h in intel_in.extra.get("highlights", [])
-            if isinstance(h, dict) and h.get("title") and h.get("url")
+            {"title": _short(h.get("title")), "url": str(h["url"])}
+            for h in raw
+            if isinstance(h.get("title"), str)
+            and h.get("title").strip()
+            and _safe_url(h.get("url"))
         ]
+        if len(intel_items) < len(raw):
+            dq_all.append(
+                f"［{intel_in.cfg.name}］有 {len(raw) - len(intel_items)} 則情報缺標題或連結不是 http／https，未列出"
+            )
         if not intel_items:
             intel_note = "本期無符合項目。"
 
@@ -235,6 +275,13 @@ def build(
             missing.append(f"{s.cfg.name}：{s.status_text}（{s.reason}）")
     if intel_in is not None and intel_in.ok and intel_in.extra.get("mock_summary"):
         missing.append("外部情報摘要仍為模擬版（週報只列標題與連結）")
+    for s in inputs:
+        if s.summary is not None and s.summary.classification not in Classifier().levels:
+            missing.append(
+                f"{s.cfg.name}的資料等級「{s.summary.classification}」不認得，已當作客戶機密"
+            )
+    if stale_days is None:
+        missing.append("「本週未更新」的天數門檻未設定，不判斷摘要是否過期")
     if metrics_status:
         missing.append(f"指標清單為起始版，{metrics_status}")
     d.missing = missing

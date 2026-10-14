@@ -358,18 +358,172 @@ def test_run_weekly_continues_after_failure(monkeypatch, capsys):
     calls = []
 
     def boom(argv):
-        calls.append("intel")
+        calls.append(("intel", argv))
         raise RuntimeError("x")
+
+    def bad_args(argv):
+        calls.append(("progress", argv))
+        raise SystemExit(2)  # 例如參數錯誤
+
+    def digest(argv):
+        calls.append(("digest", argv))
+        return 0
 
     monkeypatch.setattr(
         weekly,
         "STEPS",
-        [
-            ("外部情報摘要", boom, []),
-            ("項目進度看板", lambda a: calls.append("progress") or 0, []),
-            ("管理層週報", lambda a: calls.append("digest") or 0, []),
-        ],
+        [("intel", "外部情報摘要", boom, ["--weekly"]), ("progress", "項目進度看板", bad_args, [])],
     )
-    assert weekly.main([]) == 1
-    assert calls == ["intel", "progress", "digest"]
-    assert "以下步驟未完成：外部情報摘要" in capsys.readouterr().out
+    monkeypatch.setattr(weekly, "DIGEST", ("管理層週報", digest))
+    assert weekly.main(["--as-of", "2026-10-14"]) == 1
+    assert calls == [
+        ("intel", ["--weekly", "--as-of", "2026-10-14"]),
+        ("progress", ["--as-of", "2026-10-14"]),
+        ("digest", ["--as-of", "2026-10-14", "--failed", "intel,progress"]),
+    ]
+    out = capsys.readouterr().out
+    assert (
+        "以下步驟未完成：外部情報摘要、項目進度看板（週報中已標示為「本週執行失敗，未納入」）"
+        in out
+    )
+
+
+def test_failed_system_not_shown_with_old_numbers(env):
+    res = run(env["make"](failed_systems={"progress"}))
+    d = res.digest
+    assert "本週執行失敗" in d.sentences[0]
+    assert all(
+        m.this.startswith("本週執行失敗") for m in d.metrics if m.key.startswith("progress.")
+    )
+    assert d.decisions == []
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), "12", True])
+def test_non_finite_or_non_number_values_rejected(env, bad):
+    data = json.loads(json.dumps(PROGRESS))
+    data["metrics"][0]["value"] = bad
+    env["progress"].write_text(
+        json.dumps(data, ensure_ascii=False, allow_nan=True), encoding="utf-8"
+    )
+    res = run(env["make"]())  # 不崩潰
+    assert res.inputs[0].status == "invalid"
+    assert "格式錯誤" in res.digest.sentences[0]
+
+
+def test_newlines_collapsed_and_long_text_cut(env):
+    data = {
+        **PROGRESS,
+        "headline": "第一行\n## 假標題\n" * 40,
+        "data_quality": ["多行\n" * 30] * 3,
+        "alerts": [
+            {
+                "level": "紅",
+                "rule": "P01",
+                "why": "原因\n" * 50,
+                "subject": "案",
+                "suggested_owner": "人",
+            }
+        ],
+    }
+    write(env["progress"], data)
+    d = run(env["make"]()).digest
+    for t in d.sentences + d.decisions + d.data_quality:
+        assert "\n" not in t
+        assert len(t) < 400
+    assert d.body_size() <= 1400
+
+
+def test_md_has_no_injected_links(env):
+    data = {
+        **INTEL,
+        "run_id": "[點我](javascript:alert(1))\n# 假標題",
+        "highlights": [
+            {"title": "正常", "url": "https://example.com/ok"},
+            {"title": "壞", "url": "javascript:alert(1)"},
+            {"title": "釣魚", "url": "https://x.com/a)[官方](https://evil.example"},
+        ],
+    }
+    write(env["intel"], data)
+    res = run(env["make"]())
+    md = res.files["md"].read_text(encoding="utf-8")
+    assert "](javascript" not in md and "\n# 假標題" not in md and "evil.example" not in md
+    assert "<https://example.com/ok>" in md
+    assert [i["title"] for i in res.digest.intel] == ["正常"]
+    assert any(
+        "連結不是 http" in x for x in res.digest.data_quality + [f"{res.digest.data_quality_more}"]
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate, msg",
+    [
+        (lambda c: c["systems"][2].update(launched="false"), "launched 只能寫 true 或 false"),
+        (lambda c: c.pop("max_chars"), "max_chars 應為 1 以上的整數"),
+        (lambda c: c.update(decisions_max=-1), "decisions_max 應為 1 以上的整數"),
+        (lambda c: c["systems"][0].pop("name"), "缺少 key 或 name"),
+        (lambda c: c["systems"].append(dict(c["systems"][0])), "重複"),
+    ],
+)
+def test_bad_digest_config_is_plain_error(env, mutate, msg):
+    from digest.sources import DigestConfigError
+
+    p = env["cfg"] / "digest.yaml"
+    c = yaml.safe_load(p.read_text(encoding="utf-8"))
+    mutate(c)
+    p.write_text(yaml.safe_dump(c, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(DigestConfigError, match=msg):
+        run(env["make"]())
+
+
+def test_bad_metrics_config_is_plain_error(env):
+    from digest.sources import DigestConfigError
+
+    p = env["cfg"] / "metrics.yaml"
+    c = yaml.safe_load(p.read_text(encoding="utf-8"))
+    del c["metrics"][0]["label"]
+    p.write_text(yaml.safe_dump(c, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(DigestConfigError, match="缺少 key、label 或 system"):
+        run(env["make"]())
+
+
+def test_unknown_alert_level_and_classification_reported(env):
+    write(
+        env["progress"],
+        {
+            **PROGRESS,
+            "classification": "機密吧",
+            "alerts": [
+                {"level": "紅色", "rule": "P01", "why": "x", "subject": "a"},
+                {"level": "紅", "rule": "P01", "why": "y", "subject": "b"},
+            ],
+        },
+    )
+    d = run(env["make"]()).digest
+    assert len(d.decisions) == 1
+    assert any("燈號不是「紅」或「黃」" in x for x in d.data_quality)
+    assert any("資料等級「機密吧」不認得" in x for x in d.missing)
+
+
+def test_stale_days_null_is_noted(env):
+    p = env["cfg"] / "thresholds.yaml"
+    c = yaml.safe_load(p.read_text(encoding="utf-8"))
+    c["digest"]["stale_days"]["value"] = None
+    p.write_text(yaml.safe_dump(c, allow_unicode=True), encoding="utf-8")
+    assert any("未設定" in x for x in run(env["make"]()).digest.missing)
+
+
+def test_array_json_reason_and_run_id_has_input_hash(env):
+    write(env["progress"], "[1, 2]")
+    res = run(env["make"]())
+    assert res.inputs[0].reason == "摘要檔內容不是一筆物件"
+    rid = res.digest.run_id
+    assert re.fullmatch(r"digest-20261014-[0-9a-f]{8}", rid)
+    write(env["intel"], {**INTEL, "headline": "改了"})
+    assert run(env["make"]()).digest.run_id != rid
+
+
+@pytest.mark.parametrize("v, s", [(1e-7, "1E-7"), (0.5, "0.5"), (12, "12"), (1234567.0, "1234567")])
+def test_value_format_no_scientific(v, s):
+    from digest.build import fmt_value
+
+    assert fmt_value(v) == s
