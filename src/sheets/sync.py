@@ -77,7 +77,10 @@ def _clean_path(v: str) -> Path:
 
 
 def connect(c: dict, env_file: Path | None = None) -> SheetClient:
-    load_dotenv(env_file)
+    try:
+        load_dotenv(env_file)
+    except ValueError as e:
+        raise SyncError(str(e)) from e
     sid = os.environ.get(c.get("spreadsheet_id_env", "MGMT_SHEET_ID"), "").strip().strip("\"'")
     cred = os.environ.get(c.get("credentials_env", "GOOGLE_APPLICATION_CREDENTIALS"), "").strip()
     if not sid or not cred:
@@ -117,7 +120,8 @@ def _check_ownership(client: SheetClient, c: dict) -> None:
         rows = client.read(title)
         first = str(rows[0][0]).strip() if rows and rows[0] else ""
         mark = HISTORY_MARK if k == "history" else SYSTEM_MARK
-        if first and not first.startswith(mark):
+        has_content = any(str(c).strip() for r in rows for c in r)
+        if has_content and not first.startswith(mark):
             raise SyncError(
                 f"試算表裡已有一個「{title}」分頁，但看起來不是系統寫的，為避免覆蓋已停止同步。"
                 "請把那個分頁改名，或在 config/sheets.yaml 改用其他分頁名稱"

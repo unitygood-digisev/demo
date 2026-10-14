@@ -27,6 +27,8 @@ INTEL_COLUMNS = [
 INTEL_REQUIRED = ("標題", "連結")
 SYSTEM_MARK = "資料等級："  # 系統寫的分頁，第 1 列第 1 格一定以此開頭
 HISTORY_MARK = "週報日期"
+PROGRESS_REQUIRED = {"alerts": ("燈號", "規則"), "projects": ("案子", "燈號")}
+
 DIGEST_KEYS = {
     "as_of": str,
     "title": str,
@@ -115,6 +117,10 @@ def load_digest(digest_dir: Path, as_of: dt.date) -> dict:
         raise SyncError(
             f"週報資料檔 {p.name} 缺少或寫錯欄位：{'、'.join(sorted(set(bad)))}，請重新產生週報"
         )
+    if d["as_of"] != as_of.isoformat():
+        raise SyncError(f"週報資料檔 {p.name} 裡的日期（{d['as_of']}）和檔名不符，請重新產生週報")
+    if not isinstance(d.get("systems", {}), dict):
+        raise SyncError(f"週報資料檔 {p.name} 缺少或寫錯欄位：systems，請重新產生週報")
     return d
 
 
@@ -173,7 +179,7 @@ def build_tabs(
                 Tab(names[key], [top, [f"{why}，本頁未更新"]], [f"「{names[key]}」未更新：{why}"])
             )
             continue
-        header, data = read_sheet_table(progress_xlsx, sheet)
+        header, data = read_sheet_table(progress_xlsx, sheet, PROGRESS_REQUIRED[key])
         notes = [f"「{names[key]}」沒有任何資料列"] if not data and key == "projects" else []
         tabs.append(Tab(names[key], [top, [f"來源：{progress_xlsx.name}"], header, *data], notes))
 
@@ -229,11 +235,32 @@ def history_row(digest: dict) -> tuple[list[str], list]:
     return header, row
 
 
+_SHEETS_EPOCH = dt.date(1899, 12, 30)  # Google 試算表的日期序號起點
+
+
 def _date_key(v: object) -> str | None:
+    """日期欄的各種寫法（含 Google 的日期序號）都轉成 YYYY-MM-DD；不是日期回傳 None。"""
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and 30000 <= v <= 80000:
+        return (_SHEETS_EPOCH + dt.timedelta(days=int(v))).isoformat()
+    s = str(v).strip().lstrip("'")
+    if re.fullmatch(r"\d{5}(\.0+)?", s) and 30000 <= float(s) <= 80000:
+        return (_SHEETS_EPOCH + dt.timedelta(days=int(float(s)))).isoformat()
     try:
-        return parse_date(str(v).strip()).isoformat()
+        return parse_date(s).isoformat()
     except DateParseError:
         return None
+
+
+def _as_text(v: object) -> object:
+    """以「使用者輸入」方式寫入時，本系統寫的文字一律維持文字（不變成公式或被轉成日期）。"""
+    if (
+        isinstance(v, str)
+        and v[:1] in ("=", "+", "-", "@", "'")
+        or isinstance(v, str)
+        and _date_key(v)
+    ):
+        return "'" + v
+    return v
 
 
 def merge_history(
@@ -274,5 +301,10 @@ def merge_history(
     for name, v in zip(header, row, strict=True):
         cur[cols.index(name)] = v
     records[row[0]] = cur
+    for rec in records.values():
+        rec[0] = "'" + rec[0]  # 日期以文字寫入，下次讀回仍是 YYYY-MM-DD
+    for name in header[1:]:  # 本週那一列由本系統寫入的文字值防公式
+        i = cols.index(name)
+        cur[i] = _as_text(cur[i])
     out = [cols] + [records[k] for k in sorted(records)] + others
     return out, []

@@ -197,27 +197,19 @@ def test_history_keeps_manager_content():
     out, notes = merge_history(existing, h, ["2026-10-14", 3, "內部一般"])
     assert notes == []
     assert out[0] == ["週報日期", "紅", "資料等級", "主管備註欄"]
-    assert out[1] == ["2026-10-07", 2, "內部一般", "第一週"]  # 不同寫法視為同一週、正規化
-    assert out[2] == ["2026-10-14", 3, "內部一般", "公式要保留", "表頭外的格子"]
+    # 不同寫法視為同一週、正規化；日期加單引號以文字寫入（Google 不會轉成日期序號）
+    assert out[1] == ["'2026-10-07", 2, "內部一般", "第一週"]
+    assert out[2] == ["'2026-10-14", 3, "內部一般", "公式要保留", "表頭外的格子"]
     assert ["", "這是主管的註記", "", ""] in out  # 主管註記列保留
 
 
 @pytest.mark.parametrize("first", [["日期", "紅"], ["", "", ""]])
 def test_history_unknown_layout_not_touched(cfg, first):
+    # 第 1 格空白但分頁有內容，也不是系統寫的：停下來，不覆蓋
     fake = FakeClient({"指標歷史": [first, ["2026-10-07", 1]]})
-    with pytest.raises(SyncError, match="不是系統寫的") if first[0] else _noop():
-        res = sync(cfg(fake))
-        assert (
-            any("指標歷史" in n for n in res.notes) or fake.tabs["指標歷史"][1][0] == "2026-10-14"
-        )
-
-
-class _noop:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
+    with pytest.raises(SyncError, match="不是系統寫的"):
+        sync(cfg(fake))
+    assert fake.tabs["指標歷史"] == [first, ["2026-10-07", 1]]
 
 
 def test_history_column_renamed_keeps_both(cfg):
@@ -480,3 +472,93 @@ def test_run_weekly_messages(monkeypatch, capsys):
     assert weekly.main([]) == 1
     assert "週報沒有產生，所以沒有同步 Google 試算表" in capsys.readouterr().out
     assert weekly.main(["--as-of", "2026-13-01"]) == 1
+
+
+# ---- 第二輪驗收追加 ----
+def _serial(d: dt.date) -> int:
+    return (d - dt.date(1899, 12, 30)).days
+
+
+@pytest.mark.parametrize(
+    "old", [_serial(dt.date(2026, 10, 14)), "46309", "'2026-10-14", "2026/10/14"]
+)
+def test_history_date_serial_not_duplicated(cfg, old):
+    # Google 把日期存成日期格式時，讀回來可能是序號；同一週不能多出一列
+    assert _serial(dt.date(2026, 10, 14)) == 46309
+    fake = FakeClient({"指標歷史": [["週報日期", "紅色預警項目數"], [old, 1]]})
+    sync(cfg(fake))
+    sync(cfg(fake))
+    rows = fake.tabs["指標歷史"]
+    assert [r[0] for r in rows[1:] if r and r[0]] == ["2026-10-14"]
+
+
+def test_history_text_values_not_formulas():
+    out, _ = merge_history(
+        [["週報日期", "備註"]], ["週報日期", "備註"], ["2026-10-14", "=IMPORTXML(1)"]
+    )
+    assert out[1] == ["'2026-10-14", "'=IMPORTXML(1)"]
+
+
+def test_gspread_read_formulas_asks_for_text_dates():
+    seen = {}
+
+    class WS:
+        def get_all_values(self, **kw):
+            seen.update(kw)
+            return []
+
+    from gspread.utils import DateTimeOption, ValueRenderOption
+
+    c = object.__new__(GspreadClient)
+    c._formula, c._date_text = ValueRenderOption.formula, DateTimeOption.formatted_string
+    c._ws = lambda title: WS()
+    c.read("x", formulas=True)
+    assert seen["date_time_render_option"] == DateTimeOption.formatted_string
+
+
+def test_dotenv_inline_comment_and_empty_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("MGMT_SHEET_ID", "")  # 空白的環境變數要被 .env 補上
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    monkeypatch.delenv("X_QUOTED", raising=False)
+    env = tmp_path / ".env"
+    env.write_text(
+        "MGMT_SHEET_ID=abc123   # 試算表 ID\n"
+        "GOOGLE_APPLICATION_CREDENTIALS=C:/keys/k#1.json\n"
+        'X_QUOTED="a # b"  # 註解\n',
+        encoding="utf-8",
+    )
+    load_dotenv(env)
+    assert os.environ["MGMT_SHEET_ID"] == "abc123"
+    assert os.environ["GOOGLE_APPLICATION_CREDENTIALS"] == "C:/keys/k#1.json"
+    assert os.environ["X_QUOTED"] == "a # b"
+
+
+def test_dotenv_not_utf8_is_plain(cfg, tmp_path, monkeypatch):
+    monkeypatch.delenv("MGMT_SHEET_ID", raising=False)
+    env = tmp_path / ".env"
+    env.write_bytes("MGMT_SHEET_ID=試算表\n".encode("big5"))
+    with pytest.raises(SyncError, match="UTF-8"):
+        sync(cfg(None, env_file=env))
+
+
+def test_digest_date_must_match_filename(cfg, work):
+    d = digest_json(work)
+    d["as_of"] = "2026-10-07"
+    (work / "digest" / "管理層週報_資料_20261014.json").write_text(
+        json.dumps(d, ensure_ascii=False), encoding="utf-8"
+    )
+    with pytest.raises(SyncError, match="和檔名不符"):
+        sync(cfg(FakeClient()))
+
+
+def test_progress_header_shift_is_plain(cfg, work):
+    from openpyxl import load_workbook
+
+    p = work / "progress" / "進度看板_20261014.xlsx"
+    wb = load_workbook(p)
+    wb["項目明細"].insert_rows(1)  # 表頭被往下推一列
+    wb.save(p)
+    fake = FakeClient()
+    with pytest.raises(SyncError, match="缺少欄位"):
+        sync(cfg(fake))
+    assert fake.writes == []

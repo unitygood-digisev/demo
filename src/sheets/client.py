@@ -36,11 +36,12 @@ class GspreadClient:
 
     def __init__(self, credentials: Path, spreadsheet_id: str) -> None:
         import gspread
-        from gspread.utils import ValueInputOption, ValueRenderOption
+        from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 
         self._gspread = gspread
         self._raw, self._user = ValueInputOption.raw, ValueInputOption.user_entered
         self._formula = ValueRenderOption.formula
+        self._date_text = DateTimeOption.formatted_string
         try:
             gc = gspread.service_account(filename=str(credentials))
             self.sh = gc.open_by_key(spreadsheet_id)
@@ -73,7 +74,10 @@ class GspreadClient:
     def read(self, title: str, formulas: bool = False) -> list[list]:
         ws = self._ws(title)
         return (
-            ws.get_all_values(value_render_option=self._formula)
+            ws.get_all_values(
+                value_render_option=self._formula,
+                date_time_render_option=self._date_text,
+            )
             if formulas
             else ws.get_all_values()
         )
@@ -115,4 +119,11 @@ class FakeClient:
     def write(self, title: str, rows: list[list], user_entered: bool = False) -> None:
         self.writes.append(title)
         self.modes[title] = user_entered
-        self.tabs[title] = [[_text(v) for v in r] for r in rows]
+        # 和 Google 一樣：USER_ENTERED 時，開頭的單引號只是「當文字存」的記號，不會存進格子
+        self.tabs[title] = [
+            [_entered(_text(v)) if user_entered else _text(v) for v in r] for r in rows
+        ]
+
+
+def _entered(v):
+    return v[1:] if isinstance(v, str) and v.startswith("'") else v
