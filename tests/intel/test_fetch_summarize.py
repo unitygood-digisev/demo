@@ -205,11 +205,11 @@ def test_reply_with_fence_ok():
         "[這裡](javascript:alert(1))",
         "[原文](http://x)",
         "寄信 mailto:a@evil.example",
-        "evil.example.com/path 有說明",
+        "聯絡 a@b.example",
         "ftp://x/y",
         "ｈｔｔｐｓ：／／ｅｖｉｌ．ｅｘａｍｐｌｅ",
-        "data:text/html,abc",
-        "詳見 gov.tw 公告",
+        "HTTPS://EVIL.EXAMPLE",
+        "<a href='http://x'>點</a>",
     ],
 )
 def test_any_link_in_reply_discards_whole_summary(bad):
@@ -225,6 +225,11 @@ def test_any_link_in_reply_discards_whole_summary(bad):
         "溫升 1.5°C 目標。",
         "Scope 3 category 15 relief.",
         "金管會發布新制。",
+        "The new data: emissions fell.",
+        "See the file: guidance.",
+        "S2 [draft] (2026) 公布。",
+        "Amazon.com 宣布減碳。",
+        "TSMC.tw 與 ESG.ai 平台。",
     ],
 )
 def test_normal_text_not_mistaken_for_link(ok):

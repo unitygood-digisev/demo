@@ -128,14 +128,23 @@ def test_unreadable_tracking_is_backed_up_and_reported(make_cfg, damage):
         wb.save(path)
     before = path.read_bytes()
     res2 = run(make_cfg())
-    backup = path.parent / "情報追蹤表_備份_20261014.xlsx"
+    backup = path.parent / "情報追蹤表_備份_20261014_1.xlsx"
     assert backup.read_bytes() == before
-    assert "已備份為 情報追蹤表_備份_20261014.xlsx" in res2.files["daily"].read_text(
-        encoding="utf-8"
-    )
+    md2 = res2.files["daily"].read_text(encoding="utf-8")
+    assert "已備份為 情報追蹤表_備份_20261014_1.xlsx" in md2
     s = json.loads(res2.files["summary"].read_text(encoding="utf-8"))
     assert any("追蹤表" in x for x in s["data_quality"])
     assert set(res2.files) == {"daily", "weekly", "tracking", "summary"}
+    # 同一天正常重跑：提醒不消失、摘要不變
+    res3 = run(make_cfg())
+    assert res3.files["daily"].read_text(encoding="utf-8") == md2
+    # 同一天再壞一次：第二份備份不覆蓋第一份
+    path.write_bytes(b"second")
+    res4 = run(make_cfg())
+    assert backup.read_bytes() == before
+    assert (path.parent / "情報追蹤表_備份_20261014_2.xlsx").read_bytes() == b"second"
+    md4 = res4.files["daily"].read_text(encoding="utf-8")
+    assert "_1.xlsx" in md4 and "_2.xlsx" in md4
 
 
 @pytest.mark.parametrize(

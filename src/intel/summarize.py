@@ -19,11 +19,14 @@ TITLE_ONLY = "僅標題，內容待確認"
 FAILED = "摘要產生失敗，請看原文"
 
 # 任何像連結的東西：markdown 連結、各種 scheme、www.、裸網域
+# 會被檢視器變成可點連結的寫法：markdown 連結、網址 scheme、www.、電子郵件
+# （裸網域如 example.com 在輸出中只是純文字，不擋，避免誤殺公司名稱）
 _LINK = re.compile(
-    r"\]\s*\("
-    r"|\b(?:https?|ftps?|javascript|vbscript|mailto|data|file|tel|sms|wss?):"
+    r"\]\("
+    r"|\b(?:https?|ftps?|javascript|vbscript|mailto|tel|sms|wss?)://?"
+    r"|\b(?:javascript|vbscript|mailto):"
     r"|\bwww\."
-    r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|gov|edu|tw|io|co|info|biz|me|cn|jp|uk|eu|ai|app|dev|xyz|top|site)\b",
+    r"|[\w.+-]+@[\w-]+\.[\w.-]+",
     re.I,
 )
 LINK_FLAG = "模型回應含連結，已整則捨棄，請看原文"

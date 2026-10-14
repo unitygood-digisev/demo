@@ -254,11 +254,17 @@ def write_tracking(
 ) -> Path:
     path = out_dir / "情報追蹤表.xlsx"
     marks, problem = _read_marks(path)
+    prefix = f"情報追蹤表_備份_{as_of.strftime('%Y%m%d')}_"
     if problem:
-        backup = out_dir / f"情報追蹤表_備份_{as_of.strftime('%Y%m%d')}.xlsx"
-        shutil.copyfile(path, backup)
+        # 備份檔加流水號，同一天多次備份也不會互相覆蓋
+        n = 1
+        while (out_dir / f"{prefix}{n}.xlsx").exists():
+            n += 1
+        shutil.copyfile(path, out_dir / f"{prefix}{n}.xlsx")
+    # 當天只要有備份，每次產生都持續提醒（同一天重跑也不會消失）
+    for b in sorted(out_dir.glob(f"{prefix}*.xlsx"), key=lambda p: int(p.stem.rsplit("_", 1)[1])):
         warnings.append(
-            f"{problem}，「已讀」標記可能沒有保留；舊檔已備份為 {backup.name}，請對照補回"
+            f"舊追蹤表曾無法讀取（損壞或欄位被改），已備份為 {b.name}；「已讀」標記可能沒有保留，請對照補回"
         )
     rows = []
     for d in days.all_until(as_of):

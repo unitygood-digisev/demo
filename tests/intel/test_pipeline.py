@@ -102,7 +102,7 @@ def test_every_output_link_comes_from_input(make_cfg):
         "詳見 https://evil.example/fake 。",
         "[這裡](javascript:alert(1))",
         "mailto:a@evil.example",
-        "evil.example.com/x",
+        "寄到 x@evil.example",
     ],
 )
 def test_model_generated_links_never_reach_output(make_cfg, summary):
