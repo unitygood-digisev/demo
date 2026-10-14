@@ -145,6 +145,11 @@ def test_unreadable_tracking_is_backed_up_and_reported(make_cfg, damage):
     assert (path.parent / "情報追蹤表_備份_20261014_2.xlsx").read_bytes() == b"second"
     md4 = res4.files["daily"].read_text(encoding="utf-8")
     assert "_1.xlsx" in md4 and "_2.xlsx" in md4
+    # 使用者在資料夾裡複製了備份檔：不中斷，也不當成系統備份
+    (path.parent / "情報追蹤表_備份_20261014_1 - 複本.xlsx").write_bytes(before)
+    (path.parent / "情報追蹤表_備份_20261014_副本.xlsx").write_bytes(before)
+    res5 = run(make_cfg())
+    assert res5.files["daily"].read_text(encoding="utf-8") == md4
 
 
 @pytest.mark.parametrize(
