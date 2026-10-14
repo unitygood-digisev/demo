@@ -1,1 +1,1 @@
-"""系統模組（尚未實作，見 docs/specs/intel.md）。"""
+"""系統 7：外部情報摘要（規格見 docs/specs/intel.md）。"""

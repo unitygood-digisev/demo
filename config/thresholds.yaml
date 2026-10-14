@@ -4,17 +4,17 @@
 
 intel:
   relevance_min_score:
-    value: null
+    value: 1
     status: 待主管確認
-    說明: 相關度分數低於此值放「低相關」附錄；階段 1 用 30 篇人工標記文章調整
+    說明: 相關度分數低於此值放「低相關」附錄。起始值 1＝命中任一關鍵字即算相關；試跑後用 30 篇人工標記文章調整
   title_similarity_dup:
-    value: null
+    value: 0.85
     status: 待主管確認
-    說明: 標題相似度（0–1）超過此值視為同一事件；階段 1 調整
+    說明: 標題相似度（0–1）達到此值視為同一事件。起始值 0.85 為經驗值，無依據，試跑後調整
   max_items_per_issue:
     value: null
     status: 待主管確認
-    說明: 每期摘要最多項數
+    說明: 每期摘要最多項數；null＝不設上限，全部列出
 
 progress:
   A02_due_soon_days:
