@@ -17,18 +17,22 @@ intel:
     說明: 每期摘要最多項數；null＝不設上限，全部列出
 
 progress:
-  A02_due_soon_days:
+  P02_due_soon_days:
     value: 7
     status: 待主管確認
-    說明: 里程碑在幾天內到期且未開始 → 黃
-  A03_no_update_days:
+    說明: 下一個日期在幾天內（含今天）且未完成 → 黃
+  P04_unchanged_days:
     value: 14
     status: 待主管確認
-    說明: 進行中項目超過幾天沒有更新 → 黃
-  A04_max_active_projects:
+    說明: 進行中的案子連續幾天「階段、下一步、日期」都沒變 → 黃（需要足夠的歷次快照）
+  P05_max_active_projects:
     value: 5
     status: 待主管確認
-    說明: 同一負責人同時進行的項目超過幾個 → 黃
+    說明: 同一負責人負責的進行中案子超過幾個 → 黃（排程參考，不是績效評估）
+  board_stale_days:
+    value: 7
+    status: 待主管確認
+    說明: 看板資料日期距今超過幾天，就在報表提醒「看板可能未更新」
 
 finance:
   F01_overdue_days:

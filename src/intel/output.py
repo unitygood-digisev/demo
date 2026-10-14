@@ -13,7 +13,7 @@ from openpyxl import load_workbook
 
 from intel.settings import GROUPS
 from intel.store import DayStore
-from shared.report import Footer, Section, write_docx, write_md, write_xlsx
+from shared.report import Footer, Section, md_escape, write_docx, write_md, write_xlsx
 
 LEVEL = "公開"
 TRACK_SHEET = "追蹤表"
@@ -86,14 +86,6 @@ def _anomaly_lines(day: dict) -> list[str]:
     lines += [f"- 設定問題：{p}" for p in day.get("config_problems", [])]
     lines += [f"- 追蹤表：{w}" for w in day.get("output_warnings", [])]
     return lines or ["無"]
-
-
-_MD_SPECIAL = re.compile(r"([\\`*_\[\]()#<>|!~])")
-
-
-def md_escape(text: str) -> str:
-    """跳脫 markdown 符號，避免標題或摘要裡的文字變成連結、標題或表格。"""
-    return _MD_SPECIAL.sub(r"\\\1", " ".join(str(text).split()))
 
 
 def _item_lines(r: dict, md: bool) -> list[str]:

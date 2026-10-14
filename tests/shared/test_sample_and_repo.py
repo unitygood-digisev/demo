@@ -6,31 +6,18 @@ from pathlib import Path
 import feedparser
 import yaml
 
-from scripts.check_inputs import PROGRESS_SPECS, check_dir
-
 ROOT = Path(__file__).resolve().parents[2]
 SAMPLE = ROOT / "data" / "sample"
 
 
-def test_sample_progress_has_the_three_planted_errors():
-    results = check_dir(SAMPLE / "progress", PROGRESS_SPECS)
-    got = {
-        (f, i.row, i.column, i.problem.split("（")[0]) for f, r in results.items() for i in r.issues
-    }
-    assert ("projects.xlsx", 11, "負責人", "必填欄位空白") in got
-    assert ("projects.xlsx", 4, "project_id", "重複的 ID") in got
-    assert ("projects.xlsx", 12, "project_id", "重複的 ID") in got
-    assert ("projects.xlsx", 13, "預計結案日", "日期錯誤") in got
-    assert ("milestones.xlsx", 14, "預計日", "日期錯誤") in got
-    assert len(got) == 5
-    assert results["updates.xlsx"].ok
-
-
-def test_sample_is_marked_fake():
+def test_sample_readme_marks_fake():
     assert "假資料" in (SAMPLE / "README.md").read_text(encoding="utf-8")
-    results = check_dir(SAMPLE / "progress", PROGRESS_SPECS)
-    clients = results["projects.xlsx"].data["客戶"].dropna()
-    assert all(c.startswith("（假資料）") for c in clients)
+
+
+def test_no_real_board_in_sample():
+    """data/sample/ 只能有假資料：系統 1 的看板檔名必須含「假資料」。"""
+    for p in (SAMPLE / "progress").glob("*.xlsx"):
+        assert "假資料" in p.name, p.name
 
 
 def test_sample_feeds():

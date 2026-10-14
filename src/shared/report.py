@@ -52,6 +52,14 @@ def _make_reproducible(path: Path) -> None:
     tmp.replace(path)
 
 
+_MD_SPECIAL = re.compile(r"([\\`*_\[\]()#<>|!~])")
+
+
+def md_escape(text: str) -> str:
+    """跳脫 markdown 符號，避免文字變成連結、標題或表格；換行壓成空白。"""
+    return _MD_SPECIAL.sub(r"\\\1", " ".join(str(text).split()))
+
+
 def make_run_id(system: str, as_of: dt.date, input_files: list[Path]) -> str:
     """執行編號＝系統-日期-輸入檔內容雜湊前 8 碼。同樣輸入得到同樣編號。"""
     h = hashlib.sha256()
@@ -116,17 +124,50 @@ def _cell(v: object) -> object:
     return v
 
 
-def write_xlsx(path: Path, headline: str, sheets: dict[str, pd.DataFrame], footer: Footer) -> Path:
-    """第一個分頁放等級標籤、結論、頁尾；之後每個分頁一張表，最後附頁尾。"""
+LIGHT_FILL = {"紅": "F8CBAD", "黃": "FFE699", "綠": "C6E0B4"}
+
+
+def _color_lights(sh, header_row: int, df: pd.DataFrame) -> None:
+    """「燈號」欄依紅／黃／綠上色。"""
+    if "燈號" not in df.columns:
+        return
+    col = list(df.columns).index("燈號") + 1
+    for r in range(header_row + 1, header_row + 1 + len(df)):
+        cell = sh.cell(row=r, column=col)
+        color = LIGHT_FILL.get(str(cell.value))
+        if color:
+            cell.fill = PatternFill("solid", fgColor=color)
+
+
+def write_xlsx(
+    path: Path,
+    headline: str,
+    sheets: dict[str, pd.DataFrame],
+    footer: Footer,
+    overview: pd.DataFrame | None = None,
+) -> Path:
+    """第一個分頁放等級標籤、結論（可多行，以換行分隔）、總覽表、頁尾；之後每個分頁一張表。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
     ws = wb.active
     ws.title = "總覽"
     ws.append([LEVEL_BANNER.get(footer.level, footer.level)])
     ws["A1"].font = Font(bold=True, color="C00000")
-    ws.append([headline])
-    ws["A2"].font = Font(bold=True, size=13)
+    for i, line in enumerate(headline.splitlines() or [headline]):
+        ws.append([line])
+        ws.cell(row=ws.max_row, column=1).font = Font(bold=True, size=13 if i == 0 else 11)
     ws.append([])
+    if overview is not None:
+        ov = fill_missing(overview)
+        ws.append([str(c) for c in ov.columns])
+        hdr = ws.max_row
+        for c in range(1, len(ov.columns) + 1):
+            ws.cell(row=hdr, column=c).font = Font(bold=True)
+            ws.cell(row=hdr, column=c).fill = PatternFill("solid", fgColor="DDEBF7")
+        for row in ov.itertuples(index=False):
+            ws.append(list(row))
+        _color_lights(ws, hdr, ov)
+        ws.append([])
     for line in footer.lines():
         ws.append([line])
     for name, df in sheets.items():
@@ -139,6 +180,7 @@ def write_xlsx(path: Path, headline: str, sheets: dict[str, pd.DataFrame], foote
             sh.cell(row=2, column=c).fill = PatternFill("solid", fgColor="DDEBF7")
         for row in df.itertuples(index=False):
             sh.append(list(row))
+        _color_lights(sh, 2, df)
         sh.append([])
         for line in footer.lines():
             sh.append([line])

@@ -117,13 +117,33 @@ def _convert(v: Any, col: ColumnSpec) -> Any:
     raise ValueError(f"未知的欄位型別 {col.type}")
 
 
-def _read_raw(path: Path) -> pd.DataFrame:
-    """讀檔時不讓 pandas 處理標題列，避免同名欄位被自動改名成「.1」而漏掉。"""
+class _LayoutError(ValueError):
+    """分頁或標題列找不到（訊息為白話中文）。"""
+
+
+def _read_raw(
+    path: Path, sheet: str | None = None, header_anchor: str | None = None
+) -> tuple[pd.DataFrame, int]:
+    """讀檔時不讓 pandas 處理標題列，避免同名欄位被自動改名成「.1」而漏掉。
+
+    回傳 (資料, 標題列的 Excel 列號)。有 header_anchor 時，標題列＝第一個含有該文字的列。
+    """
     suffix = path.suffix.lower()
     if suffix in (".xlsx", ".xlsm"):
-        grid = pd.read_excel(
-            path, header=None, dtype=object, engine="openpyxl", keep_default_na=False, na_values=[]
-        )
+        try:
+            grid = pd.read_excel(
+                path,
+                sheet_name=sheet if sheet is not None else 0,
+                header=None,
+                dtype=object,
+                engine="openpyxl",
+                keep_default_na=False,
+                na_values=[],
+            )
+        except ValueError as e:
+            if sheet is not None and "not found" in str(e):
+                raise _LayoutError(f"找不到分頁「{sheet}」") from e
+            raise
     elif suffix == ".csv":
         grid = pd.read_csv(
             path, header=None, dtype=str, keep_default_na=False, encoding="utf-8-sig"
@@ -131,19 +151,35 @@ def _read_raw(path: Path) -> pd.DataFrame:
     else:
         raise ValueError(f"不支援的檔案格式：{path.name}（只接受 .xlsx、.csv）")
     if grid.empty:
-        return pd.DataFrame()
-    header = ["" if _is_blank(c) else str(c).strip() for c in grid.iloc[0]]
-    data = grid.iloc[1:].reset_index(drop=True)
+        return pd.DataFrame(), HEADER_ROW
+    h = 0
+    if header_anchor is not None:
+        found = [
+            i
+            for i in range(len(grid))
+            if any(not _is_blank(c) and str(c).strip() == header_anchor for c in grid.iloc[i])
+        ]
+        if not found:
+            raise _LayoutError(f"找不到標題列（標題列應有「{header_anchor}」這一欄）")
+        h = found[0]
+    header = ["" if _is_blank(c) else str(c).strip() for c in grid.iloc[h]]
+    data = grid.iloc[h + 1 :].reset_index(drop=True)
     data.columns = header
-    return data
+    return data, h + 1
 
 
 def load_table(
     path: str | Path,
     spec: TableSpec,
     column_map: dict[str, str] | None = None,
+    sheet: str | None = None,
+    header_anchor: str | None = None,
 ) -> LoadResult:
-    """讀檔並檢查。不會因為資料錯誤而中斷；錯誤都放在 issues。"""
+    """讀檔並檢查。不會因為資料錯誤而中斷；錯誤都放在 issues。
+
+    sheet：指定分頁名稱（預設第一個分頁）。header_anchor：標題列上一定會有的欄名，
+    用來找標題列（適用於標題列上方有說明文字的表格）。列號一律是 Excel 的實際列號。
+    """
     path = Path(path)
     fname = path.name
     issues: list[ValidationIssue] = []
@@ -151,7 +187,10 @@ def load_table(
         issues.append(ValidationIssue(fname, None, None, "找不到檔案"))
         return LoadResult(pd.DataFrame(columns=["_row"]), issues)
     try:
-        raw = _read_raw(path)
+        raw, header_row = _read_raw(path, sheet, header_anchor)
+    except _LayoutError as e:
+        issues.append(ValidationIssue(fname, None, None, str(e)))
+        return LoadResult(pd.DataFrame(columns=["_row"]), issues)
     except Exception as e:  # 讀檔失敗也要大聲列出，不要讓整個流程崩潰
         issues.append(
             ValidationIssue(
@@ -184,7 +223,7 @@ def load_table(
     records: list[dict[str, Any]] = []
     bad_rows: set[int] = set()
     for i, row in enumerate(raw.to_dict("records")):
-        excel_row = i + HEADER_ROW + 1
+        excel_row = i + header_row + 1
         if all(_is_blank(v) for v in row.values()):
             continue  # 全空白列略過（Excel 常見）
         rec: dict[str, Any] = {"_row": excel_row}
