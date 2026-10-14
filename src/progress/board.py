@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import fnmatch
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,6 +12,7 @@ import pandas as pd
 from openpyxl import load_workbook
 
 from shared.config import load_yaml
+from shared.dates import DateParseError, parse_date
 from shared.io import ColumnSpec, TableSpec, ValidationIssue, load_table
 
 
@@ -74,14 +76,17 @@ class Board:
 
 
 def find_input(raw_dir: Path, cfg: BoardConfig) -> tuple[Path, list[str]]:
-    """回傳 (要讀的看板, 提醒)。只讀 .xlsx；同名開頭的其他格式檔案會提醒被略過。"""
-    files = sorted(p for p in raw_dir.glob(cfg.input_glob) if not p.name.startswith("~$"))
-    stem_glob = cfg.input_glob.rsplit(".", 1)[0] + ".*"
-    others = sorted(
-        p.name
-        for p in raw_dir.glob(stem_glob)
-        if p.suffix.lower() != ".xlsx" and not p.name.startswith("~$")
-    )
+    """回傳 (要讀的看板, 提醒)。只讀 .xlsx（副檔名不分大小寫）；同名開頭的其他格式檔案會提醒被略過。"""
+    stem_glob = cfg.input_glob.rsplit(".", 1)[0].lower() + ".*"
+    candidates = [
+        p
+        for p in (raw_dir.iterdir() if raw_dir.exists() else [])
+        if p.is_file()
+        and not p.name.startswith("~$")
+        and fnmatch.fnmatch(p.name.lower(), stem_glob)
+    ]
+    files = sorted(p for p in candidates if fnmatch.fnmatch(p.name.lower(), cfg.input_glob.lower()))
+    others = sorted(p.name for p in candidates if p not in files)
     notes = (
         [f"data/raw 裡有不是 .xlsx 的看板檔（{'、'.join(others)}），系統只讀 .xlsx，已略過"]
         if others
@@ -112,8 +117,8 @@ def _board_date(path: Path, cfg: BoardConfig) -> dt.date | None:
     for text in sorted(texts, key=lambda t: "來源" not in t):
         for m in pat.finditer(text):
             try:
-                return dt.date(*(int(x) for x in m.groups()))
-            except ValueError:
+                return parse_date(m.group(0))
+            except DateParseError:
                 continue
     return None
 

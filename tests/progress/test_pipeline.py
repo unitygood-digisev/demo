@@ -394,3 +394,55 @@ def test_board_date_prefers_source_line_and_future_date(make_cfg, tmp_path):
     res = run(make_cfg(input_path=p))
     assert res.data["board_date"] == "2026-10-20"
     assert any("晚於執行日期" in n for n in res.data["notes"])
+
+
+def test_null_thresholds_are_noted(make_cfg, config_dir):
+    for k in ("P02_due_soon_days", "P05_max_active_projects"):
+        set_threshold(config_dir, k, None)
+    notes = run(make_cfg()).data["notes"]
+    assert any("P02 門檻未設定" in n for n in notes) and any("P05 門檻未設定" in n for n in notes)
+
+
+def test_missing_threshold_key_is_plain_error(make_cfg, config_dir):
+    import yaml
+
+    p = config_dir / "thresholds.yaml"
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
+    del data["progress"]["P05_max_active_projects"]
+    p.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(ProgressDataError, match="缺少 progress.P05_max_active_projects"):
+        run(make_cfg())
+
+
+def test_uppercase_extension_in_raw(make_cfg, tmp_path):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "項目進度看板_20261014.XLSX").write_bytes(sample_board(AS_OF).read_bytes())
+    assert run(make_cfg(input_path=None)).data["input_file"] == "項目進度看板_20261014.XLSX"
+
+
+def test_board_date_in_roc_year(make_cfg, tmp_path):
+    p = tmp_path / "b.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "項目看板"
+    ws.append(["來源：115/10/12 會議紀錄"])
+    ws.append(["客戶／案子", "類別", "階段", "負責人", "近期下一步", "下一個日期"])
+    ws.append(["A", "x", "進行中", "甲", "s", None])
+    wb.save(p)
+    assert run(make_cfg(input_path=p)).data["board_date"] == "2026-10-12"
+
+
+def test_pipe_in_name_has_no_stray_backslash(make_cfg, tmp_path):
+    p = _board(tmp_path / "b.xlsx", rows=[["A|B 案", "x", "卡關", "甲", "s", None]])
+    md = run(make_cfg(input_path=p)).files["md"].read_text(encoding="utf-8")
+    assert "A／B 案" in md and "\\／" not in md
+
+
+def test_refusal_leaves_no_log(make_cfg, tmp_path):
+    run(make_cfg(as_of=WEEKS[0], input_path=sample_board(WEEKS[0])))
+    (tmp_path / "interim" / "runs" / "20260930.json").write_text("[1]", encoding="utf-8")
+    logs_before = sorted(p.name for p in (tmp_path / "logs").glob("*"))
+    with pytest.raises(ProgressDataError):
+        run(make_cfg())
+    assert sorted(p.name for p in (tmp_path / "logs").glob("*")) == logs_before

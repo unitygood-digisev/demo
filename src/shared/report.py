@@ -254,7 +254,8 @@ def to_markdown(title: str, headline: str, sections: list[Section], footer: Foot
             out.append("| " + " | ".join(str(c) for c in df.columns) + " |")
             out.append("|" + "---|" * len(df.columns))
             for row in df.itertuples(index=False):
-                out.append("| " + " | ".join(str(v).replace("|", "／") for v in row) + " |")
+                cells = (str(v).replace("\\|", "／").replace("|", "／") for v in row)
+                out.append("| " + " | ".join(cells) + " |")
             out.append("")
     out += ["---", ""] + [f"{line}  " for line in footer.lines()]
     return "\n".join(out) + "\n"

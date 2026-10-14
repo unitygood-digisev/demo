@@ -142,6 +142,10 @@ def evaluate(
         ev.notes.append(f"歷次快照不足 {stale_n} 天，「長期沒有變化」（P04）可能漏報")
     if stale_n is None:
         ev.notes.append("P04 門檻未設定，未檢查長期沒有變化")
+    if due_n is None:
+        ev.notes.append("P02 門檻未設定，未檢查即將到期的案子")
+    if max_n is None:
+        ev.notes.append("P05 門檻未設定，未檢查負責案數")
 
     ev.owner_counts = {o: owner_projects[o] for o in sorted(owner_projects)}
     if max_n is not None:

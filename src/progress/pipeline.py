@@ -47,7 +47,12 @@ TH_MIN = {
 def _thresholds(config_dir: Path | None) -> dict:
     th = {}
     for k in TH_KEYS:
-        v = threshold("progress", k, config_dir)[0]
+        try:
+            v = threshold("progress", k, config_dir)[0]
+        except KeyError as e:
+            raise ProgressDataError(
+                f"config/thresholds.yaml 缺少 progress.{k}，請補上（可參考說明文件）"
+            ) from e
         if v is not None and (isinstance(v, bool) or not isinstance(v, int) or v < TH_MIN[k]):
             raise ProgressDataError(
                 f"config/thresholds.yaml 的 progress.{k} 應為 {TH_MIN[k]} 以上的整數"
@@ -87,7 +92,8 @@ def run(cfg: RunConfig) -> RunResult:
             "已停止，沒有產生報表也沒有改動紀錄。請檢查看板或 config/progress_columns.yaml"
         )
     run_id = make_run_id("progress", cfg.as_of, [path])
-    log = runlog.get_logger(run_id, cfg.log_dir)
+    prev = hist.previous_run(cfg.as_of)
+    same_day = hist.run_on(cfg.as_of)
 
     since, earliest = hist.unchanged_since(board, cfg.as_of)
     stale_n = th["P04_unchanged_days"]
@@ -101,7 +107,6 @@ def run(cfg: RunConfig) -> RunResult:
 
     notes = input_notes + list(ev.notes)
     board_note = None
-    same_day = hist.run_on(cfg.as_of)
     if same_day and same_day.get("input_file") not in (None, path.name):
         notes.append(
             f"今天稍早已用另一份看板（{same_day['input_file']}）執行過，本次結果已取代那一次的紀錄"
@@ -123,7 +128,6 @@ def run(cfg: RunConfig) -> RunResult:
 
     alerts = [a.__dict__ for a in ev.alerts]
     projects = sorted({r["案子"] for r in board.rows})
-    prev = hist.previous_run(cfg.as_of)
     changes = compare(prev[1] if prev else None, alerts, projects)
     if prev:
         changes["prev_date"] = prev[0].isoformat()
@@ -153,6 +157,7 @@ def run(cfg: RunConfig) -> RunResult:
         "changes": changes,
         "notes": notes,
     }
+    log = runlog.get_logger(run_id, cfg.log_dir)
     for a in ev.alerts:
         log.info("預警 %s %s：%s", a.rule, a.level, a.why)
     for i in board.issues:
