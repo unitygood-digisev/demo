@@ -41,9 +41,6 @@ purposes:
   casebase_page:
     說明: 系統 6 Wiki 頁面生成
     max_level: 內部一般
-  test:
-    說明: 僅供自動化測試
-    max_level: 客戶機密
 
 cache_dir: data/interim/llm_cache
 call_log: logs/model_calls.jsonl

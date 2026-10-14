@@ -14,14 +14,23 @@ SECRET_INPUT = "這是一段不應該出現在日誌裡的文章全文 ABC-123"
 
 @pytest.fixture
 def client(tmp_path):
+    """正式設定檔另加一個僅供測試的用途 test（上限客戶機密），用來單獨檢查後端規則。"""
     calls = []
 
     def responder(prompt, text):
         calls.append(text)
         return "模擬摘要"
 
+    cfg = tmp_path / "config"
+    shutil.copytree(ROOT / "config", cfg)
+    data = yaml.safe_load((cfg / "llm.yaml").read_text(encoding="utf-8"))
+    data["purposes"]["test"] = {"說明": "僅供測試", "max_level": "客戶機密"}
+    (cfg / "llm.yaml").write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     c = LLMClient(
-        cache_dir=tmp_path / "cache", log_path=tmp_path / "calls.jsonl", mock_responder=responder
+        config_dir=cfg,
+        cache_dir=tmp_path / "cache",
+        log_path=tmp_path / "calls.jsonl",
+        mock_responder=responder,
     )
     c.calls = calls
     return c
@@ -57,11 +66,18 @@ def test_intel_summary_rejects_higher_levels(client, level):
     assert _log(client)[-1]["status"] == "rejected"
 
 
-@pytest.mark.parametrize("level", [None, "", "機密", "public"])
-def test_missing_or_unknown_level_rejected(client, level):
+@pytest.mark.parametrize("purpose", ["test", "intel_summary"])
+@pytest.mark.parametrize("level", [None, "", "機密", "public", "公開 ", ["公開"], {"a": 1}, True])
+def test_missing_or_unknown_level_rejected(client, level, purpose):
     with pytest.raises(LLMPolicyError):
-        _call(client, level, purpose="test")
+        _call(client, level, purpose=purpose)
     assert client.calls == []
+    assert _log(client)[-1]["status"] == "rejected"
+
+
+def test_production_config_has_no_test_purpose():
+    data = yaml.safe_load((ROOT / "config" / "llm.yaml").read_text(encoding="utf-8"))
+    assert "test" not in data["purposes"]
 
 
 def test_unregistered_purpose_rejected(client):
@@ -94,6 +110,8 @@ def test_allowed_but_unconfigured_backend_fails_loudly(client):
     # 內部一般 + 公司帳號是規則允許的，但階段 0 尚未實作真實後端
     with pytest.raises(LLMNotConfiguredError):
         _call(client, "內部一般", purpose="test", backend="cloud_company")
+    rec = _log(client)[-1]
+    assert rec["status"] == "error" and rec["backend"] == "cloud_company"
 
 
 def test_log_has_hash_not_full_text(client):
@@ -136,10 +154,26 @@ def test_temperature_must_be_zero(tmp_path):
         LLMClient(config_dir=cfg)
 
 
+SDK_NAMES = r"(anthropic|openai|google\.generativeai|google\.genai|cohere|mistralai|ollama|langchain\w*|litellm|transformers)"
 SDK_PATTERN = re.compile(
-    r"^\s*(import|from)\s+(anthropic|openai|google\.generativeai|google\.genai|cohere|mistralai|ollama|langchain\w*|litellm|transformers)\b",
+    rf"^\s*(import\s+([\w.]+\s*,\s*)*{SDK_NAMES}\b|from\s+{SDK_NAMES}\b)"
+    rf"|(import_module|__import__)\(\s*['\"]{SDK_NAMES}",
     re.M,
 )
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "import openai",
+        "import json, anthropic",
+        "from openai import OpenAI",
+        "importlib.import_module('openai')",
+        '__import__("anthropic")',
+    ],
+)
+def test_sdk_pattern_catches_variants(code):
+    assert SDK_PATTERN.search(code)
 
 
 def test_no_direct_llm_sdk_imports():

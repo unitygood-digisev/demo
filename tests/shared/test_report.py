@@ -55,6 +55,24 @@ def test_xlsx_footer_and_missing(tmp_path):
     assert "逾期 = 預計日 < 今天 且 狀態 ≠ 已完成" in "\n".join(map(str, sheets["總覽"]))
 
 
+FIVE = [
+    "資料截至：2026-10-14",
+    "輸入檔：projects.xlsx、milestones.xlsx",
+    "執行編號：progress-20261014-abcd1234",
+    "資料等級：內部一般",
+    "待補清單：",
+    "P010 負責人",
+]
+
+
+def test_unknown_level_shown_as_client_confidential(tmp_path):
+    for bad in ["亂寫等級", None, ""]:
+        f = Footer(dt.date(2026, 10, 14), ["a.xlsx"], "x", bad)
+        assert f.level == "客戶機密"
+        p = write_xlsx(tmp_path / "o.xlsx", "結論", {}, f)
+        assert load_workbook(p)["總覽"]["A1"].value == "客戶機密：僅執行長與主管"
+
+
 def test_sensitive_banner(tmp_path):
     f = Footer(dt.date(2026, 10, 14), ["a.xlsx"], "x", "客戶機密")
     p = write_xlsx(tmp_path / "o.xlsx", "結論", {}, f)
@@ -69,7 +87,9 @@ def test_docx(tmp_path):
     assert doc.sections[0].header.paragraphs[0].text == "資料等級：內部一般"
     texts = [para.text for para in doc.paragraphs]
     assert texts[1] == "結論句"
-    assert "執行編號：progress-20261014-abcd1234" in texts
+    joined = "\n".join(texts)
+    for needed in FIVE + ["計算方法："]:
+        assert needed in joined
     cells = [c.text for row in doc.tables[0].rows for c in row.cells]
     assert cells.count("待補") == 2
 
@@ -77,7 +97,9 @@ def test_docx(tmp_path):
 def test_markdown(tmp_path):
     md = to_markdown("標題", "結論句", [Section("明細", [], DF)], FOOTER)
     assert md.splitlines()[0] == "> 資料等級：內部一般"
-    assert "**結論句**" in md and "待補" in md and "待補清單：" in md
+    assert "**結論句**" in md and "待補" in md
+    for needed in FIVE + ["計算方法："]:
+        assert needed in md
     p = write_md(tmp_path / "o.md", "標題", "結論句", [], FOOTER)
     assert p.read_text(encoding="utf-8").startswith("> 資料等級")
 

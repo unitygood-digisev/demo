@@ -13,7 +13,7 @@
     </item>
     <item>
       <!-- 與 fake_zh.xml 的 1002 為同一網址（僅追蹤參數不同），應判定為重複 -->
-      <title>示範主管機關說明永續報告書查核新制</title>
+      <title>(FAKE) 示範主管機關說明永續報告書查核新制</title>
       <link>https://example.com/fake-agency/news/1002?utm_source=partner</link>
       <pubDate>Tue, 13 Oct 2026 03:00:00 +0000</pubDate>
       <description>(FAKE) Mirror of the agency announcement.</description>

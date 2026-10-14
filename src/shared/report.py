@@ -17,6 +17,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from shared.classify import Classifier
 from shared.dates import MISSING, fmt_date
 
 LEVEL_BANNER = {
@@ -45,6 +46,10 @@ class Footer:
     level: str
     missing: list[str] = field(default_factory=list)  # 待補清單
     method: list[str] = field(default_factory=list)  # 計算方法
+
+    def __post_init__(self) -> None:
+        # 不認得或沒給的等級，一律當作客戶機密標示
+        self.level = Classifier().normalize(self.level)
 
     def lines(self) -> list[str]:
         out = [

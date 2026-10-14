@@ -11,30 +11,45 @@ TW_TZ = ZoneInfo("Asia/Taipei")
 ROC_OFFSET = 1911
 MISSING = "待補"
 
-_ISO = re.compile(r"^\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*$")
-_ROC_SHORT = re.compile(r"^\s*(\d{2,3})[-/.](\d{1,2})[-/.](\d{1,2})\s*$")
-_ROC_LONG = re.compile(r"^\s*(?:民國)?\s*(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*$")
+_ISO = re.compile(r"^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s*$")
+# 民國短格式只接受三位數年份（例如 115/10/14）；兩位數可能是西元或日月年，不猜
+_ROC_SHORT = re.compile(r"^\s*(\d{3})[-/.](\d{1,2})[-/.](\d{1,2})\s*$")
+_ROC_LONG = re.compile(r"^\s*(?:民國)?\s*(\d{1,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*$")
+# 合理年份範圍，超出視為打錯
+MIN_YEAR, MAX_YEAR = 1950, 2100
 
 
 class DateParseError(ValueError):
     """日期無法辨識。"""
 
 
-def today_tw(override: dt.date | str | None = None) -> dt.date:
-    """台灣時區的今天；測試時可傳入固定日期。"""
+def today_tw(
+    override: dt.date | str | None = None, *, utc_now: dt.datetime | None = None
+) -> dt.date:
+    """台灣時區的今天；測試時可傳入固定日期，或傳入 UTC 時間驗證時區換算。"""
     if override is not None:
         return parse_date(override)
-    return dt.datetime.now(TW_TZ).date()
+    return now_tw(utc_now).date()
 
 
-def now_tw() -> dt.datetime:
+def now_tw(utc_now: dt.datetime | None = None) -> dt.datetime:
+    if utc_now is not None:
+        return utc_now.astimezone(TW_TZ)
     return dt.datetime.now(TW_TZ)
 
 
 def parse_date(value: object) -> dt.date:
+    d = _parse_date(value)
+    if not MIN_YEAR <= d.year <= MAX_YEAR:
+        raise DateParseError(f"年份不合理（{d.year}）：{value!r}")
+    return d
+
+
+def _parse_date(value: object) -> dt.date:
     """把各種寫法轉成日期。
 
-    接受：date/datetime、YYYY-MM-DD、YYYY/MM/DD、民國 113/10/14、民國113年10月14日。
+    接受：date/datetime、YYYY-MM-DD、YYYY/MM/DD、YYYY.MM.DD、民國 115/10/14（三位數年份）、
+    民國115年10月14日。年份須在 1950–2100 之間。
     其他寫法一律丟 DateParseError，不猜。
     """
     if isinstance(value, dt.datetime):
@@ -49,6 +64,8 @@ def parse_date(value: object) -> dt.date:
         if m:
             y, mo, d = (int(x) for x in m.groups())
             if roc:
+                if y == 0:
+                    raise DateParseError(f"民國沒有 0 年：{value!r}")
                 y += ROC_OFFSET
             try:
                 return dt.date(y, mo, d)

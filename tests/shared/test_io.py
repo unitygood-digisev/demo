@@ -126,10 +126,55 @@ def test_empty_file_lists_all_missing_columns(tmp_path):
     assert not r.ok  # 空檔不能被當成「沒有錯」
 
 
-def test_header_only_lists_nothing_but_no_rows(tmp_path):
+def test_header_only_reported_as_no_data(tmp_path):
     header = ["project_id", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
     r = load_table(_xlsx(tmp_path / "p.xlsx", header, []), SPEC)
-    assert r.ok and r.data.empty
+    assert r.data.empty
+    assert [i.problem for i in r.issues] == ["檔案沒有資料列"]
+
+
+def test_duplicate_column_names_after_strip(tmp_path):
+    header = ["project_id", "project_id ", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
+    rows = [["P1", "P9", "甲", "王", "2026-01-01", 1, 1, "進行中"]]
+    r = load_table(_xlsx(tmp_path / "p.xlsx", header, rows), SPEC)
+    assert [(i.column, i.problem) for i in r.issues] == [
+        ("project_id", "欄位名稱重複，無法判斷要用哪一欄")
+    ]
+
+
+@pytest.mark.parametrize("bad", ["inf", "-inf", "nan", "1,2,3,4", "12,34", "1.000,5", "NT$100"])
+def test_bad_numbers_rejected(tmp_path, bad):
+    header = ["project_id", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
+    r = load_table(
+        _xlsx(tmp_path / "p.xlsx", header, [["P1", "甲", "王", "2026-01-01", bad, 1, "進行中"]]),
+        SPEC,
+    )
+    assert [(i.column, i.problem) for i in r.issues] == [("金額", "不是數字")]
+
+
+@pytest.mark.parametrize(
+    "good, value", [("1,234", 1234.0), ("1,234,567.5", 1234567.5), ("-500", -500.0), ("12", 12.0)]
+)
+def test_good_numbers_accepted(tmp_path, good, value):
+    header = ["project_id", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
+    r = load_table(
+        _xlsx(tmp_path / "p.xlsx", header, [["P1", "甲", "王", "2026-01-01", good, 1, "進行中"]]),
+        SPEC,
+    )
+    assert r.ok and r.data.loc[0, "金額"] == value
+
+
+def test_text_na_kept_same_in_xlsx_and_csv(tmp_path):
+    header = ["project_id", "客戶", "負責人", "起始日", "金額", "期數", "狀態"]
+    rx = load_table(
+        _xlsx(tmp_path / "p.xlsx", header, [["P1", "NA", "None", "2026-01-01", 1, 1, "進行中"]]),
+        SPEC,
+    )
+    pc = tmp_path / "p.csv"
+    pc.write_text(",".join(header) + "\nP1,NA,None,2026-01-01,1,1,進行中\n", encoding="utf-8")
+    rc = load_table(pc, SPEC)
+    assert rx.ok and rc.ok
+    assert rx.data.loc[0, "客戶"] == rc.data.loc[0, "客戶"] == "NA"
 
 
 def test_issues_frame_columns():

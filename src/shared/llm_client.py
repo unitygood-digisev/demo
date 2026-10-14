@@ -43,8 +43,8 @@ MockResponder = Callable[[str, str], str]
 
 
 def _default_mock(prompt: str, input_text: str) -> str:
-    excerpt = input_text.strip().replace("\n", " ")[:40]
-    return f"（模擬回應）{excerpt}"
+    # 不回傳輸入原文，避免快取檔留下明文
+    return f"（模擬回應）{_sha256(input_text)[:8]}"
 
 
 def _sha256(text: str) -> str:
@@ -75,8 +75,8 @@ class LLMClient:
     # ---- 規則檢查 ----
     def check(self, level: str | None, purpose: str, backend: str) -> None:
         """不符合規則就丟 LLMPolicyError。"""
-        if not level:
-            raise LLMPolicyError("呼叫大模型必須指定資料等級")
+        if not level or not isinstance(level, str):
+            raise LLMPolicyError("呼叫大模型必須指定資料等級（文字）")
         if not self.classifier.is_known(level):
             raise LLMPolicyError(f"不認得的資料等級「{level}」，視同客戶機密，拒絕呼叫")
         if purpose not in self.purposes:
@@ -112,7 +112,7 @@ class LLMClient:
         model = str(self.backends.get(backend, {}).get("model"))
         input_hash = _sha256(input_text)
         base = {
-            "level": level,
+            "level": level if isinstance(level, str) or level is None else repr(level),
             "purpose": purpose,
             "prompt_version": prompt_version,
             "backend": backend,
@@ -138,7 +138,11 @@ class LLMClient:
             self._log({**base, "status": "ok", "cached": True})
             return LLMResult(text, True, backend, model, input_hash)
 
-        text = self._call_backend(backend, prompt, input_text)
+        try:
+            text = self._call_backend(backend, prompt, input_text)
+        except Exception as e:
+            self._log({**base, "status": "error", "reason": str(e), "cached": False})
+            raise
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         cache_file.write_text(json.dumps({"text": text}, ensure_ascii=False), encoding="utf-8")
         self._log({**base, "status": "ok", "cached": False})

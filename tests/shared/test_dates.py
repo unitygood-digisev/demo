@@ -20,7 +20,8 @@ from shared.dates import (
         ("2026-10-14", dt.date(2026, 10, 14)),
         ("2026/1/5", dt.date(2026, 1, 5)),
         ("115/10/14", dt.date(2026, 10, 14)),
-        ("99/01/01", dt.date(2010, 1, 1)),
+        ("2026.10.14", dt.date(2026, 10, 14)),
+        ("115.10.14", dt.date(2026, 10, 14)),
         ("民國115年10月14日", dt.date(2026, 10, 14)),
         ("115年1月2日", dt.date(2026, 1, 2)),
         (dt.datetime(2026, 10, 14, 23, 59), dt.date(2026, 10, 14)),
@@ -33,16 +34,42 @@ def test_parse_date_ok(raw, expected):
 
 
 @pytest.mark.parametrize(
-    "raw", ["2026-13-40", "2026/02/30", "115/02/30", "14/10/2026", "下週一", "", 20261014, None]
+    "raw",
+    [
+        "2026-13-40",
+        "2026/02/30",
+        "115/02/30",
+        "14/10/2026",
+        "下週一",
+        "",
+        20261014,
+        None,
+        "26/10/14",  # 兩位數年份：可能是西元或日月年，不猜
+        "14/10/26",
+        "99/01/01",
+        "000/01/01",  # 民國沒有 0 年
+        "民國0年1月1日",
+        "1150/10/14",  # 年份不合理
+        "9999-12-31",
+    ],
 )
 def test_parse_date_rejects(raw):
     with pytest.raises(DateParseError):
         parse_date(raw)
 
 
-def test_today_override_and_timezone():
+def test_today_override():
     assert today_tw("2026-10-14") == dt.date(2026, 10, 14)
     assert isinstance(today_tw(), dt.date)
+
+
+def test_today_uses_taipei_timezone():
+    # UTC 10/13 16:30 = 台灣 10/14 00:30
+    utc = dt.datetime(2026, 10, 13, 16, 30, tzinfo=dt.UTC)
+    assert today_tw(utc_now=utc) == dt.date(2026, 10, 14)
+    # UTC 10/13 15:59 = 台灣 10/13 23:59
+    utc = dt.datetime(2026, 10, 13, 15, 59, tzinfo=dt.UTC)
+    assert today_tw(utc_now=utc) == dt.date(2026, 10, 13)
 
 
 def test_roc_and_format():

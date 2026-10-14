@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -18,6 +20,7 @@ from shared.dates import DateParseError, parse_date
 
 ColumnType = Literal["text", "int", "amount", "date", "enum"]
 HEADER_ROW = 1  # Excel 第 1 列是標題，資料從第 2 列開始
+_NUMBER = re.compile(r"^-?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$")
 
 
 @dataclass(frozen=True)
@@ -93,18 +96,19 @@ def _convert(v: Any, col: ColumnSpec) -> Any:
         try:
             return parse_date(v if not isinstance(v, pd.Timestamp) else v.to_pydatetime())
         except DateParseError as e:
-            raise ValueError("日期錯誤（應為 YYYY-MM-DD 的有效日期）") from e
+            raise ValueError("日期錯誤（應為 2026-10-14 或民國 115/10/14 的有效日期）") from e
     if col.type in ("int", "amount"):
         if isinstance(v, bool):
             raise ValueError("不是數字")
         if isinstance(v, (int, float)):
             num = float(v)
         else:
-            s = str(v).strip().replace(",", "")
-            try:
-                num = float(s)
-            except ValueError as e:
-                raise ValueError("不是數字") from e
+            s = str(v).strip()
+            if not _NUMBER.match(s):
+                raise ValueError("不是數字")
+            num = float(s.replace(",", ""))
+        if not math.isfinite(num):
+            raise ValueError("不是數字")
         if col.type == "int":
             if not num.is_integer():
                 raise ValueError("應為整數")
@@ -116,7 +120,9 @@ def _convert(v: Any, col: ColumnSpec) -> Any:
 def _read_raw(path: Path) -> pd.DataFrame:
     suffix = path.suffix.lower()
     if suffix in (".xlsx", ".xlsm"):
-        return pd.read_excel(path, dtype=object, engine="openpyxl")
+        return pd.read_excel(
+            path, dtype=object, engine="openpyxl", keep_default_na=False, na_values=[]
+        )
     if suffix == ".csv":
         return pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
     raise ValueError(f"不支援的檔案格式：{path.name}（只接受 .xlsx、.csv）")
@@ -143,6 +149,11 @@ def load_table(
     raw.columns = [str(c).strip() for c in raw.columns]
     if column_map:
         raw = raw.rename(columns=column_map)
+    dup_cols = sorted({c for c in raw.columns if list(raw.columns).count(c) > 1})
+    if dup_cols:
+        for c in dup_cols:
+            issues.append(ValidationIssue(fname, None, c, "欄位名稱重複，無法判斷要用哪一欄"))
+        return LoadResult(pd.DataFrame(columns=["_row"]), issues)
 
     # 1. 欄位檢查（缺必填欄一次列完；選填欄缺少不算錯，值視為待補）
     for c in spec.columns:
@@ -180,6 +191,8 @@ def load_table(
         records.append(rec)
 
     data = pd.DataFrame(records, columns=["_row"] + [c.name for c in spec.columns])
+    if data.empty:
+        issues.append(ValidationIssue(fname, None, None, "檔案沒有資料列"))
 
     # 3. 重複鍵
     if spec.unique_key and spec.unique_key in raw.columns and not data.empty:
