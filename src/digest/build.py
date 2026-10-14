@@ -27,7 +27,7 @@ def _short(t: object, n: int = 120) -> str:
 
 
 LINE_CHARS = 50  # 一頁 A4、9.5 號字，一行約 50 個中文字
-LABEL_MAX = 12  # 指標名稱最多幾個字（表格欄位窄，一格約 9 字換行）
+LABEL_MAX = 16  # 指標名稱最多幾個字（表格欄位窄，一格約 9 字換行，最多兩行）
 UNIT_MAX = 6
 
 
@@ -212,13 +212,18 @@ def build(
             dq_all.append(
                 f"［{s.cfg.name}］指標 {'、'.join(dups)} 重複出現，週報採用第一筆，請檢查該系統"
             )
-    reds = [
-        f"［{s.cfg.name}］{a.subject}：{a.why}"
-        + (f" → 建議跟 {a.suggested_owner} 確認" if a.suggested_owner else "")
+    # 紅色預警拆成（開頭、原因、建議窗口），截短時只截原因，保留建議跟誰確認
+    red_parts = [
+        (
+            f"［{s.cfg.name}］{_short(a.subject, 30)}：",
+            a.why,
+            f" → 建議跟 {_short(a.suggested_owner, 20)} 確認" if a.suggested_owner else "",
+        )
         for s in ok
         for a in s.summary.alerts
         if a.level == "紅"
     ]
+    reds = [h + w + t for h, w, t in red_parts]
 
     # 外部情報前幾則
     intel_in = next((s for s in inputs if s.cfg.key == "intel"), None)
@@ -261,7 +266,10 @@ def build(
             level=level,
             sentences=cut(sentences) if cap and cap < 100 else sentences,
             metrics=_metric_rows(inputs, metric_cfg),
-            decisions=cut(reds[:n_dec]),
+            decisions=[
+                h + (_short(w, max(10, cap - len(h) - len(t))) if cap else w) + t
+                for h, w, t in red_parts[:n_dec]
+            ],
             decisions_more=max(0, len(reds) - n_dec),
             intel=[
                 {**i, "title": _short(i["title"], cap)} if cap else i for i in intel_items[:n_intel]
@@ -304,11 +312,18 @@ def build(
             missing.append(
                 f"{s.cfg.name}的資料等級「{s.summary.classification}」不認得，已當作客戶機密"
             )
+    long_labels = [m["key"] for m in metric_cfg if len(m["label"]) > LABEL_MAX]
+    if long_labels:
+        more = "…" if len(long_labels) > 3 else ""
+        missing.append(
+            f"{len(long_labels)} 個指標名稱超過 {LABEL_MAX} 字已截短（{'、'.join(long_labels[:3])}{more}），"
+            "請在 config/metrics.yaml 改短"
+        )
     if stale_days is None:
         missing.append("「本週未更新」的天數門檻未設定，不判斷摘要是否過期")
     if metrics_status:
         missing.append(f"指標清單為起始版，{metrics_status}")
-    d.missing = missing
+    d.missing = [_short(x, 90) for x in missing]  # 頁尾每條提醒限長，避免撐出第二頁
     d.method = [
         "數字原樣取自各系統 summary.json，不重新計算；變化＝本週－上週，上週無值寫「待補」。",
         "結論引用各系統結論句；決定事項＝各系統紅色預警；資料等級＝讀到的摘要中最高者；不使用大模型。",

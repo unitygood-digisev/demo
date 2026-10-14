@@ -25,6 +25,7 @@ from pydantic import (
 
 from shared.config import PROJECT_ROOT, load_yaml
 
+UNREADABLE = "unreadable"
 OK, STALE, MISSING, INVALID, NOT_LAUNCHED, FUTURE, FAILED = (
     "ok",
     "stale",
@@ -41,6 +42,7 @@ STATUS_TEXT = {
     NOT_LAUNCHED: "系統尚未上線",
     FUTURE: "摘要檔日期晚於週報日期，未納入",
     FAILED: "本週執行失敗，未納入",
+    UNREADABLE: "摘要檔無法讀取，未納入",
 }
 TEXT_MAX = 160  # 單一段文字最多幾個字，超過截斷（全文見各系統報表）
 
@@ -216,8 +218,14 @@ def read_system(
     if not cfg.path.exists():
         return SystemInput(cfg, MISSING, reason=f"找不到 {cfg.path.name}")
     try:
-        raw = json.loads(cfg.path.read_text(encoding="utf-8-sig"))
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        text = cfg.path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        return SystemInput(cfg, INVALID, reason="摘要檔不是有效的 JSON")
+    except OSError:
+        return SystemInput(cfg, UNREADABLE, reason="摘要檔無法讀取（可能是資料夾、或沒有讀取權限）")
+    try:
+        raw = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
         return SystemInput(cfg, INVALID, reason="摘要檔不是有效的 JSON")
     if not isinstance(raw, dict):
         return SystemInput(cfg, INVALID, reason="摘要檔內容不是一筆物件")

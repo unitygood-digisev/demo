@@ -224,6 +224,7 @@ def write_docx(
     doc = Document()
     if compact:
         sec = doc.sections[0]
+        sec.page_width, sec.page_height = Cm(21), Cm(29.7)  # A4（python-docx 預設是 Letter）
         sec.top_margin = sec.bottom_margin = Cm(1.5)
         sec.left_margin = sec.right_margin = Cm(1.8)
         for name in ("Normal", "Heading 1", "Heading 2", "Heading 3"):

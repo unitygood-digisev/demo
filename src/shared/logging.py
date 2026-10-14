@@ -15,20 +15,21 @@ _FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
 
 
 def get_logger(run_id: str, log_dir: Path | None = None) -> _std_logging.Logger:
-    """取得某次執行的 logger。同一個 run_id 重複呼叫會拿到同一個，不會重複寫入。"""
+    """取得某次執行的 logger（每次呼叫都重新設定處理器，寫到指定資料夾）。"""
     log_dir = log_dir or LOG_DIR
     log_dir.mkdir(parents=True, exist_ok=True)
     logger = _std_logging.getLogger(f"unity.{run_id}")
-    if not logger.handlers:
-        logger.setLevel(_std_logging.INFO)
-        fh = _std_logging.FileHandler(log_dir / f"run_{run_id}.log", encoding="utf-8")
-        fh.setFormatter(_std_logging.Formatter(_FORMAT))
-        logger.addHandler(fh)
-        sh = _std_logging.StreamHandler()
-        sh.setFormatter(_std_logging.Formatter(_FORMAT))
-        sh.setLevel(_std_logging.WARNING)
-        logger.addHandler(sh)
-        logger.propagate = False
+    # 每次都重新設定：避免沿用同名 logger 殘留的舊資料夾或其他程式加上的處理器
+    close_logger(logger)
+    logger.setLevel(_std_logging.INFO)
+    fh = _std_logging.FileHandler(log_dir / f"run_{run_id}.log", encoding="utf-8")
+    fh.setFormatter(_std_logging.Formatter(_FORMAT))
+    logger.addHandler(fh)
+    sh = _std_logging.StreamHandler()
+    sh.setFormatter(_std_logging.Formatter(_FORMAT))
+    sh.setLevel(_std_logging.WARNING)
+    logger.addHandler(sh)
+    logger.propagate = False
     return logger
 
 

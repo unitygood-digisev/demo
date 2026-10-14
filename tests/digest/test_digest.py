@@ -649,3 +649,52 @@ def test_three_systems_extreme_still_one_page(env, tmp_path):
         ["pdfinfo", str(next(out.glob("*.pdf")))], capture_output=True, text=True
     ).stdout
     assert re.search(r"Pages:\s+1\b", info), info
+
+
+def test_summary_path_is_directory(env, tmp_path):
+    folder = tmp_path / "a_folder"
+    folder.mkdir()
+    res = run(env["make"](overrides={"progress": folder}))
+    assert res.inputs[0].status == "unreadable"
+    assert "摘要檔無法讀取" in res.digest.sentences[0] and set(res.files) == {"docx", "md", "txt"}
+
+
+def test_log_has_real_version(env):
+    rid = run(env["make"]()).digest.run_id
+    log = (env["tmp"] / "logs" / f"run_{rid}.log").read_text(encoding="utf-8")
+    assert "程式版本 0.1.0" in log and "未知" not in log
+
+
+def test_truncated_decisions_keep_owner(env):
+    write(
+        env["progress"],
+        {
+            **PROGRESS,
+            "headline": "長" * 300,
+            "data_quality": ["品質" * 80] * 50,
+            "alerts": [
+                {
+                    "level": "紅",
+                    "rule": "R",
+                    "why": "原因" * 80,
+                    "subject": "案",
+                    "suggested_owner": "某窗口",
+                }
+            ]
+            * 50,
+        },
+    )
+    d = run(env["make"]()).digest
+    assert d.decisions and all(x.endswith("→ 建議跟 某窗口 確認") for x in d.decisions)
+
+
+def test_long_metric_labels_reported_once(env):
+    p = env["cfg"] / "metrics.yaml"
+    c = yaml.safe_load(p.read_text(encoding="utf-8"))
+    for m in c["metrics"]:
+        m["label"] = "很長的指標名稱" * 5
+    p.write_text(yaml.safe_dump(c, allow_unicode=True), encoding="utf-8")
+    d = run(env["make"]()).digest
+    hits = [x for x in d.missing if "指標名稱超過" in x]
+    assert len(hits) == 1 and all(len(x) <= 90 for x in d.missing)
+    assert all(len(m.label) <= 16 for m in d.metrics)

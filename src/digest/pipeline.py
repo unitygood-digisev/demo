@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import subprocess
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -13,12 +15,37 @@ from shared import logging as runlog
 from shared.config import PROJECT_ROOT, threshold
 from shared.report import make_run_id
 
-try:
-    from importlib.metadata import version as _version
 
-    VERSION = _version("unity-mgmt-suite")
-except Exception:  # 未安裝成套件時
-    VERSION = "未知"
+def _version() -> str:
+    """程式版本：pyproject.toml 的版本號，加上 git commit 編號（取得到時）。"""
+    ver = "未知"
+    try:
+        with (PROJECT_ROOT / "pyproject.toml").open("rb") as f:
+            ver = tomllib.load(f)["project"]["version"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        pass
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            ver += f"（commit {out.stdout.strip()}）"
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return ver
+
+
+def _readable(p: Path) -> bool:
+    try:
+        with p.open("rb") as f:
+            f.read(1)
+        return True
+    except OSError:
+        return False
 
 
 @dataclass
@@ -56,14 +83,20 @@ def run(cfg: RunConfig) -> RunResult:
         inputs.append(read_system(s, cfg.as_of, stale_days, failed=s.key in cfg.failed_systems))
     d = build(inputs, metric_cfg, dcfg, cfg.as_of, metrics_status, stale_days)
     # 執行編號：所有存在的摘要檔內容（含讀取失敗的）一起算雜湊
-    used = [s.cfg.path for s in inputs if s.cfg.path is not None and s.cfg.path.exists()]
+    used = [
+        s.cfg.path
+        for s in inputs
+        if s.cfg.path is not None and s.cfg.path.is_file() and _readable(s.cfg.path)
+    ]
     d.run_id = make_run_id("digest", cfg.as_of, used)
     log = runlog.get_logger(d.run_id, cfg.log_dir)
-    log.info("程式版本 %s；週報日期 %s", VERSION, cfg.as_of.isoformat())
+    log.info("程式版本 %s；週報日期 %s", _version(), cfg.as_of.isoformat())
     for s in inputs:
         log.info("輸入 %s：%s（%s）%s", s.cfg.key, s.cfg.path, s.status, s.reason)
     for m in d.missing:
         log.warning("待補：%s", m)
-    files = output.write_all(d, cfg.out_dir)
-    runlog.close_logger(log)
+    try:
+        files = output.write_all(d, cfg.out_dir)
+    finally:
+        runlog.close_logger(log)
     return RunResult(d, inputs, files)
