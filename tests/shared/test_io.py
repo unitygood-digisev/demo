@@ -119,6 +119,13 @@ def test_missing_or_unsupported_file_reported_not_crash(tmp_path, name):
     assert r.data.empty
 
 
+def test_unreadable_csv_message_is_plain_chinese(tmp_path):
+    p = tmp_path / "p.csv"
+    p.write_text("a,b\n1,2,3,4\n", encoding="utf-8")
+    r = load_table(p, SPEC)
+    assert len(r.issues) == 1 and r.issues[0].problem.startswith("無法讀取檔案（常見原因")
+
+
 def test_empty_file_lists_all_missing_columns(tmp_path):
     p = tmp_path / "empty.csv"
     p.write_text("", encoding="utf-8")

@@ -153,7 +153,15 @@ def load_table(
     try:
         raw = _read_raw(path)
     except Exception as e:  # 讀檔失敗也要大聲列出，不要讓整個流程崩潰
-        issues.append(ValidationIssue(fname, None, None, f"無法讀取檔案：{e}"))
+        issues.append(
+            ValidationIssue(
+                fname,
+                None,
+                None,
+                "無法讀取檔案（常見原因：不是 UTF-8 編碼的 CSV、某列欄數比標題多、檔案損毀）",
+                type(e).__name__,
+            )
+        )
         return LoadResult(pd.DataFrame(columns=["_row"]), issues)
 
     if column_map:
