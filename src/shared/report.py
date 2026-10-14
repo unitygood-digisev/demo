@@ -32,7 +32,9 @@ _SHEET_NAME_MAX = 31
 
 
 _FIXED_TIME = "2000-01-01T00:00:00Z"
-_CORE_TIME = re.compile(rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:(?:created|modified)>)")
+_CORE_TIME = re.compile(
+    rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:(?:created|modified)>)"
+)
 
 
 def _make_reproducible(path: Path) -> None:
