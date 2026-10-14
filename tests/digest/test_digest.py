@@ -535,7 +535,7 @@ def test_huge_numbers_do_not_crash(env, big):
     raw = json.dumps(PROGRESS, ensure_ascii=False).replace('"value": 11', f'"value": {big}', 1)
     env["progress"].write_text(raw, encoding="utf-8")
     res = run(env["make"]())
-    assert res.inputs[0].status == "invalid" and set(res.files) == {"docx", "md", "txt"}
+    assert res.inputs[0].status == "invalid" and set(res.files) == {"docx", "md", "txt", "json"}
 
 
 def test_urls_userinfo_rejected_parentheses_allowed(env):
@@ -656,7 +656,12 @@ def test_summary_path_is_directory(env, tmp_path):
     folder.mkdir()
     res = run(env["make"](overrides={"progress": folder}))
     assert res.inputs[0].status == "unreadable"
-    assert "摘要檔無法讀取" in res.digest.sentences[0] and set(res.files) == {"docx", "md", "txt"}
+    assert "摘要檔無法讀取" in res.digest.sentences[0] and set(res.files) == {
+        "docx",
+        "md",
+        "txt",
+        "json",
+    }
 
 
 def test_log_has_real_version(env):

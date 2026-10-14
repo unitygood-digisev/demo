@@ -51,7 +51,7 @@ uv pip install -p .venv -e ".[dev]"
 ```
 .venv/bin/python scripts/run_weekly.py
 ```
-週報在 `data/out/digest/`：Word（一頁）、Markdown、可直接貼到郵件的純文字版。先用假資料看看：`.venv/bin/python scripts/run_digest.py --sample`。
+週報在 `data/out/digest/`：Word（一頁）、Markdown、可直接貼到郵件的純文字版。設定好公司 Google 試算表後（見 docs/handover/google_sheets.md），最後一步會自動同步到試算表；還沒設定時會顯示「略過同步」，不影響其他報表。先用假資料看看：`.venv/bin/python scripts/run_digest.py --sample`。
 
 **確認系統本身正常**
 ```

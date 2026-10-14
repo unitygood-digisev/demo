@@ -1,6 +1,6 @@
 # 階段 4b 計畫：報表同步到公司 Google Sheet（做法 A）
 
-狀態：**待確認**（確認後才開始實作）
+狀態：**已確認並實作**（2026-10-14，第 6 節五點均照計畫：公司使用 Google Workspace、同意安裝 gspread／google-auth、由公司管理員依 docs/handover/google_sheets.md 設定、試算表含案名與負責人（內部一般）、第一版單向同步。週報另產生結構化資料檔 `管理層週報_資料_日期.json` 供同步讀取）
 依據：CLAUDE.md 第 2、7 節（輸出放在使用者已經在用的地方；接 Google Sheets 要先經同意）、docs/manager_questions.md 第 1、5 題
 估計時數：6–8 小時（超過 12 小時會停下來回報）
 

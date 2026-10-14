@@ -11,6 +11,8 @@ dependencies = [
   "requests",
   "feedparser",
   "python-docx",
+  "gspread",
+  "google-auth",
 ]
 
 [project.optional-dependencies]

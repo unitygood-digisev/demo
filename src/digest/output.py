@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -79,7 +80,40 @@ def write_all(d: Digest, out_dir: Path) -> dict[str, Path]:
     )
     txt = out_dir / f"管理層週報_郵件版_{stem}.txt"
     txt.write_text(to_text(d), encoding="utf-8")
-    return {"docx": docx, "md": md, "txt": txt}
+    js = out_dir / f"管理層週報_資料_{stem}.json"
+    js.write_text(json.dumps(to_data(d), ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"docx": docx, "md": md, "txt": txt, "json": js}
+
+
+def to_data(d: Digest) -> dict:
+    """週報內容的結構化版本，給 Google 試算表同步等其他出口使用（不重新計算）。"""
+    return {
+        "as_of": d.as_of.isoformat(),
+        "period_start": d.period_start.isoformat(),
+        "title": _title(d),
+        "level": d.level,
+        "level_banner": LEVEL_BANNER.get(d.level, d.level),
+        "run_id": d.run_id,
+        "sentences": d.sentences,
+        "metrics": [
+            {
+                "key": m.key,
+                "label": m.label,
+                "this": m.this,
+                "prev": m.prev,
+                "change": m.change,
+                "unit": m.unit,
+            }
+            for m in d.metrics
+        ],
+        "decisions": d.decisions,
+        "decisions_more": d.decisions_more,
+        "intel": d.intel,
+        "intel_note": d.intel_note,
+        "data_quality": d.data_quality,
+        "data_quality_more": d.data_quality_more,
+        "footer": _footer(d).lines(),
+    }
 
 
 def to_text(d: Digest) -> str:

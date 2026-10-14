@@ -1,4 +1,4 @@
-"""每週一鍵執行：外部情報（含每週彙整）→ 項目進度看板 → 管理層週報。
+"""每週一鍵執行：外部情報（含每週彙整）→ 項目進度看板 → 管理層週報 → 同步 Google 試算表（已設定時）。
 
     .venv/bin/python scripts/run_weekly.py
     .venv/bin/python scripts/run_weekly.py --as-of 2026-10-19
@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from scripts import run_digest, run_intel, run_progress  # noqa: E402
+from scripts import run_digest, run_intel, run_progress, sync_sheets  # noqa: E402
 
 # (系統代號, 名稱, 執行函式, 額外參數)
 STEPS = [
@@ -25,6 +25,7 @@ STEPS = [
     ("progress", "項目進度看板", run_progress.main, []),
 ]
 DIGEST = ("管理層週報", run_digest.main)
+SHEETS = ("同步 Google 試算表", sync_sheets.main)
 
 
 def _call(name, fn, argv) -> int:
@@ -51,8 +52,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"=== {DIGEST[0]} ===")
     digest_args = date_args + (["--failed", ",".join(k for k, _ in failed)] if failed else [])
     digest_failed = _call(DIGEST[0], DIGEST[1], digest_args)
+    sheets_failed = False
+    if not digest_failed:
+        print(f"=== {SHEETS[0]} ===")
+        code = _call(SHEETS[0], SHEETS[1], date_args)
+        sheets_failed = code not in (0, sync_sheets.SKIPPED)  # 尚未設定 → 略過，不算失敗
     print("=== 結果 ===")
-    names = [n for _, n in failed] + ([DIGEST[0]] if digest_failed else [])
+    names = (
+        [n for _, n in failed]
+        + ([DIGEST[0]] if digest_failed else [])
+        + ([SHEETS[0]] if sheets_failed else [])
+    )
     if not names:
         print("全部完成。")
         return 0

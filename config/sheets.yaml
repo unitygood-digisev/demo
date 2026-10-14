@@ -1,0 +1,18 @@
+# 管理層系統 → 公司 Google 試算表同步（階段 4b，單向寫入）
+# 試算表 ID 與金鑰路徑請放在 .env（不提交）：
+#   MGMT_SHEET_ID=試算表網址中 /d/ 和 /edit 之間那一串
+#   GOOGLE_APPLICATION_CREDENTIALS=服務帳號金鑰檔（.json）的完整路徑
+# 設定步驟見 docs/handover/google_sheets.md
+
+enabled: true
+spreadsheet_id_env: MGMT_SHEET_ID
+credentials_env: GOOGLE_APPLICATION_CREDENTIALS
+
+# 分頁名稱（可改；系統只會改寫這些分頁，不會動主管自己新增的分頁）
+tabs:
+  digest: 週報
+  alerts: 進度預警
+  projects: 進度明細
+  intel: 外部情報
+  history: 指標歷史
+  info: 說明
