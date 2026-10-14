@@ -94,7 +94,7 @@ def test_overview_numbers_match_alert_list(three_weeks):
     assert all(p["案子"] in alerted for p in projects if p["燈號"] != "綠")
 
 
-def test_excluded_columns_never_in_output(three_weeks):
+def test_excluded_columns_never_in_output(three_weeks, tmp_path):
     res = three_weeks()
     text = (
         all_cells(res.files["xlsx"])
@@ -102,6 +102,15 @@ def test_excluded_columns_never_in_output(three_weeks):
         + res.files["summary"].read_text(encoding="utf-8")
     )
     assert "不續約" not in text and "備註內容" not in text
+    # 「近期下一步」也不輸出，紀錄中只有雜湊
+    assert "交初稿" not in text and "邀講者" not in text
+    stored = " ".join(
+        p.read_text(encoding="utf-8") for p in (tmp_path / "interim").rglob("*") if p.is_file()
+    ) + " ".join(
+        p.read_text(encoding="utf-8") for p in (tmp_path / "logs").glob("*") if p.is_file()
+    )
+    for word in ("不續約", "備註內容", "交初稿", "邀講者"):
+        assert word not in stored
 
 
 def test_data_quality_listed_not_crash(three_weeks):

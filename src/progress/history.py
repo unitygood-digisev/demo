@@ -9,12 +9,18 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import hashlib
 import json
 from pathlib import Path
 
 from progress.board import Board, ProgressDataError
 
-SNAP_FIELDS = ["案子", "階段", "下一步", "下一個日期"]
+# 「近期下一步」可能含客戶未公開資訊：只存雜湊，用來判斷有沒有變化，不存原文
+SNAP_FIELDS = ["案子", "階段", "下一步雜湊", "下一個日期"]
+
+
+def step_hash(text: str | None) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()[:16] if text else ""
 
 
 def _day(p: Path) -> dt.date | None:
@@ -28,7 +34,7 @@ def _state(r: dict) -> tuple[str, str, str]:
     d = r.get("下一個日期")
     return (
         r.get("階段") or "",
-        r.get("下一步") or "",
+        step_hash(r.get("下一步")),
         d.isoformat() if isinstance(d, dt.date) else (d or ""),
     )
 
@@ -63,7 +69,7 @@ class History:
                         (
                             d,
                             {
-                                row["案子"]: (row["階段"], row["下一步"], row["下一個日期"])
+                                row["案子"]: (row["階段"], row["下一步雜湊"], row["下一個日期"])
                                 for row in reader
                             },
                         )

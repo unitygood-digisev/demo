@@ -33,6 +33,7 @@ def _method(th: dict, cfg: BoardConfig) -> list[str]:
         "每案燈號＝該案所有預警中最嚴重者；沒有預警為綠。",
         f"資料品質：{'、'.join(cfg.active_stages)}的案子沒有下一個日期或負責人、案名重複、日期錯誤、階段不在選單內；不計入預警。",
         f"不讀入、不輸出看板的「{'」「'.join(cfg.excluded_columns)}」欄（含客戶未公開資訊）。",
+        "「近期下一步」只用來判斷有沒有變化（紀錄中只存雜湊），不輸出原文。",
     ]
 
 
@@ -141,7 +142,6 @@ def _projects_df(board: Board, ev: Evaluation, cfg: BoardConfig, as_of: dt.date)
                 "類別": r.get("類別"),
                 "階段": r.get("階段"),
                 "負責人": r.get("負責人"),
-                "下一步": r.get("下一步"),
                 "下一個日期": d,
                 "距今天數": days,
                 "燈號": ev.lights[row],
