@@ -60,7 +60,7 @@ uv pip install -p .venv -e ".[dev]"
 
 ## 找誰
 - 開發：數位轉型實習生（2026-10 起）
-- 實習結束後的維護窗口：**待主管指定**（見 docs/manager_questions.md 第 8 題）
+- 實習結束後的維護窗口：**待主管指定**
 
 ## 給開發者
 規則與架構見 `CLAUDE.md`；各系統規格見 `docs/specs/`；階段計畫見 `docs/decisions/`。
