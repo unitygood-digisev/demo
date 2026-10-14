@@ -46,13 +46,14 @@ def test_bad_sources_listed(tmp_path):
   - {id: c, 名稱: C, 類型: pdf, 網址: z, 分類: 其他}
   - {id: d, 名稱: D, 類型: RSS, 網址: d.xml, 分類: 奇怪}
   - 純文字
+  - {id: ../../escaped, 名稱: E, 類型: rss, 網址: e.xml, 分類: 其他}
 """,
         encoding="utf-8",
     )
     s, p = load_sources(f)
     assert [x.id for x in s] == ["a", "d"]
     assert s[1].category == "其他" and s[1].type == "rss"
-    assert len(p) == 5
+    assert len(p) == 6 and any("escaped" in x for x in p)
 
 
 def test_bad_keywords_listed(tmp_path):
@@ -72,6 +73,28 @@ def test_bad_keywords_listed(tmp_path):
     assert [x.term for x in k] == ["碳費", "丁"]
     assert k[1].synonyms == ("單一字串",)
     assert len(p) == 4
+
+
+def test_keyword_synonym_garbage_and_duplicates(tmp_path):
+    f = tmp_path / "k.yaml"
+    f.write_text(
+        """keywords:
+  - {詞: 碳費, 類別: 法規與準則, 權重: 5, 同義詞: [~, "", {a: b}, true, carbon fee]}
+  - {詞: 碳費, 類別: 議題, 權重: 5}
+  - {詞: ＣＡＲＢＯＮ ＦＥＥ, 類別: 議題, 權重: 2}
+  - {詞: 淨零, 類別: 議題, 權重: 2, 同義詞: [碳費, net zero]}
+  - {詞: 甲, 類別: 議題, 權重: 2, 同義詞: ~}
+""",
+        encoding="utf-8",
+    )
+    k, p = load_keywords(f)
+    assert [(x.term, x.synonyms) for x in k] == [
+        ("碳費", ("carbon fee",)),
+        ("淨零", ("net zero",)),
+        ("甲", ()),
+    ]
+    assert sum("不是有效文字" in x for x in p) == 4
+    assert sum("重複" in x for x in p) == 3
 
 
 def test_missing_or_empty_settings(tmp_path):

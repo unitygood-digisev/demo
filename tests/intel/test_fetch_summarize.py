@@ -6,7 +6,7 @@ import pytest
 from intel.dedupe import Event
 from intel.fetch import Fetcher, FetchError
 from intel.settings import Source
-from intel.summarize import FAILED, TITLE_ONLY, Summarizer, parse_response
+from intel.summarize import FAILED, LINK_FLAG, TITLE_ONLY, Summarizer, parse_response
 from shared.llm_client import LLMClient, LLMPolicyError
 from shared.schema import NewsItem
 
@@ -53,7 +53,8 @@ def test_failures_reported(tmp_path, source, expect):
 def test_bozo_with_entries_is_warning(tmp_path):
     p = tmp_path / "half.xml"
     p.write_bytes(RSS.replace(b"</channel></rss>", b"<item><title>B"))
-    r = fetcher(tmp_path).fetch(src(str(p)))
+    f = Fetcher(tmp_path, tmp_path / "raw", AS_OF, sleep=lambda s: None)
+    r = f.fetch(src(str(p)))
     assert r.error is None and r.warning and len(r.entries) >= 1
 
 
@@ -106,6 +107,14 @@ def test_robots_missing_allows_and_caches_and_rate_limits(tmp_path):
     assert calls == ["https://ex.com/robots.txt", "https://ex.com/feed"]
     assert sleeps == [1.0]  # 兩次請求間至少隔 1 秒
     assert (tmp_path / "raw" / "20261014" / "s.xml").read_bytes() == RSS
+
+
+@pytest.mark.parametrize(
+    "url", ["/etc/passwd", "../../../../etc/hosts", "file:///etc/passwd", "ftp://x/feed"]
+)
+def test_local_paths_outside_project_rejected(tmp_path, url):
+    r = fetcher(tmp_path).fetch(src(url))
+    assert r.error and r.raw_path is None and r.entries == []
 
 
 def test_http_error_and_connection_error(tmp_path):
@@ -183,12 +192,51 @@ def test_bad_model_reply_fails_loudly(reply):
     assert out.status == "failed" and out.summary == FAILED and out.flags
 
 
-def test_reply_with_fence_and_url_cleaned():
-    out = parse_response(
-        '```json\n{"摘要": "見 https://evil.example/x 詳情。", "意義": "參考 www.evil.example"}\n```'
+def test_reply_with_fence_ok():
+    out = parse_response('```json\n{"摘要": "一句。", "意義": "有關。"}\n```')
+    assert out.status == "ok" and out.summary == "一句。"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "見 https://evil.example/x 詳情。",
+        "參考 www.evil.example",
+        "[這裡](javascript:alert(1))",
+        "[原文](http://x)",
+        "寄信 mailto:a@evil.example",
+        "evil.example.com/path 有說明",
+        "ftp://x/y",
+        "ｈｔｔｐｓ：／／ｅｖｉｌ．ｅｘａｍｐｌｅ",
+        "data:text/html,abc",
+        "詳見 gov.tw 公告",
+    ],
+)
+def test_any_link_in_reply_discards_whole_summary(bad):
+    for reply in ({"摘要": bad, "意義": "有關。"}, {"摘要": "正常。", "意義": bad}):
+        out = parse_response(json.dumps(reply, ensure_ascii=False))
+        assert out.status == "failed" and out.summary == FAILED and out.flags == [LINK_FLAG]
+
+
+@pytest.mark.parametrize(
+    "ok",
+    [
+        "依 ISO 14064-1 與 IFRS S2:2023 揭露。",
+        "溫升 1.5°C 目標。",
+        "Scope 3 category 15 relief.",
+        "金管會發布新制。",
+    ],
+)
+def test_normal_text_not_mistaken_for_link(ok):
+    assert (
+        parse_response(json.dumps({"摘要": ok, "意義": "有關。"}, ensure_ascii=False)).status
+        == "ok"
     )
-    assert out.status == "ok" and "http" not in out.summary and "www." not in out.meaning
-    assert "已移除模型產生的網址" in out.flags
+
+
+def test_newlines_collapsed():
+    out = parse_response(json.dumps({"摘要": "一句。\n\n## 偽造標題\n- 項目", "意義": "有\n關"}))
+    assert "\n" not in out.summary and "\n" not in out.meaning
 
 
 def test_length_and_sentence_flags():

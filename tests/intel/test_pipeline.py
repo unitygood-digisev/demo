@@ -1,15 +1,18 @@
 """系統 7 端到端測試（用 data/sample/feeds 的假資料，離線執行）。"""
 
 import datetime as dt
+import hashlib
 import json
 import re
 
 import feedparser
+import pytest
 from docx import Document
 from openpyxl import load_workbook
 
 from intel.evaluate import evaluate, make_sheet, read_labels, to_markdown
 from intel.pipeline import run
+from intel.summarize import LINK_FLAG
 
 from .conftest import AS_OF, SAMPLE, set_threshold
 
@@ -93,15 +96,23 @@ def test_every_output_link_comes_from_input(make_cfg):
     assert found and found <= input_links(), found - input_links()
 
 
-def test_model_generated_links_never_reach_output(make_cfg):
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "詳見 https://evil.example/fake 。",
+        "[這裡](javascript:alert(1))",
+        "mailto:a@evil.example",
+        "evil.example.com/x",
+    ],
+)
+def test_model_generated_links_never_reach_output(make_cfg, summary):
     def evil(prompt, text):
-        return json.dumps(
-            {"摘要": "詳見 https://evil.example/fake 。", "意義": "請看 www.evil.example"}
-        )
+        return json.dumps({"摘要": summary, "意義": "有關"}, ensure_ascii=False)
 
     res = run(make_cfg(responder=evil))
     text = all_output_text(res.files)
-    assert "evil.example" not in text and "已移除模型產生的網址" in text
+    assert "evil.example" not in text and "javascript:" not in text and "mailto:" not in text
+    assert LINK_FLAG in text
 
 
 def test_rerun_same_day_is_identical_and_has_no_duplicates(make_cfg):
@@ -111,8 +122,11 @@ def test_rerun_same_day_is_identical_and_has_no_duplicates(make_cfg):
     js1 = a.files["summary"].read_text(encoding="utf-8")
     cells1 = xlsx_cells(a.files["tracking"])
     doc1 = docx_text(a.files["weekly"])
+    bytes1 = {k: hashlib.sha256(v.read_bytes()).hexdigest() for k, v in a.files.items()}
     b = run(make_cfg())
     assert b.run_id == a.run_id
+    # 檔案逐位元組相同（含 xlsx、docx）
+    assert {k: hashlib.sha256(v.read_bytes()).hexdigest() for k, v in b.files.items()} == bytes1
     assert b.files["daily"].read_text(encoding="utf-8") == md1
     assert b.files["summary"].read_text(encoding="utf-8") == js1
     assert xlsx_cells(b.files["tracking"]) == cells1

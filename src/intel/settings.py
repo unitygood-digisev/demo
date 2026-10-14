@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -11,6 +13,7 @@ SOURCE_TYPES = ("rss", "html")
 GROUPS = ("法規與準則", "同業動態", "客戶動態", "其他")
 SOURCE_CATEGORIES = GROUPS + ("同業", "客戶")  # 來源分類也接受簡寫
 KEYWORD_CATEGORIES = ("客戶", "同業", "主管機關", "法規與準則", "議題")
+_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,9 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
             problems.append(f"來源第 {i} 筆缺少欄位：{'、'.join(missing)}")
             continue
         sid = str(s["id"]).strip()
+        if not _ID.match(sid):
+            problems.append(f"來源 id「{sid}」只能用英文字母、數字、底線、連字號，已略過")
+            continue
         if sid in seen:
             problems.append(f"來源 id「{sid}」重複，只採用第一筆")
             continue
@@ -93,6 +99,7 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
 def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
     raw, problems = _load(path, "keywords")
     out: list[Keyword] = []
+    used: set[str] = set()
     for i, k in enumerate(raw, start=1):
         if not isinstance(k, dict) or not str(k.get("詞") or "").strip():
             problems.append(f"關鍵字第 {i} 筆缺少「詞」")
@@ -106,8 +113,29 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
         if isinstance(w, bool) or not isinstance(w, int) or not 1 <= w <= 5:
             problems.append(f"關鍵字「{term}」的權重「{w}」應為 1–5 的整數，已略過")
             continue
-        syn = k.get("同義詞") or []
-        if not isinstance(syn, list):
+        syn = k.get("同義詞")
+        if syn is None:
+            syn = []
+        elif not isinstance(syn, list):
             syn = [syn]
-        out.append(Keyword(term, cat, w, tuple(str(x).strip() for x in syn if str(x).strip())))
+        clean: list[str] = []
+        for x in syn:
+            if isinstance(x, bool) or not isinstance(x, (str, int, float)) or not str(x).strip():
+                problems.append(f"關鍵字「{term}」的同義詞「{x}」不是有效文字，已略過該同義詞")
+                continue
+            clean.append(str(x).strip())
+        key = _fold(term)
+        if key in used:
+            problems.append(f"關鍵字「{term}」與前面的關鍵字或同義詞重複，已略過（避免重複計分）")
+            continue
+        dup_syn = [x for x in clean if _fold(x) in used or _fold(x) == key]
+        for x in dup_syn:
+            problems.append(f"關鍵字「{term}」的同義詞「{x}」與其他關鍵字重複，已略過該同義詞")
+        clean = [x for x in clean if x not in dup_syn]
+        used.update({key, *(_fold(x) for x in clean)})
+        out.append(Keyword(term, cat, w, tuple(clean)))
     return out, problems
+
+
+def _fold(s: str) -> str:
+    return unicodedata.normalize("NFKC", s).casefold().strip()

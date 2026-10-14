@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -82,19 +84,34 @@ def _footer(day: dict, as_of: dt.date) -> Footer:
 def _anomaly_lines(day: dict) -> list[str]:
     lines = [f"- {a['source']}：{a['reason']}" for a in day.get("anomalies", [])]
     lines += [f"- 設定問題：{p}" for p in day.get("config_problems", [])]
+    lines += [f"- 追蹤表：{w}" for w in day.get("output_warnings", [])]
     return lines or ["無"]
 
 
+_MD_SPECIAL = re.compile(r"([\\`*_\[\]()#<>|!~])")
+
+
+def md_escape(text: str) -> str:
+    """跳脫 markdown 符號，避免標題或摘要裡的文字變成連結、標題或表格。"""
+    return _MD_SPECIAL.sub(r"\\\1", " ".join(str(text).split()))
+
+
 def _item_lines(r: dict, md: bool) -> list[str]:
-    title = f"**[{r['title']}]({r['url']})**" if md else f"■ {r['title']}"
+    esc = md_escape if md else (lambda x: x)
+    title = f"**[{esc(r['title'])}](<{r['url']}>)**" if md else f"■ {r['title']}"
     terms = "、".join(r["matched_terms"]) or "無"
     lines = [
         title,
-        f"來源：{'、'.join(r['sources'])}｜發布日期：{r['published'] or '待補'}｜相關度 {r['score']} 分（命中：{terms}）",
+        f"來源：{esc('、'.join(r['sources']))}｜發布日期：{r['published'] or '待補'}｜相關度 {r['score']} 分（命中：{terms}）",
     ]
     s = r.get("summary") or {}
-    lines.append(f"摘要：{s.get('summary', '待補')}")
-    lines.append(f"對優樂地的意義：{s.get('meaning', '待補')}")
+    if r.get("related_to"):
+        rel = r["related_to"]
+        lines.append(
+            f"同一事件的後續報導；先前報導：「{esc(rel['title'])}」（首次出現 {rel['first_seen']}）"
+        )
+    lines.append(f"摘要：{esc(s.get('summary', '待補'))}")
+    lines.append(f"對優樂地的意義：{esc(s.get('meaning', '待補'))}")
     if s.get("flags"):
         lines.append(f"⚠ {'；'.join(s['flags'])}")
     if not md:
@@ -120,15 +137,15 @@ def _group_sections(records: list[dict], md: bool) -> list[Section]:
     return out
 
 
-def _low_section(records: list[dict]) -> Section:
+def _low_section(records: list[dict], md: bool) -> Section:
     low = [r for r in records if not r["relevant"]]
     if not low:
         return Section("附錄：低相關與未列入", ["無"])
     df = pd.DataFrame(
         [
             {
-                "標題": r["title"],
-                "來源": "、".join(r["sources"]),
+                "標題": md_escape(r["title"]) if md else r["title"],
+                "來源": md_escape("、".join(r["sources"])) if md else "、".join(r["sources"]),
                 "分數": r["score"],
                 "原因": r["excluded_reason"],
                 "連結": r["url"],
@@ -160,7 +177,7 @@ def write_daily(day: dict, out_dir: Path, as_of: dt.date) -> Path:
         sections.append(Section("注意", [MOCK_NOTE]))
     sections.append(Section("來源異常", _anomaly_lines(day)))
     sections += _group_sections(records, md=True)
-    sections.append(_low_section(records))
+    sections.append(_low_section(records, md=True))
     return write_md(
         out_dir / f"每日摘要_{as_of.strftime('%Y%m%d')}.md",
         f"外部情報每日摘要（{as_of.isoformat()}）",
@@ -192,7 +209,7 @@ def write_weekly(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> Pa
         sections.append(Section("注意", [MOCK_NOTE]))
     sections.append(Section("來源異常", _anomaly_lines(wk)))
     sections += _group_sections(records, md=False)
-    sections.append(_low_section(records))
+    sections.append(_low_section(records, md=False))
     return write_docx(
         out_dir / f"每週彙整_{as_of.strftime('%Y%m%d')}.docx",
         f"外部情報每週彙整（{start.isoformat()}～{as_of.isoformat()}）",
@@ -203,34 +220,46 @@ def write_weekly(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> Pa
 
 
 # ---- 追蹤表 ----
-def _read_marks(path: Path) -> dict[str, str]:
-    """讀回主管在追蹤表填的「已讀」，依文章編號對回。"""
+def _read_marks(path: Path) -> tuple[dict[str, str], str | None]:
+    """讀回主管在追蹤表填的「已讀」，依文章編號對回。
+
+    回傳 (標記, 問題)。檔案讀不了或找不到欄位時回傳問題說明，由呼叫端備份舊檔並提醒。
+    """
     if not path.exists():
-        return {}
+        return {}, None
     try:
-        ws = load_workbook(path, read_only=True)[TRACK_SHEET]
-    except (KeyError, OSError, ValueError):
-        return {}
-    rows = list(ws.iter_rows(values_only=True))
-    if len(rows) < 2:
-        return {}
-    header = [str(c) if c is not None else "" for c in rows[1]]
-    if "文章編號" not in header or "已讀" not in header:
-        return {}
-    i_id, i_read = header.index("文章編號"), header.index("已讀")
-    marks = {}
-    for row in rows[2:]:
-        if not row or row[i_id] in (None, ""):
-            break
-        v = row[i_read]
-        if v not in (None, "", "待補", UNREAD):
-            marks[str(row[i_id])] = str(v)
-    return marks
+        wb = load_workbook(path, read_only=True)
+    except Exception:  # 檔案損壞：不讓整次執行中斷
+        return {}, "舊的情報追蹤表無法開啟（可能已損壞）"
+    sheets = [wb[TRACK_SHEET]] if TRACK_SHEET in wb.sheetnames else list(wb.worksheets)
+    for ws in sheets:
+        rows = list(ws.iter_rows(values_only=True))
+        for h, row in enumerate(rows):
+            header = [str(c).strip() if c is not None else "" for c in (row or ())]
+            if "文章編號" in header and "已讀" in header:
+                i_id, i_read = header.index("文章編號"), header.index("已讀")
+                marks: dict[str, str] = {}
+                for r in rows[h + 1 :]:
+                    if not r or len(r) <= max(i_id, i_read) or r[i_id] in (None, ""):
+                        continue  # 空白列跳過，不中斷
+                    v = r[i_read]
+                    if v not in (None, "", "待補", UNREAD):
+                        marks[str(r[i_id]).strip()] = str(v).strip()
+                return marks, None
+    return {}, "舊的情報追蹤表找不到「文章編號」或「已讀」欄位"
 
 
-def write_tracking(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> Path:
+def write_tracking(
+    day: dict, days: DayStore, out_dir: Path, as_of: dt.date, warnings: list[str]
+) -> Path:
     path = out_dir / "情報追蹤表.xlsx"
-    marks = _read_marks(path)
+    marks, problem = _read_marks(path)
+    if problem:
+        backup = out_dir / f"情報追蹤表_備份_{as_of.strftime('%Y%m%d')}.xlsx"
+        shutil.copyfile(path, backup)
+        warnings.append(
+            f"{problem}，「已讀」標記可能沒有保留；舊檔已備份為 {backup.name}，請對照補回"
+        )
     rows = []
     for d in days.all_until(as_of):
         for r in d["records"]:
@@ -300,7 +329,8 @@ def write_summary(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> P
         ],
         "alerts": [],
         "data_quality": [f"{a['source']}：{a['reason']}" for a in anomalies]
-        + [f"設定問題：{p}" for p in day.get("config_problems", [])],
+        + [f"設定問題：{p}" for p in day.get("config_problems", [])]
+        + [f"追蹤表：{w}" for w in day.get("output_warnings", [])],
         "highlights": [
             {"title": r["title"], "url": r["url"], "group": r["group"]}
             for r in records
@@ -317,9 +347,12 @@ def write_summary(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> P
 def write_all(
     day: dict, days: DayStore, out_dir: Path, as_of: dt.date, weekly: bool
 ) -> dict[str, Path]:
+    warnings: list[str] = []
+    tracking = write_tracking(day, days, out_dir, as_of, warnings)
+    day = {**day, "output_warnings": warnings}
     files = {
         "daily": write_daily(day, out_dir, as_of),
-        "tracking": write_tracking(day, days, out_dir, as_of),
+        "tracking": tracking,
         "summary": write_summary(day, days, out_dir, as_of),
     }
     if weekly:

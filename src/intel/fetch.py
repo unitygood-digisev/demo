@@ -125,7 +125,11 @@ class Fetcher:
         url = source.url
         cache = self.day_dir / f"{source.id}.xml"
         if not url.lower().startswith(("http://", "https://")):
-            path = (self.root / url) if not Path(url).is_absolute() else Path(url)
+            if "://" in url or url.lower().startswith("file:"):
+                raise FetchError("網址只接受 http／https，或專案資料夾內的檔案")
+            path = ((self.root / url) if not Path(url).is_absolute() else Path(url)).resolve()
+            if not path.is_relative_to(self.root.resolve()):
+                raise FetchError("本機檔案只能放在專案資料夾內，未讀取")
             if not path.exists():
                 raise FetchError(f"找不到檔案 {path.name}")
             res.raw_path = path

@@ -7,12 +7,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from intel import output
-from intel.dedupe import dedupe
+from intel.dedupe import Event, dedupe
 from intel.fetch import Fetcher, HttpGet
 from intel.normalize import to_items
 from intel.score import score_event
 from intel.settings import load_keywords, load_sources
-from intel.store import DayStore, SeenStore
+from intel.store import DayStore, IntelDataError, SeenStore
 from intel.summarize import Summarizer, intel_mock_responder
 from shared import logging as runlog
 from shared.config import PROJECT_ROOT, threshold
@@ -36,6 +36,7 @@ class RunConfig:
     llm: LLMClient | None = None
     sleep: object = None
     log_dir: Path | None = None
+    root: Path = PROJECT_ROOT  # 本機來源檔只能放在這個資料夾內
 
 
 @dataclass
@@ -54,6 +55,12 @@ def _thresholds(cfg: RunConfig) -> dict:
 
 def run(cfg: RunConfig) -> RunResult:
     th = _thresholds(cfg)
+    seen = SeenStore(cfg.interim_dir / "seen.csv")
+    if seen.latest and cfg.as_of < seen.latest:
+        raise IntelDataError(
+            f"指定的日期 {cfg.as_of.isoformat()} 早於已處理過的最新日期 {seen.latest.isoformat()}。"
+            "往前回補會打亂「第一次看到」的紀錄，已停止執行，沒有改動任何檔案。"
+        )
     sources, src_problems = load_sources(cfg.sources_path)
     keywords, kw_problems = load_keywords(cfg.keywords_path)
     config_problems = src_problems + kw_problems
@@ -69,7 +76,7 @@ def run(cfg: RunConfig) -> RunResult:
     # 1. 抓取
     fetch_kwargs = {"sleep": cfg.sleep} if cfg.sleep else {}
     fetcher = Fetcher(
-        PROJECT_ROOT, cfg.interim_dir / "raw", cfg.as_of, cfg.offline, cfg.http_get, **fetch_kwargs
+        cfg.root, cfg.interim_dir / "raw", cfg.as_of, cfg.offline, cfg.http_get, **fetch_kwargs
     )
     fetched_at = dt.datetime.now(TW_TZ)
     anomalies: list[dict] = []
@@ -97,12 +104,25 @@ def run(cfg: RunConfig) -> RunResult:
 
     # 2. 去重、跨次執行判斷
     events = dedupe(items, rank, th["title_similarity_dup"])
-    seen = SeenStore(cfg.interim_dir / "seen.csv")
-    new_events = []
+    new_events: list[Event] = []
+    related: dict[str, dict] = {}  # 舊事件的後續報導 → 先前報導
     for ev in events:
-        first = seen.first_seen_of(ev.member_ids, cfg.as_of)
-        if first == cfg.as_of:
+        if seen.first_seen_of(ev.member_ids, cfg.as_of) == cfg.as_of:
             new_events.append(ev)
+            continue
+        # 已看過的事件：今天才出現的新報導另列一則，避免新連結消失
+        fresh = [m for m in ev.members if seen.is_new(m.id, cfg.as_of)]
+        if fresh:
+            old = min(
+                (m for m in ev.members if not seen.is_new(m.id, cfg.as_of)),
+                key=lambda m: (seen.first_seen[m.id], m.id),
+            )
+            sub_ev = Event(fresh[0], fresh[1:])
+            new_events.append(sub_ev)
+            related[sub_ev.id] = {
+                "title": old.title,
+                "first_seen": seen.first_seen[old.id].isoformat(),
+            }
     for ev in events:
         seen.mark(ev.member_ids, cfg.as_of)
 
@@ -149,6 +169,7 @@ def run(cfg: RunConfig) -> RunResult:
                 if ev.id in over_cap
                 else (None if rel else "相關度低於門檻"),
                 "summary": summary,
+                "related_to": related.get(ev.id),
             }
         )
     records.sort(key=lambda r: (not r["relevant"], -r["score"], r["published"] or "", r["id"]))

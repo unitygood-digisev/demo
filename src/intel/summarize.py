@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -17,7 +18,15 @@ MEANING_MAX = 40
 TITLE_ONLY = "僅標題，內容待確認"
 FAILED = "摘要產生失敗，請看原文"
 
-_URL = re.compile(r"(https?://|www\.)\S+", re.I)
+# 任何像連結的東西：markdown 連結、各種 scheme、www.、裸網域
+_LINK = re.compile(
+    r"\]\s*\("
+    r"|\b(?:https?|ftps?|javascript|vbscript|mailto|data|file|tel|sms|wss?):"
+    r"|\bwww\."
+    r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|gov|edu|tw|io|co|info|biz|me|cn|jp|uk|eu|ai|app|dev|xyz|top|site)\b",
+    re.I,
+)
+LINK_FLAG = "模型回應含連結，已整則捨棄，請看原文"
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 _SENT_END = re.compile(r"[。！？!?]|\.(?=\s|$)")
 
@@ -63,6 +72,13 @@ def intel_mock_responder(prompt: str, input_text: str) -> str:
     )
 
 
+_WS = re.compile(r"\s+")
+
+
+def has_link(text: str) -> bool:
+    return bool(_LINK.search(unicodedata.normalize("NFKC", text)))
+
+
 def _chars(s: str) -> int:
     return len(re.sub(r"\s", "", s))
 
@@ -78,10 +94,14 @@ def parse_response(text: str) -> Summary:
     summary, meaning = data.get("摘要"), data.get("意義")
     if not isinstance(summary, str) or not isinstance(meaning, str) or not summary.strip():
         return Summary(FAILED, "待補", "failed", ["模型回應缺少摘要或意義"])
+    # 連結一律只來自輸入 RSS：模型回應裡出現任何像連結的東西，整則捨棄
+    if has_link(summary) or has_link(meaning):
+        return Summary(FAILED, "待補", "failed", [LINK_FLAG])
+    # 換行與多餘空白壓成一個空白，避免插入假段落
+    summary, meaning = _WS.sub(" ", summary).strip(), _WS.sub(" ", meaning).strip()
+    if not summary:
+        return Summary(FAILED, "待補", "failed", ["模型回應缺少摘要或意義"])
     flags: list[str] = []
-    if _URL.search(summary) or _URL.search(meaning):
-        summary, meaning = _URL.sub("", summary).strip(), _URL.sub("", meaning).strip()
-        flags.append("已移除模型產生的網址")
     if _chars(summary) > SUMMARY_MAX:
         flags.append(f"摘要超過 {SUMMARY_MAX} 字，待人工確認")
     if len([s for s in _SENT_END.split(summary) if s.strip()]) > 2:

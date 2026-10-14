@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from intel.pipeline import RunConfig, run  # noqa: E402
+from intel.store import IntelDataError  # noqa: E402
 from shared.dates import today_tw  # noqa: E402
 
 SAMPLE = ROOT / "data" / "sample" / "feeds"
@@ -47,7 +48,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.keywords:
         cfg.keywords_path = args.keywords
 
-    result = run(cfg)
+    try:
+        result = run(cfg)
+    except IntelDataError as e:
+        print(f"未執行：{e}")
+        return 1
     print(Path(result.files["daily"]).read_text(encoding="utf-8").splitlines()[4].strip("*"))
     for path in result.files.values():
         print(f"已產生：{path}")

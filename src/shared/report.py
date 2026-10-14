@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import re
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -27,6 +29,25 @@ LEVEL_BANNER = {
     "客戶機密": "客戶機密：僅執行長與主管",
 }
 _SHEET_NAME_MAX = 31
+
+
+_FIXED_TIME = "2000-01-01T00:00:00Z"
+_CORE_TIME = re.compile(rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:(?:created|modified)>)")
+
+
+def _make_reproducible(path: Path) -> None:
+    """固定 Office 檔內的時間戳，讓同樣內容產生完全相同的檔案。"""
+    with zipfile.ZipFile(path) as zin:
+        entries = [(i.filename, zin.read(i.filename)) for i in zin.infolist()]
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for name, data in entries:
+            if name == "docProps/core.xml":
+                data = _CORE_TIME.sub(rb"\g<1>" + _FIXED_TIME.encode() + rb"\g<2>", data)
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            zout.writestr(info, data)
+    tmp.replace(path)
 
 
 def make_run_id(system: str, as_of: dt.date, input_files: list[Path]) -> str:
@@ -127,6 +148,7 @@ def write_xlsx(path: Path, headline: str, sheets: dict[str, pd.DataFrame], foote
     wb.properties.created = dt.datetime(2000, 1, 1)  # 固定時間，讓重跑結果可比對
     wb.properties.modified = dt.datetime(2000, 1, 1)
     wb.save(path)
+    _make_reproducible(path)
     return path
 
 
@@ -159,6 +181,7 @@ def write_docx(
     doc.core_properties.created = dt.datetime(2000, 1, 1)
     doc.core_properties.modified = dt.datetime(2000, 1, 1)
     doc.save(path)
+    _make_reproducible(path)
     return path
 
 
