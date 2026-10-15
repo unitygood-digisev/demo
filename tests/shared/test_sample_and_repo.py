@@ -33,15 +33,13 @@ def test_sample_feeds():
         )
 
 
-def test_config_sources_and_keywords_are_empty_templates():
-    assert (
-        yaml.safe_load((ROOT / "config" / "sources.yaml").read_text(encoding="utf-8"))["sources"]
-        == []
-    )
-    assert (
-        yaml.safe_load((ROOT / "config" / "keywords.yaml").read_text(encoding="utf-8"))["keywords"]
-        == []
-    )
+def test_committed_sources_and_keywords_safe():
+    """2026-10-15 起來源與關鍵字由使用者提供並提交。提交的版本不能含客戶類關鍵字（只放本機）。"""
+    srcs = yaml.safe_load((ROOT / "config" / "sources.yaml").read_text(encoding="utf-8"))["sources"]
+    assert srcs and all(str(x["網址"]).startswith("https://") for x in srcs)
+    kws = yaml.safe_load((ROOT / "config" / "keywords.yaml").read_text(encoding="utf-8"))
+    assert all(k["類別"] != "客戶" for k in kws["keywords"])
+    assert "輸出等級" not in kws  # 雲端版不含客戶名稱，維持公開
 
 
 def test_every_threshold_marked_pending():

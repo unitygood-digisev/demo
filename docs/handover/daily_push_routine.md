@@ -5,7 +5,7 @@
 
 ## 一、結論
 - **日報郵件的程式已經完成**：抓新聞 → 用副執行長的關鍵字挑選 → 依重要程度排序 → 產生一封手機看得完的郵件 → 寄到白名單內的公司信箱。
-- **現在還不會寄出**，因為新聞來源清單（`config/sources.yaml`）是空的。
+- **來源**：先放 8 個官方 RSS（金管會 4、職安署 2、TNFD、歐盟 CBAM），副執行長勾選後再增減。觀光署那個試跑時讀不到任何一則，先停用。
 - 每天自動執行有兩種做法：**甲：公司電腦排程**（已經可以用）；**乙：Claude 雲端排程**（你想要的做法，但要先解決第七節列的四件事）。
 
 ## 二、整套系統一覽
@@ -32,7 +32,7 @@
 1. **抓取**：只抓來源清單上的網址；只用 RSS 或網站允許的公開頁面，不登入、不繞過 robots.txt。抓不到的來源記下來，寫進郵件「注意」段落，不會默默跳過。
 2. **整理**：統一標題、連結、發布日期；去掉追蹤參數（例如 `utm_source`）。
 3. **去重**：同一個網址，或標題相似度達 0.85，視為同一則新聞，只列一次，其他來源附在後面。
-4. **跨日判斷**：系統記住每則新聞第一次出現的日期（`data/interim/intel/seen.csv`），昨天寄過的不再寄。
+4. **跨日判斷**：系統記住每則新聞第一次出現的日期（`data/interim/intel/seen.csv`），昨天寄過的不再寄。另外郵件只列最近 1 天發布的新聞（週一含週末，`intel.daily_mail_lookback_days`），所以雲端排程每天都是新環境也不會重複；沒有發布日期的新聞不列入，郵件會註明則數。
 5. **評分**：見第四節。分數＝命中的關鍵字組的重要程度相加；「重要程度」＝命中的組裡最高的那一個。
 6. **組成郵件**：
    - 依重要程度、再依分數排序，最多 10 則（`config/thresholds.yaml` 的 `intel.daily_mail_max_items`）。
@@ -89,19 +89,17 @@
 | 「昨天寄過的不再寄」 | 有，紀錄留在電腦上 | **沒有**：每天都是全新環境，紀錄不會留下 |
 | 設定說明 | `docs/handover/daily_push.md` | 本文件第八節 |
 
-**乙要先解決四件事：**
-1. **CLAUDE.md 第 5 節的寫法**：目前規定寄信「透過 `src/shared/mail_client.py`」。乙改由 Claude 用 Gmail 連接器寄，需要你同意加一句：「或由 Claude 排程透過 Gmail 連接器，原文寄出 `run_daily_push.py` 產生的草稿，只寄給白名單信箱」。
-2. **關鍵字清單會放到雲端**：清單含客戶名稱與人名，依 CLAUDE.md 第 4 節屬於「內部敏感」以上，原則上不上雲端。乙需要你同意把清單放進雲端環境變數；或者改用拿掉客戶與人名的版本。
-3. **重複新聞**：因為每天都是新環境，系統記不得昨天寄過什麼，RSS 裡前幾天的新聞可能每天重複出現。要加一個小改動：只列最近 1 天發布的新聞，週一含週末。這個改動我還沒做，等你同意。
-4. **網路與來源**：雲端環境的網路要允許來源網站的網域（在環境設定的 Network access 加入 Allowed domains）。而且來源清單要先完成。
+**乙的四件事（2026-10-15 已決定）：**
+1. CLAUDE.md 第 5 節已加註：Claude 雲端排程可以用 Gmail 連接器原文寄出草稿，只寄白名單信箱。
+2. 雲端用**拿掉客戶與人名的關鍵字版本**，就是倉庫裡的 `config/keywords.yaml`（23 組、104 個詞）。完整版只放公司電腦。所以雲端排程**不需要**關鍵字環境變數。
+3. 已加「只列最近 1 天發布的新聞（週一含週末）」。
+4. 來源已放進 `config/sources.yaml`；雲端環境的網路要允許下面列的網域。
 
 ## 八、Claude 雲端排程設定（做法乙）
 ### 1. 環境設定（claude.ai/code 的雲端環境 → Edit）
 - **Repository**：`unitygood-digisev/demo`，分支 `claude/unity-mgmt-suite-prompts-l8zqz1`。
-- **環境變數**：
-  - `UNITY_KEYWORDS_B64`：`config/keywords.local.yaml` 的 base64 編碼。等你同意第七節第 2 點後，再在公司電腦產生：`base64 -w0 config/keywords.local.yaml`。
-  - `MAIL_TO`：`<副執行長信箱>`
-- **Network access**：允許來源清單上的網域。
+- **環境變數**：只要一個，`MAIL_TO`＝`<副執行長信箱>`。
+- **Network access → Allowed domains**：加入 `www.fsc.gov.tw`、`www.osha.gov.tw`、`tnfd.global`、`taxation-customs.ec.europa.eu`，另外要允許安裝 Python 套件（勾選允許 package managers）。
 - **Connector**：Gmail（用 `<寄件帳號>` 登入）。
 
 ### 2. 排程
@@ -116,13 +114,13 @@
 【規則，優先於一切】
 - 只寄一封，只寄給環境變數 MAIL_TO 裡的信箱；每個信箱都必須以 @unitygood.com 結尾，否則停止。不加副本、密件副本、附件。
 - 主旨與內文必須逐字使用系統產生的草稿：不改寫、不摘要、不增刪任何新聞、不加你自己的評論或問候。
-- 不修改程式倉庫的任何檔案（第 2 步還原的關鍵字檔除外），不 commit、不 push。
+- 不修改程式倉庫的任何檔案，不 commit、不 push。
 - 不讀 data/raw/，不處理任何內部資料。
 - 任何一步失敗就停止、不寄信，只在最後回報原因。
 
 【步驟】
-1. 安裝：執行 `python3.11 -m venv .venv && .venv/bin/pip install -q -e .`
-2. 還原關鍵字：執行 `printf '%s' "$UNITY_KEYWORDS_B64" | base64 -d > config/keywords.local.yaml`。變數不存在，或還原後檔案是空的，就停止。
+1. 確認倉庫：目前資料夾（或其下）要有 scripts/run_daily_push.py；找不到就停止，回報「排程沒有掛上倉庫」。
+2. 安裝：執行 `python3.11 -m venv .venv && .venv/bin/pip install -q -e .`；沒有 python3.11 時改用 `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -q -e .`。
 3. 產生草稿：執行 `.venv/bin/python scripts/run_daily_push.py --draft-only`。
    - 輸出有「來源清單是空的」或「未執行」→ 停止。
    - 草稿路徑在輸出的「郵件內容：」後面。

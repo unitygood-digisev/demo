@@ -463,3 +463,71 @@ def test_draft_only_does_not_overwrite_sent_draft(mail_env, config_dir):
     res.draft.write_text("寄出的版本", encoding="utf-8")
     push(False)
     assert res.draft.read_text(encoding="utf-8") == "寄出的版本"
+
+
+# ---- 只列最近幾天發布的新聞 ----
+def _rec(i, published, importance=5):
+    return {
+        "id": i,
+        "title": f"新聞{i}",
+        "url": f"https://x.example/{i}",
+        "sources": ["來源"],
+        "published": published,
+        "score": importance,
+        "importance": importance,
+        "matched_terms": ["碳費"],
+        "relevant": True,
+    }
+
+
+def _day(as_of, recs):
+    return {"as_of": as_of, "run_id": "r", "records": recs, "anomalies": [], "config_problems": []}
+
+
+def test_lookback_filters_old_and_undated():
+    from intel.daily_push import compose
+
+    day = _day(
+        "2026-10-14",
+        [
+            _rec("a", "2026-10-14"),
+            _rec("b", "2026-10-13"),
+            _rec("c", "2026-10-12"),
+            _rec("d", None),
+        ],
+    )
+    subject, body = compose(day, 10, 1)
+    assert "新聞a" in body and "新聞b" in body and "新聞c" not in body and "新聞d" not in body
+    assert "另有 1 則較早發布、1 則沒有發布日期" in body
+    assert body.startswith("今天有 2 則") and "（2 則）" in subject
+
+
+def test_lookback_monday_includes_weekend():
+    from intel.daily_push import compose, window_start
+
+    assert window_start(dt.date(2026, 10, 19), 1) == dt.date(2026, 10, 16)  # 週一 → 上週五起
+    day = _day("2026-10-19", [_rec("sat", "2026-10-17"), _rec("thu", "2026-10-15")])
+    _, body = compose(day, 10, 1)
+    assert "新聞sat" in body and "新聞thu" not in body
+
+
+@pytest.mark.parametrize("bad", [-1, "1", True, None])
+def test_bad_lookback_stops(mail_env, config_dir, bad):
+    import yaml
+
+    from intel import daily_push
+
+    p = config_dir / "thresholds.yaml"
+    d = yaml.safe_load(p.read_text(encoding="utf-8"))
+    d["intel"]["daily_mail_lookback_days"]["value"] = bad
+    p.write_text(yaml.safe_dump(d, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(MailError, match="daily_mail_lookback_days"):
+        daily_push.run(
+            daily_push.PushConfig(
+                as_of=AS_OF,
+                config_dir=config_dir,
+                offline=True,
+                interim_dir=mail_env / "i",
+                out_dir=mail_env / "o",
+            )
+        )

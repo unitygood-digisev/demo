@@ -43,22 +43,38 @@ class PushResult:
     message: str
 
 
-def _max_items(config_dir: Path | None) -> int:
-    v = threshold("intel", "daily_mail_max_items", config_dir)[0]
-    if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+def _int_threshold(key: str, minimum: int, config_dir: Path | None) -> int:
+    v = threshold("intel", key, config_dir)[0]
+    if isinstance(v, bool) or not isinstance(v, int) or v < minimum:
         raise MailError(
-            f"config/thresholds.yaml 的 intel.daily_mail_max_items 應為 1 以上的整數（目前是「{v}」）"
+            f"config/thresholds.yaml 的 intel.{key} 應為 {minimum} 以上的整數（目前是「{v}」）"
         )
     return v
+
+
+def window_start(as_of: dt.date, lookback_days: int) -> dt.date:
+    """只列這一天（含）之後發布的新聞。週一往前多算週六、週日。"""
+    extra = 2 if as_of.weekday() == 0 else 0
+    return as_of - dt.timedelta(days=lookback_days + extra)
 
 
 def mail_level(day: dict) -> str:
     return Classifier().highest([LEVEL, day.get("level") or LEVEL])
 
 
-def compose(day: dict, max_items: int) -> tuple[str, str]:
-    """回傳 (主旨, 內文)。第一句講結論。"""
+def compose(day: dict, max_items: int, lookback_days: int | None = None) -> tuple[str, str]:
+    """回傳 (主旨, 內文)。第一句講結論。
+
+    lookback_days：只列最近幾天發布的新聞。雲端排程每天是全新環境、記不得昨天寄過什麼，
+    用發布日期避免同一則新聞連續幾天出現。沒有發布日期的不列入，並註明則數。
+    """
     rel = [r for r in day["records"] if r["relevant"]]
+    old = undated = 0
+    if lookback_days is not None:
+        start = window_start(dt.date.fromisoformat(day["as_of"]), lookback_days).isoformat()
+        undated = sum(1 for r in rel if not r["published"])
+        old = sum(1 for r in rel if r["published"] and r["published"] < start)
+        rel = [r for r in rel if r["published"] and r["published"] >= start]
     rel.sort(key=lambda r: (-r.get("importance", 0), -r["score"], r["published"] or "", r["id"]))
     top = rel[:max_items]
     n5 = sum(1 for r in rel if r.get("importance", 0) >= 5)
@@ -78,6 +94,11 @@ def compose(day: dict, max_items: int) -> tuple[str, str]:
         ]
     if len(rel) > len(top):
         lines += [f"（另有 {len(rel) - len(top)} 則，見本機的情報日報檔）", ""]
+    if old or undated:
+        parts = ([f"{old} 則較早發布"] if old else []) + (
+            [f"{undated} 則沒有發布日期"] if undated else []
+        )
+        lines += [f"（另有 {'、'.join(parts)}的相關新聞未列入，見本機的情報日報檔）", ""]
     errors = [a for a in day["anomalies"] if a["level"] == "error"]
     if errors:
         lines.append(
@@ -96,7 +117,8 @@ def compose(day: dict, max_items: int) -> tuple[str, str]:
 
 
 def run(cfg: PushConfig) -> PushResult:
-    max_items = _max_items(cfg.config_dir)
+    max_items = _int_threshold("daily_mail_max_items", 1, cfg.config_dir)
+    lookback = _int_threshold("daily_mail_lookback_days", 0, cfg.config_dir)
     res = run_intel(
         RunConfig(
             as_of=cfg.as_of,
@@ -109,7 +131,7 @@ def run(cfg: PushConfig) -> PushResult:
             log_dir=cfg.log_dir,
         )
     )
-    subject, body = compose(res.day, max_items)
+    subject, body = compose(res.day, max_items, lookback)
     level = mail_level(res.day)
     draft = cfg.out_dir / f"郵件_情報日報_{cfg.as_of.strftime('%Y%m%d')}.txt"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)

@@ -1,5 +1,7 @@
 # 外部情報來源清單（系統 7）
-# 由使用者提供。程式不會自己新增來源。目前為空範本。
+# 由使用者提供。程式不會自己新增來源。
+# 2026-10-15：使用者同意先放勾選表（docs/intel_sources_candidates.md）第一節的 9 個官方 RSS，
+# 副執行長勾選後再增減。每個網址都在 2026-10-15 實際讀取過，robots.txt 允許、不需登入。
 #
 # 填寫說明：每個來源一段，欄位如下
 #   id:      英文代號，不可重複，例如 moenv_news
@@ -18,4 +20,60 @@
 #     語言: zh-TW
 #     分類: 法規與準則
 
-sources: []
+sources:
+  - id: fsc_press_rss
+    名稱: 金管會 新聞稿
+    類型: rss
+    網址: "https://www.fsc.gov.tw/RSS/Messages?serno=201202290009&language=chinese"
+    語言: zh-TW
+    分類: 法規與準則
+  - id: fsc_law_draft_rss
+    名稱: 金管會 法規草案預告
+    類型: rss
+    網址: "https://www.fsc.gov.tw/RSS/Noticelaw?serno=201202290010&language=chinese"
+    語言: zh-TW
+    分類: 法規與準則
+  - id: fsc_new_law_rss
+    名稱: 金管會 最新法令函釋
+    類型: rss
+    網址: "https://www.fsc.gov.tw/RSS/Newlaw?serno=201202290008&language=chinese"
+    語言: zh-TW
+    分類: 法規與準則
+  - id: fsc_announce_rss
+    名稱: 金管會 重要公告
+    類型: rss
+    網址: "https://www.fsc.gov.tw/RSS/Messages?serno=201202290001&language=chinese"
+    語言: zh-TW
+    分類: 法規與準則
+  - id: osha_press_rss
+    名稱: 職安署 新聞稿
+    類型: rss
+    網址: "https://www.osha.gov.tw/48110/48417/48419/RssList"
+    語言: zh-TW
+    分類: 法規與準則
+  - id: osha_bulletin_rss
+    名稱: 職安署 公布欄
+    類型: rss
+    網址: "https://www.osha.gov.tw/48110/48417/48423/RssList"
+    語言: zh-TW
+    分類: 法規與準則
+  # 交通部觀光署 行政公告：2026-10-15 試跑時 99 則全部沒有日期、連結格式壞掉（網域重複），讀不到任何一則，
+  # 先停用。要用的話需要另寫連結清理，或改用觀光署其他頁面。
+  # - id: tad_admin_rss
+  #   名稱: 交通部觀光署 行政公告
+  #   類型: rss
+  #   網址: "https://admin.taiwan.net.tw/fapi/rss/1"
+  #   語言: zh-TW
+  #   分類: 法規與準則
+  - id: tnfd_news_rss
+    名稱: TNFD 新聞
+    類型: rss
+    網址: "https://tnfd.global/feed/"
+    語言: en
+    分類: 法規與準則
+  - id: eu_taxud_news_rss
+    名稱: 歐盟稅務與關務總署新聞（含 CBAM）
+    類型: rss
+    網址: "https://taxation-customs.ec.europa.eu/node/2/rss_en"
+    語言: en
+    分類: 法規與準則
