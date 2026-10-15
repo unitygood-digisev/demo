@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 
 from intel.settings import GROUPS
 from intel.store import DayStore
+from shared.classify import Classifier
 from shared.report import Footer, Section, md_escape, write_docx, write_md, write_xlsx
 
 LEVEL = "公開"
@@ -70,12 +71,17 @@ def _missing(day: dict) -> list[str]:
     return out
 
 
-def _footer(day: dict, as_of: dt.date) -> Footer:
+def _level(days_: list[dict]) -> str:
+    """多天合併的產出（週報、追蹤表、summary）取這些天裡最高的等級。"""
+    return Classifier().highest([LEVEL, *(d.get("level") or LEVEL for d in days_)])
+
+
+def _footer(day: dict, as_of: dt.date, level: str | None = None) -> Footer:
     return Footer(
         as_of=as_of,
         input_files=day.get("input_files", []),
         run_id=day["run_id"],
-        level=LEVEL,
+        level=level or day.get("level") or LEVEL,
         missing=_missing(day),
         method=_method(day.get("thresholds", {})),
     )
@@ -207,7 +213,7 @@ def write_weekly(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> Pa
         f"外部情報每週彙整（{start.isoformat()}～{as_of.isoformat()}）",
         _headline(records, anomalies, "本週"),
         sections,
-        _footer(wk, as_of),
+        _footer(wk, as_of, _level([day, *days.window(as_of, 7)])),
     )
 
 
@@ -289,7 +295,9 @@ def write_tracking(
     df = pd.DataFrame(rows, columns=TRACK_COLUMNS)
     n_rel = sum(1 for r in rows if r["是否相關"] == "相關")
     headline = f"追蹤表共 {len(rows)} 則，其中相關 {n_rel} 則。看過的請把「已讀」欄的「未讀」改成「已讀」，重新產生時會保留。"
-    return write_xlsx(path, headline, {TRACK_SHEET: df}, _footer(day, as_of))
+    # 追蹤表會累積歷來所有文章：等級取歷來最高
+    level = _level([day, *days.all_until(as_of)])
+    return write_xlsx(path, headline, {TRACK_SHEET: df}, _footer(day, as_of, level))
 
 
 # ---- summary.json（給管理層週報）----
@@ -309,7 +317,7 @@ def write_summary(day: dict, days: DayStore, out_dir: Path, as_of: dt.date) -> P
         "system": "intel",
         "run_id": day["run_id"],
         "as_of": as_of.isoformat(),
-        "classification": LEVEL,
+        "classification": _level([day, *days.window(as_of, 7)]),
         "headline": _headline(records, anomalies, "近 7 天"),
         "metrics": [
             {

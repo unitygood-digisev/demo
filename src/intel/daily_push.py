@@ -12,10 +12,12 @@ from pathlib import Path
 
 from intel.pipeline import RunConfig, default_keywords_path
 from intel.pipeline import run as run_intel
+from shared.classify import Classifier
 from shared.config import PROJECT_ROOT, threshold
+from shared.dates import today_tw
 from shared.mail_client import MailClient, MailError, MailNotConfigured
 
-LEVEL = "內部一般"  # 新聞本身公開，但「命中關鍵字」會顯示客戶名稱
+LEVEL = "內部一般"  # 新聞本身公開，但「命中關鍵字」會顯示客戶名稱；關鍵字檔標得更高時取高者
 KIND = "intel_daily"
 
 
@@ -31,6 +33,7 @@ class PushConfig:
     log_dir: Path | None = None
     mail: MailClient | None = None
     send: bool = True
+    today: dt.date | None = None  # 測試用；預設台灣今天。只有今天的日報可以寄
 
 
 @dataclass
@@ -47,6 +50,10 @@ def _max_items(config_dir: Path | None) -> int:
             f"config/thresholds.yaml 的 intel.daily_mail_max_items 應為 1 以上的整數（目前是「{v}」）"
         )
     return v
+
+
+def mail_level(day: dict) -> str:
+    return Classifier().highest([LEVEL, day.get("level") or LEVEL])
 
 
 def compose(day: dict, max_items: int) -> tuple[str, str]:
@@ -81,7 +88,7 @@ def compose(day: dict, max_items: int) -> tuple[str, str]:
     lines += [
         "",
         "---",
-        f"資料截至：{day['as_of']}｜資料等級：{LEVEL}｜執行編號：{day['run_id']}",
+        f"資料截至：{day['as_of']}｜資料等級：{mail_level(day)}｜執行編號：{day['run_id']}",
         "本郵件由系統自動產生，只寄給公司內部指定同仁，請勿轉寄給客戶。",
     ]
     subject = f"【優樂地】永續情報日報 {day['as_of']}（{len(rel)} 則）"
@@ -103,16 +110,23 @@ def run(cfg: PushConfig) -> PushResult:
         )
     )
     subject, body = compose(res.day, max_items)
+    level = mail_level(res.day)
     draft = cfg.out_dir / f"郵件_情報日報_{cfg.as_of.strftime('%Y%m%d')}.txt"
+    mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
+    can_send = cfg.send and cfg.as_of == (cfg.today or today_tw())
+    if can_send and draft.is_file() and mail.already_sent(KIND, cfg.as_of):
+        # 已經寄過：保留寄出的那份草稿，不覆蓋
+        return PushResult(draft, False, "今天已經寄過，沒有重寄")
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(f"主旨：{subject}\n\n{body}", encoding="utf-8")
     if any("來源清單是空的" in p for p in res.day["config_problems"]):
         return PushResult(draft, False, "未寄出：來源清單是空的，請先設定 config/sources.yaml")
     if not cfg.send:
         return PushResult(draft, False, "未寄出：本次只產生郵件草稿")
-    mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
+    if not can_send:
+        return PushResult(draft, False, "未寄出：只能寄今天的日報（指定了其他日期時只產生草稿）")
     try:
-        sent = mail.send(subject, body, level=LEVEL, kind=KIND, day=cfg.as_of)
+        sent = mail.send(subject, body, level=level, kind=KIND, day=cfg.as_of)
     except MailNotConfigured as e:
         return PushResult(draft, False, f"未寄出：{e}")
     if not sent:

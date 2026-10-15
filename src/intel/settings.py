@@ -42,7 +42,7 @@ class Keyword:
     weight: int
     synonyms: tuple[str, ...] = field(default_factory=tuple)
     standalone: bool = True  # false：這一組只在同時命中其他關鍵字時才算（例如主管機關名稱）
-    restricted: tuple[str, ...] = field(default_factory=tuple)  # 這一組裡不能單獨算的詞
+    restricted_words: tuple[str, ...] = field(default_factory=tuple)  # 不能單獨算的詞（已正規化）
 
     @property
     def all_terms(self) -> tuple[str, ...]:
@@ -108,7 +108,7 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
 
 
 def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
-    """詞的寫法：「A＋B」＝兩個都要出現；「A／B」＝任一個出現即可。
+    """詞的寫法（全形符號）：「A＋B」＝兩個都要出現；「A／B」＝任一個出現即可。
 
     檔案最上層可寫「不能單獨算的詞」（例如 ESG、永續、淨零）：這些詞只在同時命中其他關鍵字時才算。
     每一組可寫「單獨不算: true」：整組只在同時命中其他關鍵字時才算。
@@ -148,6 +148,14 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
                 problems.append(f"關鍵字「{term}」的同義詞「{x}」不是有效文字，已略過該同義詞")
                 continue
             clean.append(str(x).strip())
+        if _malformed(term):
+            problems.append(f"關鍵字「{term}」的寫法不完整（「＋」或「／」前後要有詞），已略過")
+            continue
+        for x in [x for x in clean if _malformed(x)]:
+            problems.append(
+                f"關鍵字「{term}」的同義詞「{x}」寫法不完整（「＋」或「／」前後要有詞），已略過該同義詞"
+            )
+        clean = [x for x in clean if not _malformed(x)]
         key = _fold(term)
         if key in used:
             problems.append(f"關鍵字「{term}」與前面的關鍵字或同義詞重複，已略過（避免重複計分）")
@@ -161,7 +169,6 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
         if not isinstance(alone, bool):
             problems.append(f"關鍵字「{term}」的「單獨不算」只能寫 true 或 false，視為 false")
             alone = False
-        terms = (term, *clean)
         out.append(
             Keyword(
                 term,
@@ -169,10 +176,24 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
                 w,
                 tuple(clean),
                 standalone=not alone,
-                restricted=tuple(t for t in terms if _fold(t) in restricted),
+                restricted_words=tuple(sorted(restricted)),
             )
         )
     return out, problems
+
+
+def _malformed(term: str) -> bool:
+    return any(not alt.strip() for part in term.split("＋") for alt in part.split("／"))
+
+
+def keywords_output_level(path: Path) -> str:
+    """關鍵字檔最上層的「輸出等級」：命中詞含客戶名稱時應寫「內部一般」。沒寫時為「公開」。"""
+    try:
+        top = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError, UnicodeDecodeError):
+        return "公開"
+    v = top.get("輸出等級") if isinstance(top, dict) else None
+    return str(v).strip() if v else "公開"
 
 
 def _fold(s: str) -> str:

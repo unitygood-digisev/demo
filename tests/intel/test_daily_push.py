@@ -210,6 +210,7 @@ def test_daily_push_end_to_end(mail_env, config_dir, monkeypatch):
             offline=True,
             log_dir=mail_env / "logs",
             mail=client(mail_env, config_dir),
+            today=AS_OF,
         )
     )
     assert res.sent is True
@@ -240,6 +241,7 @@ def test_daily_push_end_to_end(mail_env, config_dir, monkeypatch):
             offline=True,
             log_dir=mail_env / "logs",
             mail=client(mail_env, config_dir),
+            today=AS_OF,
         )
     )
     assert res2.sent is False and len(FakeSMTP.sent) == 1
@@ -261,6 +263,7 @@ def test_no_sources_does_not_send(mail_env, config_dir, tmp_path):
             offline=True,
             log_dir=tmp_path / "logs",
             mail=client(mail_env, config_dir),
+            today=AS_OF,
         )
     )
     assert res.sent is False and "來源" in res.message
@@ -282,3 +285,120 @@ def test_short_acronyms_need_word_boundary(tmp_path):
     assert score_event(ev("It is obviously a customer"), k, {}).score == 0
     assert score_event(ev("BV 發布查證新服務"), k, {}).score == 3
     assert score_event(ev("TÜV Rheinland 年報"), k, {}).score == 3
+
+
+# ---- 第一輪獨立驗收追加 ----
+@pytest.mark.parametrize(
+    "title, score",
+    [("淨零與 ESG 新聞", 0), ("ESG 永續大會", 0), ("甲品牌 ESG 永續大會", 5 + 1)],
+)
+def test_restricted_alternatives_and_combos(tmp_path, title, score):
+    body = """
+不能單獨算的詞: [ESG, 永續, 淨零]
+keywords:
+  - 詞: 淨零／ESG
+    類別: 議題
+    權重: 2
+  - 詞: ESG＋永續
+    類別: 議題
+    權重: 1
+  - 詞: 甲品牌
+    類別: 自家品牌
+    權重: 5
+"""
+    k = kws(tmp_path, body)
+    got = score_event(ev(title), k, {}).score
+    assert got == (0 if score == 0 else 5 + 2 + 1)
+
+
+@pytest.mark.parametrize("bad", ["A＋", "／B", "＋"])
+def test_malformed_terms_warned(tmp_path, bad):
+    p = tmp_path / "k.yaml"
+    p.write_text(f"keywords:\n  - 詞: {bad}\n    類別: 議題\n    權重: 3\n", encoding="utf-8")
+    out, problems = load_keywords(p)
+    assert out == [] and any("寫法不完整" in x for x in problems)
+
+
+def test_halfwidth_plus_is_literal(tmp_path):
+    k = kws(tmp_path, "keywords:\n  - 詞: Scope 1+2\n    類別: 議題\n    權重: 3\n")
+    assert score_event(ev("Scope 1 and 2"), k, {}).score == 0
+    assert score_event(ev("Scope 1+2 排放"), k, {}).score == 3
+
+
+def test_output_level_follows_keyword_file(tmp_path, config_dir):
+    from intel.pipeline import RunConfig, run
+
+    kw = tmp_path / "k.yaml"
+    kw.write_text(
+        (SAMPLE / "keywords_sample.yaml").read_text(encoding="utf-8") + "\n輸出等級: 內部一般\n",
+        encoding="utf-8",
+    )
+    res = run(
+        RunConfig(
+            as_of=AS_OF,
+            sources_path=SAMPLE / "sources_sample.yaml",
+            keywords_path=kw,
+            interim_dir=tmp_path / "i",
+            out_dir=tmp_path / "o",
+            config_dir=config_dir,
+            offline=True,
+            log_dir=tmp_path / "l",
+        )
+    )
+    assert res.day["level"] == "內部一般"
+    for f in res.files.values():
+        if f.suffix in (".md",):
+            assert "內部一般" in f.read_text(encoding="utf-8")
+    s = json.loads((tmp_path / "o" / "summary.json").read_text(encoding="utf-8"))
+    assert s["classification"] == "內部一般"
+
+
+def test_corrupt_send_log_stops_and_partial_line_repaired(mail_env, config_dir):
+    log = mail_env / "sent.jsonl"
+    log.write_text('{"day": "2026-10-13", "kind": "intel_daily"}', encoding="utf-8")  # 沒有換行
+    c = client(mail_env, config_dir)
+    assert c.send("日報", "x", level="公開", kind="intel_daily", day=AS_OF) is True
+    assert c.send("日報", "x", level="公開", kind="intel_daily", day=AS_OF) is False
+    log.write_text("{壞掉\n", encoding="utf-8")
+    with pytest.raises(MailError, match="第 1 行壞掉"):
+        c.send("日報", "x", level="公開", kind="intel_daily", day=AS_OF)
+    log.write_bytes("{}".encode("utf-16"))
+    with pytest.raises(MailError, match="無法讀取"):
+        c.send("日報", "x", level="公開", kind="intel_daily", day=AS_OF)
+
+
+def test_only_today_can_be_sent(mail_env, config_dir):
+    from intel import daily_push
+
+    res = daily_push.run(
+        daily_push.PushConfig(
+            as_of=AS_OF,
+            sources_path=SAMPLE / "sources_sample.yaml",
+            keywords_path=SAMPLE / "keywords_sample.yaml",
+            interim_dir=mail_env / "interim",
+            out_dir=mail_env / "out",
+            config_dir=config_dir,
+            offline=True,
+            log_dir=mail_env / "logs",
+            mail=client(mail_env, config_dir),
+            today=AS_OF - dt.timedelta(days=1),  # 指定的是「明天」的日期
+        )
+    )
+    assert res.sent is False and "只能寄今天" in res.message and FakeSMTP.sent == []
+
+
+def test_duplicate_recipients_and_percent(mail_env, config_dir, monkeypatch):
+    monkeypatch.setenv("MAIL_TO", "boss@unitygood.com, BOSS@unitygood.com")
+    c = client(mail_env, config_dir)
+    c.send("日報", "x", level="公開", kind="intel_daily", day=AS_OF)
+    assert FakeSMTP.sent[0]["To"] == "boss@unitygood.com"
+    monkeypatch.setenv("MAIL_TO", "x%outside.com@unitygood.com")
+    with pytest.raises(MailError, match="公司信箱"):
+        client(mail_env, config_dir).send(
+            "日報", "x", level="公開", kind="intel_daily", day=AS_OF + dt.timedelta(days=1)
+        )
+
+
+def test_unknown_level_message(mail_env, config_dir):
+    with pytest.raises(MailError, match="不認得的資料等級"):
+        client(mail_env, config_dir).send("日報", "x", level=" 公開", kind="intel_daily", day=AS_OF)

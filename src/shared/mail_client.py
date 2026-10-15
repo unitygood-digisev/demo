@@ -22,7 +22,7 @@ from pathlib import Path
 from shared.classify import Classifier
 from shared.config import PROJECT_ROOT, load_dotenv, load_yaml
 
-_ADDR = re.compile(r"^[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+)$")
+_ADDR = re.compile(r"^[A-Za-z0-9._+-]+@([A-Za-z0-9.-]+)$")  # 不接受 % 等舊式轉信寫法
 
 
 class MailError(Exception):
@@ -52,13 +52,26 @@ class MailClient:
         return bool(m) and m[1].lower() == str(self.cfg["allowed_domain"]).lower()
 
     def already_sent(self, kind: str, day: dt.date) -> bool:
-        if not self.log_path.is_file():
+        """讀寄送紀錄。紀錄壞掉時丟 MailError、不寄（寧可不寄，也不要每天重寄）。"""
+        if not self.log_path.exists():
             return False
-        for line in self.log_path.read_text(encoding="utf-8").splitlines():
+        try:
+            text = self.log_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            raise MailError(
+                f"寄送紀錄 {self.log_path.name} 無法讀取，為避免重寄已停止，請負責人檢查"
+            ) from e
+        for n, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
             try:
                 r = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+                if not isinstance(r, dict):
+                    raise ValueError
+            except ValueError as e:
+                raise MailError(
+                    f"寄送紀錄 {self.log_path.name} 第 {n} 行壞掉，為避免重寄已停止，請負責人檢查"
+                ) from e
             if r.get("kind") == kind and r.get("day") == day.isoformat():
                 return True
         return False
@@ -68,9 +81,9 @@ class MailClient:
         if not self.cfg.get("enabled", False):
             raise MailNotConfigured("config/mail.yaml 的 enabled 為 false，不寄信")
         max_level = str(self.cfg.get("max_level", "內部一般"))
-        if level not in self.classifier.levels or self.classifier.rank(
-            level
-        ) > self.classifier.rank(max_level):
+        if level not in self.classifier.levels:
+            raise MailError(f"不認得的資料等級「{level}」，已拒寄")
+        if self.classifier.rank(level) > self.classifier.rank(max_level):
             raise MailError(f"資料等級「{level}」高於允許寄送的「{max_level}」，已拒寄")
         try:
             load_dotenv(self.env_file)
@@ -78,11 +91,10 @@ class MailClient:
             raise MailError(str(e)) from e
         sender = os.environ.get(self.cfg["sender_env"], "").strip()
         password = os.environ.get(self.cfg["password_env"], "").strip()
-        to = [
-            x.strip()
-            for x in os.environ.get(self.cfg["recipients_env"], "").split(",")
-            if x.strip()
-        ]
+        to: list[str] = []
+        for x in os.environ.get(self.cfg["recipients_env"], "").split(","):
+            if x.strip() and x.strip().lower() not in {t.lower() for t in to}:
+                to.append(x.strip())  # 重複的收件人只留一個
         if not sender or not password or not to:
             raise MailNotConfigured(
                 "尚未設定寄件帳號、應用程式密碼或收件人（.env 的 MAIL_FROM、MAIL_APP_PASSWORD、MAIL_TO），未寄出"
@@ -121,6 +133,12 @@ class MailClient:
             "recipients": len(to),
             "subject_sha256": hashlib.sha256(subject.encode("utf-8")).hexdigest()[:16],
         }
+        # 上一筆紀錄若沒寫完（沒有換行），先補換行，避免新紀錄接在壞行後面
+        lead = ""
+        if self.log_path.is_file() and self.log_path.stat().st_size:
+            with self.log_path.open("rb") as f:
+                f.seek(-1, os.SEEK_END)
+                lead = "" if f.read(1) == b"\n" else "\n"
         with self.log_path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            f.write(lead + json.dumps(rec, ensure_ascii=False) + "\n")
         return True

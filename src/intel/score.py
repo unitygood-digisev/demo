@@ -46,13 +46,23 @@ def _fold(s: str) -> str:
     return unicodedata.normalize("NFKC", s).casefold()
 
 
-def term_hit(term: str, text: str) -> bool:
-    """「A＋B」兩個都要出現；每一段裡「A／B」任一個出現即可。text 須已經過 _fold。"""
-    parts = [p for p in re.split(r"[＋+]", term) if p.strip()]
-    return bool(parts) and all(
-        any(_alt_hit(_fold(alt.strip()), text) for alt in part.split("／") if alt.strip())
-        for part in parts
-    )
+def term_hit(term: str, text: str, restricted: tuple[str, ...] = ()) -> str | None:
+    """回傳 strong（不靠限制詞就成立）、weak（要靠 ESG／永續／淨零這類限制詞才成立）或 None。
+
+    「A＋B」兩段都要出現（只認全形＋）；每段裡「A／B」任一個出現即可。text 須已經過 _fold。
+    """
+    parts = [p for p in term.split("＋") if p.strip()]
+    if not parts:
+        return None
+    strong = False  # 至少有一段是靠非限制詞命中，才算可以單獨成立
+    for part in parts:
+        alts = [_fold(a.strip()) for a in part.split("／") if a.strip()]
+        hit = [a for a in alts if _alt_hit(a, text)]
+        if not hit:
+            return None
+        if any(a not in restricted for a in hit):
+            strong = True
+    return "strong" if strong else "weak"
 
 
 def _alt_hit(alt: str, text: str) -> bool:
@@ -69,11 +79,12 @@ def score_event(event: Event, keywords: list[Keyword], sources: dict[str, Source
     terms: list[str] = []
     found_by: dict[Keyword, list[str]] = {}
     for kw in keywords:
-        found = [t for t in kw.all_terms if t and term_hit(t, text)]
+        kinds = {t: term_hit(t, text, kw.restricted_words) for t in kw.all_terms if t}
+        found = [t for t, k in kinds.items() if k]
         if not found:
             continue
         found_by[kw] = found
-        if kw.standalone and any(t not in kw.restricted for t in found):
+        if kw.standalone and any(k == "strong" for k in kinds.values()):
             strong.append(kw)
         else:
             weak.append(kw)

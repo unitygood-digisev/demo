@@ -11,10 +11,11 @@ from intel.dedupe import Event, dedupe
 from intel.fetch import Fetcher, HttpGet
 from intel.normalize import to_items
 from intel.score import score_event
-from intel.settings import load_keywords, load_sources
+from intel.settings import keywords_output_level, load_keywords, load_sources
 from intel.store import DayStore, IntelDataError, SeenStore
 from intel.summarize import Summarizer, intel_mock_responder
 from shared import logging as runlog
+from shared.classify import Classifier
 from shared.config import PROJECT_ROOT, threshold
 from shared.dates import TW_TZ
 from shared.llm_client import LLMClient
@@ -184,6 +185,8 @@ def run(cfg: RunConfig) -> RunResult:
     day = {
         "as_of": cfg.as_of.isoformat(),
         "run_id": run_id,
+        # 命中詞會出現在產出裡；關鍵字檔寫了「輸出等級」（例如含客戶名稱時的內部一般）就照它標
+        "level": Classifier().highest(["公開", keywords_output_level(cfg.keywords_path)]),
         "records": records,
         "anomalies": anomalies,
         "config_problems": config_problems,
