@@ -120,7 +120,10 @@
 - 任何一步失敗就停止、不寄信，只在最後回報原因。
 
 【步驟】
-1. 確認倉庫：目前資料夾（或其下）要有 scripts/run_daily_push.py；找不到就停止，回報「排程沒有掛上倉庫」。
+1. 取得倉庫：
+   - 先找目前資料夾（或其下）有沒有 scripts/run_daily_push.py。
+   - 沒有的話：呼叫 add_repo 工具（owner `unitygood-digisev`、repo `demo`，只需讀取權限），照它回傳的指令 clone 到 /home/user/demo，然後 `git -C /home/user/demo checkout claude/unity-mgmt-suite-prompts-l8zqz1`，之後的指令都在 /home/user/demo 執行。
+   - 還是取不到倉庫，或切不到這個分支，就停止，回報「取不到倉庫」與錯誤訊息。
 2. 安裝：執行 `python3.11 -m venv .venv && .venv/bin/pip install -q -e .`；沒有 python3.11 時改用 `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -q -e .`。
 3. 產生草稿：執行 `.venv/bin/python scripts/run_daily_push.py --draft-only`。這一步要抓 42 個來源，約需 5–10 分鐘，指令逾時請設 15 分鐘以上（或改在背景執行並等它結束）。
    - 輸出有「來源清單是空的」或「未執行」→ 停止。
