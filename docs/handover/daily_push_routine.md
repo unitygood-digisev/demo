@@ -122,7 +122,7 @@
 【步驟】
 1. 確認倉庫：目前資料夾（或其下）要有 scripts/run_daily_push.py；找不到就停止，回報「排程沒有掛上倉庫」。
 2. 安裝：執行 `python3.11 -m venv .venv && .venv/bin/pip install -q -e .`；沒有 python3.11 時改用 `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -q -e .`。
-3. 產生草稿：執行 `.venv/bin/python scripts/run_daily_push.py --draft-only`。
+3. 產生草稿：執行 `.venv/bin/python scripts/run_daily_push.py --draft-only`。這一步要抓 42 個來源，約需 5–10 分鐘，指令逾時請設 15 分鐘以上（或改在背景執行並等它結束）。
    - 輸出有「來源清單是空的」或「未執行」→ 停止。
    - 草稿路徑在輸出的「郵件內容：」後面。
 4. 檢查草稿：
