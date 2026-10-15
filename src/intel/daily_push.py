@@ -114,9 +114,9 @@ def run(cfg: PushConfig) -> PushResult:
     draft = cfg.out_dir / f"郵件_情報日報_{cfg.as_of.strftime('%Y%m%d')}.txt"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
     can_send = cfg.send and cfg.as_of == (cfg.today or today_tw())
-    if can_send and draft.is_file() and mail.already_sent(KIND, cfg.as_of):
-        # 已經寄過：保留寄出的那份草稿，不覆蓋
-        return PushResult(draft, False, "今天已經寄過，沒有重寄")
+    if draft.is_file() and mail.already_sent(KIND, cfg.as_of):
+        # 已經寄過：保留寄出的那份草稿，不覆蓋（只產生草稿時也一樣）
+        return PushResult(draft, False, "今天已經寄過，沒有重寄，寄出的草稿保留不動")
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(f"主旨：{subject}\n\n{body}", encoding="utf-8")
     if any("來源清單是空的" in p for p in res.day["config_problems"]):

@@ -402,3 +402,64 @@ def test_duplicate_recipients_and_percent(mail_env, config_dir, monkeypatch):
 def test_unknown_level_message(mail_env, config_dir):
     with pytest.raises(MailError, match="不認得的資料等級"):
         client(mail_env, config_dir).send("日報", "x", level=" 公開", kind="intel_daily", day=AS_OF)
+
+
+# ---- 第二輪獨立驗收追加 ----
+def test_send_log_with_bom_ok(mail_env, config_dir):
+    (mail_env / "sent.jsonl").write_text(
+        '{"day": "2026-10-13", "kind": "intel_daily"}\n', encoding="utf-8-sig"
+    )
+    assert client(mail_env, config_dir).send(
+        "日報", "x", level="公開", kind="intel_daily", day=AS_OF
+    )
+
+
+def test_bad_output_level_is_reported(tmp_path, config_dir):
+    from intel.pipeline import RunConfig, run
+
+    kw = tmp_path / "k.yaml"
+    kw.write_text(
+        (SAMPLE / "keywords_sample.yaml").read_text(encoding="utf-8") + "\n輸出等級: 亂寫\n",
+        encoding="utf-8",
+    )
+    res = run(
+        RunConfig(
+            as_of=AS_OF,
+            sources_path=SAMPLE / "sources_sample.yaml",
+            keywords_path=kw,
+            interim_dir=tmp_path / "i",
+            out_dir=tmp_path / "o",
+            config_dir=config_dir,
+            offline=True,
+            log_dir=tmp_path / "l",
+        )
+    )
+    assert res.day["level"] == "客戶機密"
+    assert any("輸出等級" in p for p in res.day["config_problems"])
+
+
+def test_draft_only_does_not_overwrite_sent_draft(mail_env, config_dir):
+    from intel import daily_push
+
+    def push(send):
+        return daily_push.run(
+            daily_push.PushConfig(
+                as_of=AS_OF,
+                sources_path=SAMPLE / "sources_sample.yaml",
+                keywords_path=SAMPLE / "keywords_sample.yaml",
+                interim_dir=mail_env / "interim",
+                out_dir=mail_env / "out",
+                config_dir=config_dir,
+                offline=True,
+                log_dir=mail_env / "logs",
+                mail=client(mail_env, config_dir),
+                today=AS_OF,
+                send=send,
+            )
+        )
+
+    res = push(True)
+    assert res.sent
+    res.draft.write_text("寄出的版本", encoding="utf-8")
+    push(False)
+    assert res.draft.read_text(encoding="utf-8") == "寄出的版本"

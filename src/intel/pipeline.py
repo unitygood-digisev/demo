@@ -71,6 +71,11 @@ def run(cfg: RunConfig) -> RunResult:
     sources, src_problems = load_sources(cfg.sources_path)
     keywords, kw_problems = load_keywords(cfg.keywords_path)
     config_problems = src_problems + kw_problems
+    kw_level = keywords_output_level(cfg.keywords_path)
+    if not Classifier().is_known(kw_level):
+        config_problems.append(
+            f"關鍵字檔的「輸出等級」寫成「{kw_level}」，不是認得的等級，產出一律當作客戶機密（郵件不會寄出），請修正"
+        )
     if not sources:
         config_problems.append("來源清單是空的，請依 config/sources.yaml 的說明填寫")
     if not keywords:
@@ -186,7 +191,7 @@ def run(cfg: RunConfig) -> RunResult:
         "as_of": cfg.as_of.isoformat(),
         "run_id": run_id,
         # 命中詞會出現在產出裡；關鍵字檔寫了「輸出等級」（例如含客戶名稱時的內部一般）就照它標
-        "level": Classifier().highest(["公開", keywords_output_level(cfg.keywords_path)]),
+        "level": Classifier().highest(["公開", kw_level]),
         "records": records,
         "anomalies": anomalies,
         "config_problems": config_problems,

@@ -56,7 +56,7 @@ class MailClient:
         if not self.log_path.exists():
             return False
         try:
-            text = self.log_path.read_text(encoding="utf-8")
+            text = self.log_path.read_text(encoding="utf-8-sig")  # 記事本存檔可能加 BOM
         except (OSError, UnicodeDecodeError) as e:
             raise MailError(
                 f"寄送紀錄 {self.log_path.name} 無法讀取，為避免重寄已停止，請負責人檢查"

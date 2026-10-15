@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(res.message)
     print(f"郵件內容：{res.draft}")
-    return 0 if res.message in ("已寄出", "今天已經寄過，沒有重寄") else 2
+    return 0 if res.message == "已寄出" or res.message.startswith("今天已經寄過") else 2
 
 
 if __name__ == "__main__":
