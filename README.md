@@ -41,6 +41,11 @@ uv pip install -p .venv -e ".[dev]"
 .venv/bin/python scripts/run_progress.py
 ```
 想先看看長什麼樣子，可以用假資料：`.venv/bin/python scripts/run_progress.py --sample`。
+
+每月開完會，可以用會議紀錄找出看板缺的日期與案子（說明見 docs/handover/meetings.md）：
+```
+.venv/bin/python scripts/run_meeting_backfill.py
+```
 跑完後打開 `data/out/progress/進度看板_日期.xlsx`：
 - 「總覽」前三行是結論，例如「本週有 6 案需要注意」。
 - 「資料品質」分頁列出看板哪一列、哪一欄有問題。照著改看板後再跑一次。

@@ -26,3 +26,6 @@ __pycache__/
 .DS_Store
 ~$*.xlsx
 ~$*.docx
+
+# 會議紀錄案名對應表（含客戶名稱，只放本機）
+config/meeting_aliases.yaml
