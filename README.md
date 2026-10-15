@@ -42,6 +42,11 @@ uv pip install -p .venv -e ".[dev]"
 ```
 想先看看長什麼樣子，可以用假資料：`.venv/bin/python scripts/run_progress.py --sample`。
 
+每天早上寄永續情報日報給指定同仁（說明見 docs/handover/daily_push.md）：
+```
+.venv/bin/python scripts/run_daily_push.py
+```
+
 每月開完會，可以用會議紀錄找出看板缺的日期與案子（說明見 docs/handover/meetings.md）：
 ```
 .venv/bin/python scripts/run_meeting_backfill.py

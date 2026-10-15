@@ -25,7 +25,7 @@ from shared.report import make_run_id
 class RunConfig:
     as_of: dt.date
     sources_path: Path = PROJECT_ROOT / "config" / "sources.yaml"
-    keywords_path: Path = PROJECT_ROOT / "config" / "keywords.yaml"
+    keywords_path: Path = field(default_factory=lambda: default_keywords_path())
     interim_dir: Path = PROJECT_ROOT / "data" / "interim" / "intel"
     out_dir: Path = PROJECT_ROOT / "data" / "out" / "intel"
     prompt_path: Path = PROJECT_ROOT / "prompts" / "intel_summary.md"
@@ -44,6 +44,12 @@ class RunResult:
     run_id: str
     day: dict
     files: dict[str, Path] = field(default_factory=dict)
+
+
+def default_keywords_path(config_dir: Path = PROJECT_ROOT / "config") -> Path:
+    """本機的關鍵字清單（含客戶名稱，不提交）優先，沒有時用倉庫裡的範本。"""
+    local = config_dir / "keywords.local.yaml"
+    return local if local.is_file() else config_dir / "keywords.yaml"
 
 
 def _thresholds(cfg: RunConfig) -> dict:
@@ -162,6 +168,7 @@ def run(cfg: RunConfig) -> RunResult:
                 "published": ev.main.published.date().isoformat() if ev.main.published else None,
                 "first_seen": cfg.as_of.isoformat(),
                 "score": sc.score,
+                "importance": sc.importance,
                 "matched_terms": list(sc.matched_terms),
                 "group": sc.group,
                 "relevant": rel,

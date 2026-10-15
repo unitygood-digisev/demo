@@ -3,6 +3,10 @@
 # 改門檻只要改這個檔案，不需要改程式。
 
 intel:
+  daily_mail_max_items:
+    value: 10
+    status: 待主管確認
+    說明: 每日情報郵件最多列幾則（依重要程度排序），其餘請看情報日報檔
   relevance_min_score:
     value: 1
     status: 待主管確認

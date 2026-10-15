@@ -1,0 +1,13 @@
+# 郵件寄送設定（階段 1b）。寄件帳號、密碼、收件人一律放 .env，不寫在這裡。
+# 依 CLAUDE.md 第 5 節：只能寄給公司信箱白名單，內容等級不高於「內部一般」，每天每種郵件最多一封。
+
+enabled: true
+smtp_host: smtp.gmail.com     # 公司使用 Google Workspace
+smtp_port: 587                # STARTTLS
+allowed_domain: unitygood.com # 收件人與寄件人都必須是這個網域
+max_level: 內部一般           # 高於這個等級的內容一律拒寄
+
+# .env 裡的變數名稱
+sender_env: MAIL_FROM             # 寄件帳號
+password_env: MAIL_APP_PASSWORD   # 寄件帳號的「應用程式密碼」（不是登入密碼）
+recipients_env: MAIL_TO           # 收件人白名單，多人用逗號分隔

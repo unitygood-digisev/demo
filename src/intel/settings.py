@@ -10,9 +10,18 @@ from pathlib import Path
 import yaml
 
 SOURCE_TYPES = ("rss", "html")
-GROUPS = ("法規與準則", "同業動態", "客戶動態", "其他")
+GROUPS = ("自家品牌", "法規與準則", "政府採購與政策", "同業動態", "客戶動態", "其他")
 SOURCE_CATEGORIES = GROUPS + ("同業", "客戶")  # 來源分類也接受簡寫
-KEYWORD_CATEGORIES = ("客戶", "同業", "主管機關", "法規與準則", "議題")
+KEYWORD_CATEGORIES = (
+    "自家品牌",
+    "客戶",
+    "同業",
+    "政府採購",
+    "政策",
+    "主管機關",
+    "法規與準則",
+    "議題",
+)
 _ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -32,6 +41,8 @@ class Keyword:
     category: str
     weight: int
     synonyms: tuple[str, ...] = field(default_factory=tuple)
+    standalone: bool = True  # false：這一組只在同時命中其他關鍵字時才算（例如主管機關名稱）
+    restricted: tuple[str, ...] = field(default_factory=tuple)  # 這一組裡不能單獨算的詞
 
     @property
     def all_terms(self) -> tuple[str, ...]:
@@ -97,7 +108,20 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
 
 
 def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
+    """詞的寫法：「A＋B」＝兩個都要出現；「A／B」＝任一個出現即可。
+
+    檔案最上層可寫「不能單獨算的詞」（例如 ESG、永續、淨零）：這些詞只在同時命中其他關鍵字時才算。
+    每一組可寫「單獨不算: true」：整組只在同時命中其他關鍵字時才算。
+    """
     raw, problems = _load(path, "keywords")
+    restricted: set[str] = set()
+    if not problems:
+        top = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        lst = top.get("不能單獨算的詞") if isinstance(top, dict) else None
+        if lst is not None and not isinstance(lst, list):
+            problems.append(f"設定檔 {path.name} 的「不能單獨算的詞」應為清單，已忽略")
+        elif lst:
+            restricted = {_fold(str(x)) for x in lst if str(x).strip()}
     out: list[Keyword] = []
     used: set[str] = set()
     for i, k in enumerate(raw, start=1):
@@ -133,7 +157,21 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
             problems.append(f"關鍵字「{term}」的同義詞「{x}」與其他關鍵字重複，已略過該同義詞")
         clean = [x for x in clean if x not in dup_syn]
         used.update({key, *(_fold(x) for x in clean)})
-        out.append(Keyword(term, cat, w, tuple(clean)))
+        alone = k.get("單獨不算", False)
+        if not isinstance(alone, bool):
+            problems.append(f"關鍵字「{term}」的「單獨不算」只能寫 true 或 false，視為 false")
+            alone = False
+        terms = (term, *clean)
+        out.append(
+            Keyword(
+                term,
+                cat,
+                w,
+                tuple(clean),
+                standalone=not alone,
+                restricted=tuple(t for t in terms if _fold(t) in restricted),
+            )
+        )
     return out, problems
 
 
