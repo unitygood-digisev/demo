@@ -81,7 +81,7 @@ def all_text(path: Path) -> str:
     ],
 )
 def test_extract_dates(text, exact, approx):
-    e, a = extract_dates(text, dt.date(2026, 10, 1))
+    e, a, _ = extract_dates(text, dt.date(2026, 10, 1))
     assert [d.isoformat() for d in e] == exact
     assert [x.label for x in a] == approx
 
@@ -274,7 +274,9 @@ def test_meeting_after_board_is_used_and_marked(make, meet_dir):
     files = {r["檔案"]: r["狀態"] for r in sheet(res.path, "會議紀錄清單")}
     assert "比看板新" in files["業務會議紀錄_20261020.txt"]
     fill = {r["案子"]: r for r in sheet(res.path, "建議補上的日期")}
-    assert "2026-10-28" in fill["（假資料）己案"]["其他提到的日期"]
+    # 比較新的紀錄日期優先（舊的可能已經延期）
+    assert fill["（假資料）己案"]["建議日期"] == "2026-10-28"
+    assert "2026-10-20" in fill["（假資料）己案"]["其他提到的日期"]
 
 
 def test_does_not_import_llm():
@@ -331,3 +333,134 @@ def test_vague_done_words_not_flagged(make, meet_dir):
     res = run(make())
     diff = {r["案子"]: r for r in sheet(res.path, "與看板不一致")}
     assert "結案" not in diff.get("（假資料）壬案", {}).get("不一致", "")
+
+
+# ---- 第一輪獨立驗收追加 ----
+@pytest.mark.parametrize(
+    "text, meeting, exact, approx, unsure",
+    [
+        ("今年 12/20 初稿，明年 1/10 定稿", (2026, 10, 1), ["2026-12-20", "2027-01-10"], [], []),
+        ("1/20 交件", (2026, 12, 1), [], [], ["1/20"]),  # 跨年不猜
+        ("2027 年 3 月啟動，2027年底完成", (2026, 10, 1), [], ["2027年3月", "2027年底"], []),
+        ("116年1月", (2026, 10, 1), [], ["2027年1月"], []),
+        ("10月20號開會", (2026, 10, 1), ["2026-10-20"], [], []),
+        ("2/30、0/5、13/1、10/32、10.25", (2026, 10, 1), [], [], []),
+    ],
+)
+def test_extract_dates_years(text, meeting, exact, approx, unsure):
+    e, a, u = extract_dates(text, dt.date(*meeting))
+    assert [d.isoformat() for d in e] == exact
+    assert [x.label for x in a] == approx
+    assert u == unsure
+
+
+def _write(meet_dir, name, text):
+    (meet_dir / name).write_text(text, encoding="utf-8")
+
+
+def test_finance_section_not_released_by_short_line(make, meet_dir):
+    _write(
+        meet_dir,
+        "業務會議紀錄_20261008.txt",
+        "財務與營運管理：\n催收提醒\n* 新客戶Z： 11/30 收\n* 己案： 11/29 尾聲\n其他議題：\n* 己案： 11/28 開會\n",
+    )
+    res = run(make())
+    text = all_text(res.path)
+    assert "新客戶Z" not in text and "2026-11-29" not in text and "2026-11-30" not in text
+    assert "2026-11-28" in text
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "* 存款： 12/31",
+        "* 薪資調整： 11/1",
+        "* 己案： 尾款 11/30 收款",
+        "* 己案： 預算 50 萬，11/30",
+    ],
+)
+def test_finance_words_anywhere_in_line_skipped(make, meet_dir, line):
+    _write(meet_dir, "業務會議紀錄_20261009.txt", line + "\n")
+    res = run(make())
+    text = all_text(res.path)
+    assert "存款" not in text and "薪資" not in text
+    assert "2026-11-30" not in text and "2026-12-31" not in text
+    if "己案" in line:  # 提到看板上的案子：大聲列出，請人看原文
+        reasons = " ".join(str(r["原因"]) for r in sheet(res.path, "待人工確認"))
+        assert "未讀取" in reasons
+
+
+def test_case_heading_with_skip_word_is_read(make, meet_dir, tmp_path):
+    p = tmp_path / "a.yaml"
+    p.write_text("aliases:\n  人力論壇: （假資料）己案\n", encoding="utf-8")
+    _write(meet_dir, "業務會議紀錄_20261010.txt", "人力論壇\n* 場次： 10/26 舉辦\n")
+    res = run(make(aliases_path=p))
+    fill = {r["案子"]: r for r in sheet(res.path, "建議補上的日期")}
+    assert fill["（假資料）己案"]["建議日期"] == "2026-10-26"
+
+
+def test_label_fallback_to_whole_line(make, meet_dir):
+    _write(
+        meet_dir,
+        "業務會議紀錄_20261011.txt",
+        "* 進度： 己案 10/24 訪談\n* 10/22 下午 2:00： 己案開會\n",
+    )
+    res = run(make())
+    names = {r["紀錄中的名稱"] for r in sheet(res.path, "看板沒有的案子")}
+    assert "進度" not in names and not any("下午" in n for n in names)
+    fill = {r["案子"]: r for r in sheet(res.path, "建議補上的日期")}
+    assert fill["（假資料）己案"]["建議日期"] == "2026-10-22"
+    assert "2026-10-24" in fill["（假資料）己案"]["其他提到的日期"]
+
+
+def test_new_name_collects_its_sub_items(make, meet_dir):
+    _write(
+        meet_dir,
+        "業務會議紀錄_20261012.txt",
+        "* 新客戶Y：\n   * 10/27 拜會\n   * 11/3 提案\n新客戶X\n* 預計 11/9 簽約\n",
+    )
+    res = run(make())
+    missing = {r["紀錄中的名稱"]: r for r in sheet(res.path, "看板沒有的案子")}
+    assert "2026-10-27" in missing["新客戶Y"]["提到的日期"]
+    assert "2026-11-09" in missing["新客戶X"]["提到的日期"]
+
+
+def test_done_word_on_negotiating_case_not_flagged(make, meet_dir):
+    _write(meet_dir, "業務會議紀錄_20261013.txt", "* 辛案： 前一期已結案\n* 壬案： 已結案\n")
+    res = run(make())
+    diff = {r["案子"]: r for r in sheet(res.path, "與看板不一致")}
+    assert "（假資料）辛案" not in diff  # 洽談中：可能是下一期
+    assert "結案" in diff["（假資料）壬案"]["不一致"]  # 進行中
+
+
+def test_low_severity_file_cases(make, meet_dir, tmp_path):
+    _write(meet_dir, "業務會議紀錄_20261014.txt", "")
+    _write(meet_dir, "業務會議紀錄_20271231.txt", "* 己案： 10/20\n")
+    _write(meet_dir, "業務會議紀錄_202610011.txt", "* 己案： 10/20\n")
+    _write(meet_dir, "業務會議紀錄_20261004.TXT", "* 己案： 10/21\n")
+    (meet_dir / "x.docx").write_bytes(b"PK")
+    p = tmp_path / "a.yaml"
+    p.write_text("aliases:\n  空的:\n", encoding="utf-8")
+    res = run(make(aliases_path=p))
+    files = {r["檔案"]: r["狀態"] for r in sheet(res.path, "會議紀錄清單")}
+    assert "空白檔案" in files["業務會議紀錄_20261014.txt"]
+    assert "晚於執行日" in files["業務會議紀錄_20271231.txt"]
+    assert "檔名沒有日期" in files["業務會議紀錄_202610011.txt"]
+    assert "已比對" in files["業務會議紀錄_20261004.TXT"]
+    footer = all_text(res.path)
+    inputs = next(line for line in footer.splitlines() if line.startswith("輸入檔："))
+    assert "x.docx" not in inputs and "業務會議紀錄_20261014.txt" not in inputs
+    manual = sheet(res.path, "待人工確認")
+    assert any("沒有寫看板案名" in str(r["原因"]) for r in manual)
+    assert all(r["可能的案子"] != "None" for r in manual)
+
+
+def test_person_heading_not_listed_as_case(make, meet_dir):
+    _write(
+        meet_dir, "業務會議紀錄_20261013.txt", "顧問甲\n* 預計 11/9 拜會\nTom\n* 預計 11/10 拜會\n"
+    )
+    res = run(make())
+    names = {r["紀錄中的名稱"] for r in sheet(res.path, "看板沒有的案子")}
+    assert "顧問甲" not in names and "Tom" not in names
+    reasons = [r for r in sheet(res.path, "待人工確認") if "對不到案子" in str(r["原因"])]
+    assert any("2026-11-09" in str(r["日期"]) for r in reasons)

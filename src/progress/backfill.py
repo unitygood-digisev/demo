@@ -11,6 +11,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import fnmatch
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,6 +54,7 @@ class BackfillResult:
 class Mention:
     file: str
     line: int
+    meeting: dt.date
     exact: list[dt.date]
     approx: list
     words: list[str]
@@ -96,7 +99,16 @@ def _aliases(
         raise ProgressDataError(f"案名對應表 {path.name} 格式錯誤，請參考範例檔修正") from e
     good, manual = {}, []
     for k, v in raw.items():
-        if str(v) in cases:
+        if v is None or not str(v).strip():
+            manual.append(
+                {
+                    "出處": path.name,
+                    "日期": "",
+                    "原因": f"對應表的「{k}」沒有寫看板案名，未使用",
+                    "可能的案子": "",
+                }
+            )
+        elif str(v) in cases:
             good[str(k)] = str(v)
         else:
             manual.append(
@@ -122,10 +134,12 @@ def _approx_text(items) -> str:
     return "、".join(seen)
 
 
-def _file_status(m: Meeting, board_date: dt.date, max_age: int) -> tuple[bool, str]:
+def _file_status(m: Meeting, board_date: dt.date, max_age: int, as_of: dt.date) -> tuple[bool, str]:
     if m.problem:
         return False, m.problem
     notes = []
+    if m.date > as_of:
+        notes.append("檔名日期晚於執行日，請確認日期是否寫錯")
     if m.text_date and m.text_date != m.date:
         notes.append(f"內文的會議日期（{m.text_date.isoformat()}）和檔名不符，以檔名為準")
     age = (board_date - m.date).days
@@ -170,9 +184,19 @@ def run(cfg: BackfillConfig) -> BackfillResult:
     aliases, ignore, n, manual = _aliases(aliases_path, list(by_name))
     notes += n
 
+    owners = {
+        norm(x)
+        for r in board.rows
+        for x in re.split(r"[、／/（）()\s]+", str(r.get("負責人") or ""))
+        if x.strip()
+    }
+
+    def names_case(text: str) -> bool:
+        return bool(match_cases(text, cases, aliases, rules.generic_words))
+
     file_rows, used = [], []
     for p in files:
-        if not p.match(rules.file_glob):
+        if not fnmatch.fnmatch(p.name.lower(), rules.file_glob.lower()):
             file_rows.append(
                 {
                     "檔案": p.name,
@@ -183,8 +207,8 @@ def run(cfg: BackfillConfig) -> BackfillResult:
                 }
             )
             continue
-        m = parse_meeting(p, rules)
-        ok, status = _file_status(m, board_date, max_age)
+        m = parse_meeting(p, rules, names_case)
+        ok, status = _file_status(m, board_date, max_age, cfg.as_of)
         file_rows.append(
             {
                 "檔案": p.name,
@@ -200,18 +224,41 @@ def run(cfg: BackfillConfig) -> BackfillResult:
     mentions: dict[str, list[Mention]] = defaultdict(list)
     missing: dict[str, list[Mention]] = defaultdict(list)
     for m in used:
-        context: set[str] = set()
+        case_ctx: set[str] = set()  # 標題或「名稱：」對到的案子，底下的條目屬於它
+        new_ctx = ""  # 標題或「名稱：」對不到看板時，底下有日期的條目屬於這個名稱
         for ln in m.lines:
+            men = Mention(m.path.name, ln.no, m.date, ln.exact, ln.approx, ln.stage_words)
             if ln.skipped:
-                context = set() if ln.heading else context
+                if ln.heading:
+                    case_ctx, new_ctx = set(), ""
+                elif ln.skipped == "word" and names_case(ln.text):
+                    manual.append(
+                        _manual(men, "這一行有財務、人事或行政字眼，系統未讀取，請看原文", set())
+                    )
                 continue
             hit = _match(ln, cases, aliases, rules)
-            if ln.heading or ln.label_only:
-                context = hit if len(hit) == 1 else set()
-                if ln.heading or hit:
-                    continue
-            target = hit or context
-            men = Mention(m.path.name, ln.no, ln.exact, ln.approx, ln.stage_words)
+            if ln.heading or (ln.label_only and not hit):
+                case_ctx = hit if len(hit) == 1 else set()
+                title = ln.label or ln.section
+                # 正式標題（組別、段落）不是案名；短的標題或「名稱：」才可能是看板沒有的案子
+                new_ctx = (
+                    ""
+                    if hit
+                    or ln.heading == "strong"
+                    or norm(title) in ignore
+                    or _person_like(title, owners)
+                    else title
+                )
+                if ln.label_only and not hit and norm(ln.label) not in ignore:
+                    missing[ln.label].append(men)
+                continue
+            if ln.label_only:
+                case_ctx, new_ctx = (hit if len(hit) == 1 else set()), ""
+            target = hit or case_ctx
+            if ln.unsure:
+                manual.append(
+                    _manual(men, f"年份不確定（{'、'.join(ln.unsure)}，可能是跨年），不猜", target)
+                )
             if len(target) > 1:
                 manual.append(_manual(men, "同一行對到多個案子，不猜是哪一案", target))
             elif len(target) == 1:
@@ -223,6 +270,8 @@ def run(cfg: BackfillConfig) -> BackfillResult:
             elif ln.label:
                 if norm(ln.label) not in ignore:
                     missing[ln.label].append(men)
+            elif new_ctx and (ln.exact or ln.approx or ln.stage_words):
+                missing[new_ctx].append(men)
             elif ln.exact or ln.approx:
                 manual.append(_manual(men, "有日期但對不到案子", set()))
 
@@ -234,7 +283,13 @@ def run(cfg: BackfillConfig) -> BackfillResult:
             continue
         board_d = row.get("下一個日期")
         board_d = board_d if isinstance(board_d, dt.date) else None
-        future = sorted({d for x in ms for d in x.exact if d >= board_date})
+        # 同一案在多份紀錄裡日期不同時，以最新一份紀錄為準（舊的可能已經延期）
+        dated = [x for x in ms if any(d >= board_date for d in x.exact)]
+        newest = max((x.meeting for x in dated), default=None)
+        latest = sorted(
+            {d for x in dated if x.meeting == newest for d in x.exact if d >= board_date}
+        )
+        future = latest + sorted({d for x in ms for d in x.exact if d >= board_date} - set(latest))
         approx = [a for x in ms for a in x.approx if a.end >= board_date]
         words = sorted({w for x in ms for w in x.words})
         where = "；".join(dict.fromkeys(x.where for x in ms))
@@ -251,12 +306,13 @@ def run(cfg: BackfillConfig) -> BackfillResult:
                 }
             )
         reasons, board_side, meet_side = [], [], []
-        if board_d is not None and future and board_d not in future:
+        if board_d is not None and latest and board_d not in latest:
             reasons.append("日期不同")
             board_side.append(board_d.isoformat())
-            meet_side.append(_fmt(future))
+            meet_side.append(_fmt(latest))
         done_words = [w for w in words if w in rules.done_words]
-        if done_words and stage not in ("結案中", *bcfg.done_stages):
+        # 洽談中、規劃中的案子可能是同一客戶的下一期，不算不一致
+        if done_words and stage in bcfg.active_stages and stage != "結案中":
             reasons.append("紀錄寫結案，看板未結案")
             board_side.append(stage)
             meet_side.append("、".join(done_words))
@@ -285,7 +341,7 @@ def run(cfg: BackfillConfig) -> BackfillResult:
     fill.sort(key=lambda r: r["案子"])
     diff.sort(key=lambda r: r["案子"])
 
-    meeting_files = files
+    meeting_files = [p for p in files if p.name in {m.path.name for m in used}]
     run_id = make_run_id("meetings", cfg.as_of, [board_path, *meeting_files, aliases_path])
     exact_n = sum(1 for r in fill if r["建議日期"] != "待補")
     headline = (
@@ -357,8 +413,17 @@ def run(cfg: BackfillConfig) -> BackfillResult:
 
 
 def _match(ln: Line, cases, aliases, rules: MeetingRules) -> set[str]:
-    text = ln.label or ln.text
-    return match_cases(text, cases, aliases, rules.generic_words)
+    # 先用「名稱：」的名稱比對；對不到時再用整行（例如「進度：某案 10/20」）
+    hit = match_cases(ln.label, cases, aliases, rules.generic_words) if ln.label else set()
+    return hit or match_cases(ln.text, cases, aliases, rules.generic_words)
+
+
+def _person_like(title: str, owners: set[str]) -> bool:
+    """標題像人名（看板負責人、純英文名、2–3 個中文字）時，不當成看板沒有的案子。"""
+    t = norm(title)
+    return t in owners or bool(
+        re.fullmatch(r"[a-z]{2,15}", t) or re.fullmatch(r"[\u4e00-\u9fff]{2,3}", t)
+    )
 
 
 def _manual(men: Mention, why: str, cands: set[str]) -> dict:

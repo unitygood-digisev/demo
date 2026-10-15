@@ -16,15 +16,20 @@ BULLET = re.compile(
 )
 NUMBERED_HEADING = re.compile(r"^\s*[一二三四五六七八九十]+、")
 LABEL = re.compile(r"^([^：:]{1,25})[：:]\s*(.*)$")
-FILE_DATE = re.compile(r"(20\d{2})(\d{2})(\d{2})")
+FILE_DATE = re.compile(r"(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)")
 TEXT_DATE = re.compile(r"會議日期[^：:]*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 
-_FULL = re.compile(r"(\d{4})\s*[/年-]\s*(\d{1,2})\s*[/月-]\s*(\d{1,2})\s*日?")
-_MD_CN = re.compile(r"(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*日")
+_Y = r"(\d{4}|1\d{2})"  # 西元或民國年
+_FULL = re.compile(_Y + r"\s*[/年-]\s*(\d{1,2})\s*[/月-]\s*(\d{1,2})\s*[日號]?")
+_Y_APPROX = re.compile(_Y + r"\s*年\s*(\d{1,2})\s*月\s*(底|初|中旬|上旬|下旬|中)?")
+_Y_END = re.compile(_Y + r"\s*年底")
+_MD_CN = re.compile(r"(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*[日號]")
 _MD = re.compile(r"(?<![\d/.])(\d{1,2})/(\d{1,2})(?![\d/])")
 _APPROX = re.compile(r"(?<!\d)(\d{1,2})\s*月\s*(底|初|中旬|上旬|下旬|中)")
 _MONTH = re.compile(r"(?<![\d/])(\d{1,2})\s*月(?!\s*\d)")
 _YEAR_END = re.compile(r"年底")
+_YEAR_WORD = re.compile(r"(明年|今年|後年)")
+UNSURE_DAYS = 60  # 推定年份後，日期比會議早超過這麼多天，代表可能是跨年，不猜
 
 
 @dataclass(frozen=True)
@@ -38,12 +43,13 @@ class Line:
     no: int  # 第幾行（從 1 起算）
     text: str
     section: str = ""
-    skipped: bool = False  # 財務、人事、行政段落
-    heading: bool = False
+    skipped: str = ""  # 不讀的原因：section（財務、人事、行政段落）或 word（這一行有略過字眼）
+    heading: str = ""  # strong（正式標題）、weak（短的一行字）
     label: str = ""
     label_only: bool = False  # 「名稱：」後面沒有內容，底下的條目屬於這個名稱
     exact: list[dt.date] = field(default_factory=list)
     approx: list[Approx] = field(default_factory=list)
+    unsure: list[str] = field(default_factory=list)  # 年份不確定的日期寫法
     stage_words: list[str] = field(default_factory=list)
 
 
@@ -62,7 +68,7 @@ class MeetingRules:
     file_glob: str
     aliases_file: str
     skip_section_words: tuple[str, ...]
-    skip_label_words: tuple[str, ...]
+    skip_line_words: tuple[str, ...]
     generic_words: tuple[str, ...]
     stage_words: tuple[str, ...]
     done_words: tuple[str, ...]
@@ -75,7 +81,7 @@ class MeetingRules:
             file_glob=c.get("file_glob", "*.txt"),
             aliases_file=c["aliases_file"],
             skip_section_words=tuple(str(x) for x in c.get("skip_section_words") or ()),
-            skip_label_words=tuple(str(x) for x in c.get("skip_label_words") or ()),
+            skip_line_words=tuple(str(x) for x in c.get("skip_line_words") or ()),
             generic_words=tuple(str(x) for x in c.get("generic_words") or ()),
             stage_words=tuple(str(x) for x in c.get("stage_words") or ()),
             done_words=tuple(str(x) for x in c.get("done_words") or ()),
@@ -94,46 +100,75 @@ def _safe(y: int, m: int, d: int) -> dt.date | None:
         return None
 
 
-def extract_dates(text: str, meeting_date: dt.date) -> tuple[list[dt.date], list[Approx]]:
-    """找出一行裡的日期。年份＝會議那一年；這一行寫「明年」時加一年。不認得的寫法不猜。"""
-    year = meeting_date.year + (1 if "明年" in text else 0)
-    t = unicodedata.normalize("NFKC", text)
-    exact: list[dt.date] = []
-    approx: list[Approx] = []
+def _year(y: str) -> int:
+    n = int(y)
+    return n + 1911 if n < 1000 else n  # 民國年
+
+
+def _approx(year: int, mo: int, part: str | None) -> Approx | None:
+    if not 1 <= mo <= 12:
+        return None
+    last = calendar.monthrange(year, mo)[1]
+    end = {"初": 10, "上旬": 10, "中": 20, "中旬": 20}.get(part or "", last)
+    return Approx(f"{year}年{mo}月{part or ''}", dt.date(year, mo, end))
+
+
+def _segment(t, year, may_cross, floor, exact, approx, unsure) -> None:
+    """處理一段文字（同一個推定年份）。已認出的日期會被挖掉，避免重複計算。"""
 
     def take(pattern: re.Pattern, fn) -> None:
         nonlocal t
-        out = []
-        last = 0
+        out, last = [], 0
         for m in pattern.finditer(t):
             fn(m)
             out.append(t[last : m.start()] + " " * (m.end() - m.start()))
             last = m.end()
         t = "".join(out) + t[last:]
 
-    take(_FULL, lambda m: exact.append(_safe(*(int(x) for x in m.groups()))))
-    take(_MD_CN, lambda m: exact.append(_safe(year, int(m[1]), int(m[2]))))
-    take(_MD, lambda m: exact.append(_safe(year, int(m[1]), int(m[2]))))
+    def inferred(d, raw: str) -> None:
+        if d is None:
+            return
+        end = d.end if isinstance(d, Approx) else d
+        if may_cross and end < floor:
+            unsure.append(raw.strip())
+        else:
+            (approx if isinstance(d, Approx) else exact).append(d)
 
-    def add_approx(m: re.Match) -> None:
-        mo = int(m[1])
-        if 1 <= mo <= 12:
-            last = calendar.monthrange(year, mo)[1]
-            end = {"初": 10, "上旬": 10, "中": 20, "中旬": 20}.get(m[2], last)
-            approx.append(Approx(f"{year}年{mo}月{m[2]}", dt.date(year, mo, end)))
-
-    take(_APPROX, add_approx)
-
-    def add_month(m: re.Match) -> None:
-        mo = int(m[1])
-        if 1 <= mo <= 12:
-            last = calendar.monthrange(year, mo)[1]
-            approx.append(Approx(f"{year}年{mo}月", dt.date(year, mo, last)))
-
-    take(_MONTH, add_month)
+    take(_FULL, lambda m: exact.append(_safe(_year(m[1]), int(m[2]), int(m[3]))))
+    take(_Y_APPROX, lambda m: approx.append(_approx(_year(m[1]), int(m[2]), m[3])))
+    take(
+        _Y_END, lambda m: approx.append(Approx(f"{_year(m[1])}年底", dt.date(_year(m[1]), 12, 31)))
+    )
+    take(_MD_CN, lambda m: inferred(_safe(year, int(m[1]), int(m[2])), m[0]))
+    take(_MD, lambda m: inferred(_safe(year, int(m[1]), int(m[2])), m[0]))
+    take(_APPROX, lambda m: inferred(_approx(year, int(m[1]), m[2]), m[0]))
+    take(_MONTH, lambda m: inferred(_approx(year, int(m[1]), None), m[0]))
     take(_YEAR_END, lambda m: approx.append(Approx(f"{year}年底", dt.date(year, 12, 31))))
+
+
+def extract_dates(
+    text: str, meeting_date: dt.date
+) -> tuple[list[dt.date], list[Approx], list[str]]:
+    """找出一行裡的日期，回傳 (明確日期, 約略時程, 年份不確定的寫法)。
+
+    - 寫明年份的（2027/3/1、2027 年 3 月、116 年底）照寫的年份。
+    - 沒寫年份的＝會議那一年；寫在「明年」之後的加一年、「後年」加兩年。
+    - 推定的日期比會議早超過 60 天（例如 12 月的會議寫「1/20」），可能是跨年，不猜，列為年份不確定。
+    - 不認得的寫法（10.25、2/30）不猜。
+    """
+    exact: list[dt.date] = []
+    approx: list[Approx] = []
+    unsure: list[str] = []
+    floor = meeting_date - dt.timedelta(days=UNSURE_DAYS)
+    shift = 0
+    for seg in _YEAR_WORD.split(unicodedata.normalize("NFKC", text)):
+        if seg in ("明年", "今年", "後年"):
+            shift = {"今年": 0, "明年": 1, "後年": 2}[seg]
+            continue
+        _segment(seg, meeting_date.year + shift, shift == 0, floor, exact, approx, unsure)
     exact = sorted({d for d in exact if d is not None})
-    return exact, approx
+    approx = [a for a in approx if a is not None]
+    return exact, approx, unsure
 
 
 def case_keys(name: str, generic: tuple[str, ...] | list[str]) -> list[str]:
@@ -165,15 +200,33 @@ def match_cases(
     return {c for c in cases if t in norm(c)}
 
 
-def _is_heading(s: str) -> bool:
+AMOUNT = re.compile(r"\d[\d,.]*\s*[萬億](?![次人])")
+
+
+def _heading(s: str) -> str:
+    """回傳 strong（# 開頭、一、二、、以冒號結尾）、weak（短的一行字）或空字串。"""
     if not s or BULLET.match(s) and not NUMBERED_HEADING.match(s):
-        return False
+        return ""
     if s.startswith("#") or NUMBERED_HEADING.match(s) or s.endswith(("：", ":")):
-        return True
-    return len(s) <= 20 and not re.search(r"[：:]", s) and not re.search(r"\d", s)
+        return "strong"
+    if len(s) <= 20 and not re.search(r"[：:]", s) and not re.search(r"\d", s):
+        return "weak"
+    return ""
 
 
-def parse_meeting(path: Path, rules: MeetingRules) -> Meeting:
+def _usable_label(label: str, rules: MeetingRules) -> bool:
+    """「名稱：內容」的名稱看起來像案名才用：不是日期時間、不是句子、不是階段字眼。"""
+    return not (
+        re.search(r"\d\s*[/:：]|\d{1,2}\s*月", label)
+        or re.search(r"[，。,；;]", label)
+        or len(norm(label)) > 15
+        or any(w in label for w in rules.stage_words)
+        or label in ("進行中", "已結案", "新案", "進度", "日期", "時間", "地點", "場地", "展期")
+    )
+
+
+def parse_meeting(path: Path, rules: MeetingRules, names_case=lambda s: False) -> Meeting:
+    """names_case(文字)：這段文字是否提到看板上的案子。標題提到案子時，即使含略過字眼也不略過整段。"""
     m = FILE_DATE.search(path.name)
     date = _safe(*(int(x) for x in m.groups())) if m else None
     if date is None:
@@ -182,8 +235,11 @@ def parse_meeting(path: Path, rules: MeetingRules) -> Meeting:
         raw = path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError:
         return Meeting(path, date, problem="不是 UTF-8 編碼，請用記事本另存為 UTF-8，未使用")
+    if not raw.strip():
+        return Meeting(path, date, problem="空白檔案，未使用")
     meeting = Meeting(path, date)
-    section, skipping = "", False
+    section = ""
+    skip = ""  # 目前略過的段落是由 strong 或 weak 標題開始的
     for no, text in enumerate(raw.splitlines(), start=1):
         s = text.strip()
         if not s:
@@ -192,22 +248,28 @@ def parse_meeting(path: Path, rules: MeetingRules) -> Meeting:
         if td and meeting.text_date is None:
             meeting.text_date = _safe(*(int(x) for x in td.groups()))
         ln = Line(no, s)
-        if _is_heading(s):
-            ln.heading = True
-            section = s.lstrip("#").rstrip("：:").strip()
-            skipping = any(w in section for w in rules.skip_section_words)
-        ln.section, ln.skipped = section, skipping
+        kind = _heading(s)
+        if kind:
+            ln.heading = kind
+            title = s.lstrip("#").rstrip("：:").strip()
+            is_skip = any(w in title for w in rules.skip_section_words) and not names_case(title)
+            if is_skip:
+                section, skip = title, (skip if skip == "strong" else kind)
+            elif kind == "strong" or skip != "strong":
+                # 財務段落只有遇到下一個正式標題才結束，夾在中間的短句不會解除略過
+                section, skip = title, ""
+        ln.section = section
+        if skip:
+            ln.skipped = "section"
+        elif not kind and (any(w in s for w in rules.skip_line_words) or AMOUNT.search(s)):
+            ln.skipped = "word"
         body = BULLET.sub("", s, count=1).lstrip("#").strip()
         lm = LABEL.match(body)
-        if lm and not ln.heading:
-            label = lm[1].strip()
-            if any(w in label for w in rules.skip_label_words):
-                ln.skipped = True
-            elif not re.fullmatch(r"[\d/\s～~\-、]+", label) and not re.search(r"[，。,]", label):
-                ln.label = label
-                ln.label_only = not lm[2].strip()
+        if lm and not ln.heading and _usable_label(lm[1].strip(), rules):
+            ln.label = lm[1].strip()
+            ln.label_only = not lm[2].strip()
         if not ln.skipped:
-            ln.exact, ln.approx = extract_dates(s, date)
+            ln.exact, ln.approx, ln.unsure = extract_dates(s, date)
             ln.stage_words = [w for w in rules.stage_words if w in s]
             # 長的字眼已涵蓋短的（例如「已結案」含「結案」），只留長的
             ln.stage_words = [
