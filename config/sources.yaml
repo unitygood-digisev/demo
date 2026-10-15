@@ -77,3 +77,49 @@ sources:
     網址: "https://taxation-customs.ec.europa.eu/node/2/rss_en"
     語言: en
     分類: 法規與準則
+
+  # ---- 2026-10-15 第二輪查證加入（使用者決定：內部非商業用途，條款限個人／非商業的來源可用）----
+  # 法規與準則
+  - {id: moeaea_news, 名稱: 經濟部能源署 焦點新聞, 類型: rss, 網址: "https://www.moeaea.gov.tw/ECW/populace/news/NewsRSSdetail.aspx?Kind=1", 語言: zh-TW, 分類: 法規與準則}
+  - {id: mol_press, 名稱: 勞動部 新聞稿, 類型: rss, 網址: "https://www.mol.gov.tw/1607/1632/1633/RssList", 語言: zh-TW, 分類: 法規與準則}
+  - {id: mol_bulletin, 名稱: 勞動部 公布欄, 類型: rss, 網址: "https://www.mol.gov.tw/1607/1632/2665/RssList", 語言: zh-TW, 分類: 法規與準則}
+  - {id: mohw_focus, 名稱: 衛生福利部 焦點新聞, 類型: rss, 網址: "https://www.mohw.gov.tw/rss-16-1.html", 語言: zh-TW, 分類: 法規與準則}
+  - {id: mohw_notice, 名稱: 衛生福利部 公告訊息, 類型: rss, 網址: "https://www.mohw.gov.tw/rss-18-1.html", 語言: zh-TW, 分類: 法規與準則}
+  - {id: ida_press, 名稱: 經濟部產業發展署 新聞發布, 類型: rss, 網址: "https://www.ida.gov.tw/ctlr?PRO=rss.RSSView&t=1", 語言: zh-TW, 分類: 法規與準則}
+  - {id: ida_regulations, 名稱: 經濟部產業發展署 產業發展法令規章, 類型: rss, 網址: "https://www.ida.gov.tw/ctlr?PRO=rss.RSSView&t=2", 語言: zh-TW, 分類: 法規與準則}
+  - {id: carbon_brief, 名稱: Carbon Brief, 類型: rss, 網址: "https://www.carbonbrief.org/feed/", 語言: en, 分類: 法規與準則}
+  - {id: climate_home, 名稱: Climate Home News, 類型: rss, 網址: "https://www.climatechangenews.com/feed/", 語言: en, 分類: 法規與準則}
+  - {id: gstc, 名稱: GSTC 全球永續旅遊委員會, 類型: rss, 網址: "https://www.gstc.org/feed/", 語言: en, 分類: 法規與準則}
+  - {id: ec_clima, 名稱: 歐盟執委會 氣候行動新聞, 類型: rss, 網址: "https://climate.ec.europa.eu/node/2/rss_en", 語言: en, 分類: 法規與準則}
+  # 同業動態
+  - {id: taise_news, 名稱: 台灣永續能源研究基金會 TAISE, 類型: rss, 網址: "https://taise.org.tw/feed/", 語言: zh-TW, 分類: 同業動態}
+  - {id: esg_gvm, 名稱: ESG遠見, 類型: rss, 網址: "https://esg.gvm.com.tw/feed", 語言: zh-TW, 分類: 同業動態}
+  - {id: esg_today, 名稱: ESG Today, 類型: rss, 網址: "https://www.esgtoday.com/feed/", 語言: en, 分類: 同業動態}
+  - {id: trellis, 名稱: Trellis（原 GreenBiz）, 類型: rss, 網址: "https://trellis.net/feed/", 語言: en, 分類: 同業動態}
+  - {id: svi_blog, 名稱: Social Value International, 類型: rss, 網址: "https://www.socialvalueint.org/blog?format=rss", 語言: en, 分類: 同業動態}
+  - {id: edie, 名稱: edie, 類型: rss, 網址: "https://www.edie.net/feed/", 語言: en, 分類: 同業動態}
+  # 客戶動態（各家媒體；關鍵字決定實際分組）
+  - {id: cna_finance, 名稱: 中央社 財經, 類型: rss, 網址: "https://feeds.feedburner.com/rsscna/finance", 語言: zh-TW, 分類: 客戶動態}
+  - {id: cna_technology, 名稱: 中央社 科技, 類型: rss, 網址: "https://feeds.feedburner.com/rsscna/technology", 語言: zh-TW, 分類: 客戶動態}
+  - {id: cna_news_sitemap, 名稱: 中央社 新聞, 類型: news_sitemap, 網址: "https://www.cna.com.tw/GoogleNewsSitemap_fromRemote_cfp.xml", 語言: zh-TW, 分類: 客戶動態}
+  - {id: ltn_business, 名稱: 自由時報 財經, 類型: rss, 網址: "https://news.ltn.com.tw/rss/business.xml", 語言: zh-TW, 分類: 客戶動態}
+  - {id: cnyes_all, 名稱: 鉅亨網, 類型: rss, 網址: "https://news.cnyes.com/rss/v1/news/category/all", 語言: zh-TW, 分類: 客戶動態}
+  - {id: ettoday_finance, 名稱: ETtoday 財經, 類型: rss, 網址: "https://feeds.feedburner.com/ettoday/finance", 語言: zh-TW, 分類: 客戶動態}
+  - {id: technews, 名稱: 科技新報, 類型: rss, 網址: "https://technews.tw/feed/", 語言: zh-TW, 分類: 客戶動態}
+  - {id: technews_finance, 名稱: 科技新報 財經, 類型: rss, 網址: "https://finance.technews.tw/feed/", 語言: zh-TW, 分類: 客戶動態}
+  - {id: gvm_main, 名稱: 遠見雜誌, 類型: rss, 網址: "https://www.gvm.com.tw/rss", 語言: zh-TW, 分類: 客戶動態}
+  - {id: businesstoday, 名稱: 今周刊, 類型: news_sitemap, 網址: "https://www.businesstoday.com.tw/news-sitemap.xml", 語言: zh-TW, 分類: 客戶動態}
+  - {id: chinatimes_today, 名稱: 中時新聞網 即時, 類型: news_sitemap, 網址: "https://www.chinatimes.com/sitemaps/sitemap_todaynews.xml", 語言: zh-TW, 分類: 客戶動態}
+  # 其他
+  - {id: cna_lifehealth, 名稱: 中央社 生活醫藥, 類型: rss, 網址: "https://feeds.feedburner.com/rsscna/lifehealth", 語言: zh-TW, 分類: 其他}
+  - {id: ltn_life, 名稱: 自由時報 生活, 類型: rss, 網址: "https://news.ltn.com.tw/rss/life.xml", 語言: zh-TW, 分類: 其他}
+  - {id: twreporter, 名稱: 報導者, 類型: rss, 網址: "https://www.twreporter.org/a/rss2.xml", 語言: zh-TW, 分類: 其他}
+  - {id: pts_news, 名稱: 公視新聞網, 類型: rss, 網址: "https://news.pts.org.tw/xml/newsfeed.xml", 語言: zh-TW, 分類: 其他}
+  - {id: greenpeace_tw, 名稱: 綠色和平 臺灣, 類型: rss, 網址: "https://www.greenpeace.org/taiwan/feed/", 語言: zh-TW, 分類: 其他}
+  - {id: cet_taiwan, 名稱: 地球公民基金會, 類型: rss, 網址: "https://www.cet-taiwan.org/rss.xml", 語言: zh-TW, 分類: 其他}
+
+  # ---- 查證後不用（原因寫在 docs/intel_sources_candidates.md）----
+  # robots.txt 禁止：Google 新聞搜尋、UN Global Compact
+  # 防機器人驗證：天下、天下 CSR、B Lab、國發會、經濟部、工商時報、UNEP、ISO、UNFCCC、環境部官網
+  # 條款明文禁止自動擷取或 AI：聯合報／經濟日報、CSRone、風傳媒、Yahoo 奇摩新聞、ESG Dive、Responsible Investor、WBCSD、CDP、證交所
+  # 沒有日期或沒有連結：觀光署 RSS、IFRS、SBTi、GRI、環境資訊中心、櫃買中心重大訊息、政府採購網（且落後 6 週）

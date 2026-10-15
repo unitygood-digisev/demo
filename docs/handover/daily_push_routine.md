@@ -5,7 +5,7 @@
 
 ## 一、結論
 - **日報郵件的程式已經完成**：抓新聞 → 用副執行長的關鍵字挑選 → 依重要程度排序 → 產生一封手機看得完的郵件 → 寄到白名單內的公司信箱。
-- **來源**：先放 8 個官方 RSS（金管會 4、職安署 2、TNFD、歐盟 CBAM），副執行長勾選後再增減。觀光署那個試跑時讀不到任何一則，先停用。
+- **來源**：42 個（政府機關 15、國內媒體 16、國際 ESG 組織與媒體 11），都有發布日期；清單在 `config/sources.yaml`，不用的來源與原因也寫在檔案最後。
 - 每天自動執行有兩種做法：**甲：公司電腦排程**（已經可以用）；**乙：Claude 雲端排程**（你想要的做法，但要先解決第七節列的四件事）。
 
 ## 二、整套系統一覽
@@ -99,7 +99,8 @@
 ### 1. 環境設定（claude.ai/code 的雲端環境 → Edit）
 - **Repository**：`unitygood-digisev/demo`，分支 `claude/unity-mgmt-suite-prompts-l8zqz1`。
 - **環境變數**：只要一個，`MAIL_TO`＝`<副執行長信箱>`。
-- **Network access → Allowed domains**：加入 `www.fsc.gov.tw`、`www.osha.gov.tw`、`tnfd.global`、`taxation-customs.ec.europa.eu`，另外要允許安裝 Python 套件（勾選允許 package managers）。
+- **Network access**：最簡單是選允許所有網域的等級；要逐一列的話，Allowed domains 加入下面 32 個，並勾選允許 package managers：
+  climate.ec.europa.eu、esg.gvm.com.tw、feeds.feedburner.com、finance.technews.tw、news.cnyes.com、news.ltn.com.tw、news.pts.org.tw、taise.org.tw、taxation-customs.ec.europa.eu、technews.tw、tnfd.global、trellis.net、www.businesstoday.com.tw、www.carbonbrief.org、www.cet-taiwan.org、www.chinatimes.com、www.climatechangenews.com、www.cna.com.tw、www.edie.net、www.esgtoday.com、www.fsc.gov.tw、www.greenpeace.org、www.gstc.org、www.gvm.com.tw、www.ida.gov.tw、www.moeaea.gov.tw、www.mohw.gov.tw、www.mol.gov.tw、www.osha.gov.tw、www.socialvalueint.org、www.twreporter.org、public.twreporter.org
 - **Connector**：Gmail（用 `<寄件帳號>` 登入）。
 
 ### 2. 排程

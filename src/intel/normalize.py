@@ -28,6 +28,16 @@ def clean_text(s: str | None) -> str:
 def _published(entry) -> dt.datetime | None:
     if entry.get("published_dt"):
         return entry["published_dt"].astimezone(TW_TZ)
+    raw = str(entry.get("published") or entry.get("updated") or "")
+    if raw.rstrip().endswith(" CST"):
+        # 台灣政府網站常把台灣時間寫成「CST」，會被當成美國中部時間，改成 +08:00
+        import email.utils
+
+        parsed = email.utils.parsedate_tz(raw.rstrip()[:-4] + " +0800")
+        if parsed:
+            return dt.datetime.fromtimestamp(email.utils.mktime_tz(parsed), dt.UTC).astimezone(
+                TW_TZ
+            )
     st = entry.get("published_parsed") or entry.get("updated_parsed")
     if not st:
         return None

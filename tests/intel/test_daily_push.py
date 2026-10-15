@@ -610,3 +610,10 @@ def test_json_api_key_from_env(monkeypatch, tmp_path):
     )
     f.fetch(src)
     assert any("key=k123" in u for u in seen)
+
+
+def test_cst_means_taiwan_time():
+    from intel.normalize import _published
+
+    d = _published({"published": "Wed, 15 Oct 2026 09:30:00 CST"})
+    assert d.isoformat() == "2026-10-15T09:30:00+08:00"
