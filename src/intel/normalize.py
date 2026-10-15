@@ -26,6 +26,8 @@ def clean_text(s: str | None) -> str:
 
 
 def _published(entry) -> dt.datetime | None:
+    if entry.get("published_dt"):
+        return entry["published_dt"].astimezone(TW_TZ)
     st = entry.get("published_parsed") or entry.get("updated_parsed")
     if not st:
         return None
@@ -36,16 +38,17 @@ def to_items(result: FetchResult, fetched_at: dt.datetime) -> tuple[list[NewsIte
     """回傳 (文章, 問題清單)。沒有標題或網址的文章列為問題，不默默丟掉。"""
     items: list[NewsItem] = []
     problems: list[str] = []
+    bad: list[int] = []
     for i, e in enumerate(result.entries, start=1):
         title = clean_text(e.get("title"))
         link = (e.get("link") or "").strip()
         if not title or not link.lower().startswith(("http://", "https://")):
-            problems.append(f"{result.source.name} 第 {i} 則缺少標題或有效網址，未納入")
+            bad.append(i)
             continue
         excerpt = clean_text(e.get("summary") or e.get("description"))[:EXCERPT_MAX] or None
         items.append(
             NewsItem(
-                id=item_id(link),
+                id=item_id(e["id"]) if e.get("id") else item_id(link),
                 source_id=result.source.id,
                 title=title,
                 url=link,
@@ -53,5 +56,11 @@ def to_items(result: FetchResult, fetched_at: dt.datetime) -> tuple[list[NewsIte
                 excerpt=excerpt,
                 fetched_at=fetched_at,
             )
+        )
+    if bad:
+        # 合成一句，避免整份來源壞掉時洗版
+        nums = "、".join(str(i) for i in bad[:5]) + ("…" if len(bad) > 5 else "")
+        problems.append(
+            f"{result.source.name} 有 {len(bad)} 則缺少標題或有效網址（第 {nums} 則），未納入"
         )
     return items, problems

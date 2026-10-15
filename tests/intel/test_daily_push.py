@@ -531,3 +531,82 @@ def test_bad_lookback_stops(mail_env, config_dir, bad):
                 out_dir=mail_env / "o",
             )
         )
+
+
+# ---- 新的來源格式（2026-10-15 擴充來源） ----
+from intel.fetch import parse_json_api, parse_news_sitemap, parse_wp_json  # noqa: E402
+from intel.settings import Source  # noqa: E402
+
+SITEMAP = b"""<?xml version="1.0" encoding="utf-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+<url><loc>https://news.example/a/1</loc><news:news><news:publication_date>2026-10-15T13:39:00+08:00</news:publication_date><news:title>\xe7\xa2\xb3\xe8\xb2\xbb\xe6\x96\xb0\xe8\x81\x9e</news:title></news:news></url>
+<url><loc>https://news.example/a/2</loc><news:news><news:publication_date>not a date</news:publication_date><news:title>t2</news:title></news:news></url>
+</urlset>"""
+
+
+def _src(typ, **kw):
+    return Source("s", "來源", typ, "https://x.example/feed", "zh-TW", "其他", **kw)
+
+
+def test_news_sitemap_parsed_with_dates():
+    out = parse_news_sitemap(SITEMAP, _src("news_sitemap"))
+    assert out[0]["title"] == "碳費新聞" and out[0]["link"] == "https://news.example/a/1"
+    assert out[0]["published_dt"].isoformat() == "2026-10-15T13:39:00+08:00"
+    assert out[1]["published_dt"] is None  # 認不出的日期不猜
+
+
+def test_wp_json_parsed():
+    body = json.dumps(
+        [
+            {
+                "title": {"rendered": "A &amp; B"},
+                "link": "https://w.example/p",
+                "date_gmt": "2026-10-15T01:00:00",
+                "excerpt": {"rendered": "<p>x</p>"},
+            }
+        ]
+    ).encode()
+    out = parse_wp_json(body, _src("wp_json"))
+    assert out[0]["link"] == "https://w.example/p" and out[0]["published_dt"].hour == 1
+
+
+def test_json_api_fields_and_default_link():
+    body = json.dumps([{"no": "7", "t": "環境新聞", "d": "2026-10-13 16:02:38", "u": "-"}]).encode()
+    src = _src(
+        "json_api",
+        fields={
+            "標題": "t",
+            "日期": "d",
+            "連結": "u",
+            "編號": "no",
+            "預設連結": "https://gov.example/news",
+        },
+    )
+    out = parse_json_api(body, src)
+    assert out[0]["link"] == "https://gov.example/news" and out[0]["id"] == "s:7"
+    assert out[0]["published_dt"].isoformat() == "2026-10-13T16:02:38+08:00"
+
+
+def test_json_api_key_from_env(monkeypatch, tmp_path):
+    from intel.fetch import Fetcher
+
+    src = Source(
+        "k",
+        "來源",
+        "json_api",
+        "https://x.example/api?key={api_key}",
+        "zh-TW",
+        "其他",
+        fields={"標題": "t", "日期": "d"},
+        key_env="TEST_API_KEY",
+    )
+    monkeypatch.delenv("TEST_API_KEY", raising=False)
+    f = Fetcher(tmp_path, tmp_path / "raw", AS_OF, http_get=lambda u: (200, b"[]"))
+    assert "缺少金鑰" in f.fetch(src).error
+    seen = []
+    monkeypatch.setenv("TEST_API_KEY", "k123")
+    f = Fetcher(
+        tmp_path, tmp_path / "raw", AS_OF, http_get=lambda u: (seen.append(u), (200, b"[]"))[1]
+    )
+    f.fetch(src)
+    assert any("key=k123" in u for u in seen)

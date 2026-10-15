@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-SOURCE_TYPES = ("rss", "html")
+SOURCE_TYPES = ("rss", "news_sitemap", "wp_json", "json_api", "html")
 GROUPS = ("自家品牌", "法規與準則", "政府採購與政策", "同業動態", "客戶動態", "其他")
 SOURCE_CATEGORIES = GROUPS + ("同業", "客戶")  # 來源分類也接受簡寫
 KEYWORD_CATEGORIES = (
@@ -33,6 +33,8 @@ class Source:
     url: str
     lang: str
     category: str
+    fields: dict = field(default_factory=dict)  # json_api：標題、連結、日期、編號欄名與預設連結
+    key_env: str = ""  # json_api：金鑰放在哪個環境變數（網址裡寫 {api_key}）
 
 
 @dataclass(frozen=True)
@@ -87,7 +89,9 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
             continue
         typ = str(s["類型"]).strip().lower()
         if typ not in SOURCE_TYPES:
-            problems.append(f"來源「{sid}」的類型「{s['類型']}」不是 rss 或 html")
+            problems.append(
+                f"來源「{sid}」的類型「{s['類型']}」不是 {'、'.join(SOURCE_TYPES)} 之一"
+            )
             continue
         cat = str(s["分類"]).strip()
         if cat not in SOURCE_CATEGORIES:
@@ -102,6 +106,8 @@ def load_sources(path: Path) -> tuple[list[Source], list[str]]:
                 str(s["網址"]).strip(),
                 str(s.get("語言") or "").strip(),
                 cat,
+                fields=dict(s.get("欄位") or {}) if isinstance(s.get("欄位"), dict) else {},
+                key_env=str(s.get("金鑰環境變數") or "").strip(),
             )
         )
     return out, problems

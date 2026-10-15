@@ -42,7 +42,7 @@ def test_local_sample_ok(tmp_path):
     [
         (src("data/sample/feeds/broken.xml"), "格式壞掉"),
         (src("data/sample/feeds/nope.xml"), "找不到檔案"),
-        (src("https://ex.com/page", "html"), "只支援 RSS"),
+        (src("https://ex.com/page", "html"), "沒有發布日期，系統不抓"),
     ],
 )
 def test_failures_reported(tmp_path, source, expect):

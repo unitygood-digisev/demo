@@ -1,6 +1,7 @@
-"""抓取 RSS。
+"""抓取來源。
 
-- 只支援 RSS；html 來源列為異常（第一版範圍）。
+- 支援 RSS／Atom、新聞 sitemap（news:title + news:publication_date）、WordPress JSON（wp-json）、
+  開放資料 JSON（欄位名稱寫在 sources.yaml）。一般網頁（html）沒有發布日期，不抓，列為異常。
 - 網路來源先讀 robots.txt；全部請求合計每秒最多 1 次；逾時 15 秒；不登入。
 - 原始內容存到 data/interim/intel/raw/<日期>/<來源id>.xml。
 - 離線模式只讀本機檔或快取，完全不連網路。
@@ -9,7 +10,10 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
+import os
 import time
+import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -105,13 +109,24 @@ class Fetcher:
     # ---- 主流程 ----
     def fetch(self, source: Source) -> FetchResult:
         res = FetchResult(source)
-        if source.type != "rss":
-            res.error = "第一版只支援 RSS，這個來源是一般網頁，未抓取"
+        if source.type == "html":
+            res.error = (
+                "一般網頁沒有發布日期，系統不抓；請改找這個網站的 RSS、新聞 sitemap 或開放資料"
+            )
             return res
         try:
             body = self._read(source, res)
         except FetchError as e:
             res.error = str(e)
+            return res
+        if source.type != "rss":
+            try:
+                res.entries = PARSERS[source.type](body, source)
+            except (ValueError, KeyError, TypeError, ET.ParseError) as e:
+                res.error = f"內容格式和設定不符，讀不到任何文章（{type(e).__name__}）"
+                return res
+            if not res.entries:
+                res.warning = "沒有讀到任何文章"
             return res
         parsed = feedparser.parse(body)
         if parsed.bozo and not parsed.entries:
@@ -123,6 +138,11 @@ class Fetcher:
 
     def _read(self, source: Source, res: FetchResult) -> bytes:
         url = source.url
+        if "{api_key}" in url:
+            key = os.environ.get(source.key_env, "").strip() if source.key_env else ""
+            if not key:
+                raise FetchError(f"缺少金鑰（環境變數 {source.key_env or '未設定'}），未抓取")
+            url = url.replace("{api_key}", key)
         cache = self.day_dir / f"{source.id}.xml"
         if not url.lower().startswith(("http://", "https://")):
             if "://" in url or url.lower().startswith("file:"):
@@ -148,3 +168,97 @@ class Fetcher:
         cache.write_bytes(body)
         res.raw_path = cache
         return body
+
+
+# ---- 非 RSS 格式：轉成和 feedparser 一樣的 entry（title、link、summary、published_dt、id） ----
+def _parse_dt(v) -> dt.datetime | None:
+    """ISO 8601 或「YYYY-MM-DD HH:MM:SS」。沒有時區的當作台灣時間。認不出就回 None（不猜）。"""
+    if not v:
+        return None
+    s = str(v).strip().replace("Z", "+00:00")
+    try:
+        d = dt.datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if d.tzinfo is None:
+        from shared.dates import TW_TZ
+
+        d = d.replace(tzinfo=TW_TZ)
+    return d
+
+
+_NS = {
+    "sm": "http://www.sitemaps.org/schemas/sitemap/0.9",
+    "news": "http://www.google.com/schemas/sitemap-news/0.9",
+}
+
+
+def parse_news_sitemap(body: bytes, source: Source) -> list[dict]:
+    root = ET.fromstring(body)
+    out = []
+    for u in root.findall("sm:url", _NS):
+        out.append(
+            {
+                "title": (
+                    u.findtext("news:news/news:title", default="", namespaces=_NS) or ""
+                ).strip(),
+                "link": (u.findtext("sm:loc", default="", namespaces=_NS) or "").strip(),
+                "published_dt": _parse_dt(
+                    u.findtext("news:news/news:publication_date", default="", namespaces=_NS)
+                    or u.findtext("sm:lastmod", default="", namespaces=_NS)
+                ),
+            }
+        )
+    return out
+
+
+def parse_wp_json(body: bytes, source: Source) -> list[dict]:
+    data = json.loads(body)
+    if not isinstance(data, list):
+        raise ValueError("wp-json 應為清單")
+    out = []
+    for p in data:
+        title = p.get("title")
+        excerpt = p.get("excerpt")
+        out.append(
+            {
+                "title": title.get("rendered", "") if isinstance(title, dict) else str(title or ""),
+                "link": str(p.get("link") or ""),
+                "summary": excerpt.get("rendered", "") if isinstance(excerpt, dict) else "",
+                "published_dt": _parse_dt(
+                    p.get("date_gmt") and p["date_gmt"] + "+00:00" or p.get("date")
+                ),
+            }
+        )
+    return out
+
+
+def parse_json_api(body: bytes, source: Source) -> list[dict]:
+    """欄位名稱寫在 sources.yaml 的「欄位」：標題、日期、連結（可省略）、編號、預設連結、清單（可省略）。"""
+    f = source.fields
+    data = json.loads(body)
+    if f.get("清單"):
+        for k in str(f["清單"]).split("."):
+            data = data[k]
+    if not isinstance(data, list):
+        raise ValueError("清單不是陣列")
+    out = []
+    for r in data:
+        if not isinstance(r, dict):
+            continue
+        link = str(r.get(f.get("連結", ""), "") or "").strip() if f.get("連結") else ""
+        if not link.lower().startswith(("http://", "https://")):
+            link = str(f.get("預設連結") or "")
+        out.append(
+            {
+                "title": str(r.get(f["標題"], "") or ""),
+                "link": link,
+                "summary": str(r.get(f.get("內文", ""), "") or "") if f.get("內文") else "",
+                "published_dt": _parse_dt(r.get(f["日期"])),
+                "id": f"{source.id}:{r.get(f['編號'])}" if f.get("編號") else None,
+            }
+        )
+    return out
+
+
+PARSERS = {"news_sitemap": parse_news_sitemap, "wp_json": parse_wp_json, "json_api": parse_json_api}
