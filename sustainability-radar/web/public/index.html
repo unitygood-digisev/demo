@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>永續情報雷達</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="台灣永續顧問的每週情報台：法規、碳價、同業動態，一鍵產出週報。">
+<meta name="description" content="優樂地永續的每週外部情報台：法規、碳價、同業與客戶動態，一鍵產出週報。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap">
@@ -83,6 +83,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.6}
 body.has-ai .ai-only{display:inline-flex!important}
 body.has-ai .ai-hide{display:none!important}
 body.has-ai div.ai-only,body.has-ai section.ai-only{display:block!important}
+body.has-ai span.ai-only{display:inline!important}
 
 /* 指標磚 */
 .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
@@ -182,7 +183,7 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
   <header class="mast">
     <div>
       <h1>永續情報雷達</h1>
-      <p class="sub">永續產業的每週情報台</p>
+      <p class="sub">優樂地永續的每週外部情報台</p>
     </div>
     <div class="mast-meta">
       <span class="badge" id="aiBadge"><span class="dot"></span><span id="aiText">離線模式（規則引擎）</span></span>
@@ -231,7 +232,7 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
           <div class="chips"><button class="btn" id="pasteBtn" type="button">分析並加到雷達</button></div>
           <p class="note" id="pasteNote" style="margin:0">先用規則引擎初判類別、影響面向與重要度<span class="ai-only">，再由 AI 抽取結構化資訊</span>。</p>
           <div class="sec-head" style="margin-top:10px"><h3>即時新聞</h3></div>
-          <p class="note" style="margin:0">抓取 Google News 近 7 天的永續新聞，用規則引擎自動分類。</p>
+          <p class="note" style="margin:0">從管理層系統使用的 36 個公開 RSS 來源（主管機關、國際準則組織、國內媒體）抓取近 7 天新聞，依優樂地關鍵字評分分類。</p>
           <div class="chips"><button class="btn ghost" id="liveBtn" type="button">抓取即時新聞</button></div>
           <p class="note" id="liveNote" style="margin:0"></p>
         </aside>
@@ -292,10 +293,11 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
 
     <!-- 5 週報產生器 -->
     <section class="panel" id="p-report" role="tabpanel" hidden>
-      <div class="sec-head"><h2>週報產生器</h2><span class="muted small">勾選情報，右側即時預覽</span></div>
+      <div class="sec-head"><h2>週報產生器</h2><span class="muted small">格式對齊管理層系統的外部情報週報；勾選情報，右側即時預覽</span></div>
       <div class="two" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
         <div class="stack">
           <div class="chips">
+            <button class="btn ghost sm" id="pickRecent" type="button">重要度高＋近兩週</button>
             <button class="btn ghost sm" id="pickHigh" type="button">只選重要度高</button>
             <button class="btn ghost sm" id="pickAll" type="button">全選</button>
             <button class="btn ghost sm" id="pickNone" type="button">全部取消</button>
@@ -306,6 +308,7 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
           <div class="chips">
             <button class="btn" id="copyBtn" type="button">複製週報</button>
             <button class="btn ghost ai-only" id="execBtn" type="button">AI 寫主管摘要</button>
+            <label class="small" for="fbToggle" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="fbToggle">附上主管回饋單</label>
           </div>
           <div class="toast" id="copyToast" role="status"></div>
           <div class="exec" id="execOut" hidden></div>
@@ -328,7 +331,7 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
     </section>
   </main>
   <footer class="note" style="padding-block:0 30px;border-top:1px solid var(--line)">
-    <p>所有數字都附出處與日期；缺值標示「未取得」，系統不會自行推估。即時新聞與貼上的新聞由規則引擎自動分類，尚未人工確認。「我方公司」條目為範例占位。</p>
+    <p>所有數字都附出處與日期；缺值標示「未取得」，系統不會自行推估。即時新聞與貼上的新聞由規則引擎依優樂地關鍵字自動分類，尚未人工確認。N18 自家動態為範例占位。</p>
   </footer>
 </div>
 <div id="tip" hidden></div>
@@ -339,14 +342,14 @@ pre.report{white-space:pre-wrap;word-break:break-word;font:400 .9rem/1.75 var(--
 const AS_OF = '2026-10-17';
 /* 情報：每則都有來源、可點開的網址與日期；摘要、影響、行動均為自行改寫。url2/src2 為補充來源。 */
 const NEWS = [
-  { id:'N1', date:'2026-06-03', cat:'reg', imp:3, lines:['fee','carbon'],
+  { id:'N1', date:'2026-06-03', cat:'reg', imp:3, lines:['carbon'],
     src:'環境部氣候變遷署 碳費專區', url:'https://www.cca.gov.tw/affairs/carbon-fee-fund/2301.html',
     src2:'公視新聞網（引環境部 6/3 公布）', url2:'https://news.pts.org.tw/article/811325',
     title:'碳費首次徵收完成：240 家企業繳納 49.7 億元',
     sum:'年排放 2.5 萬公噸以上的電力、燃氣與製造業，以 2025 年排放量於 2026 年 5 月底首次繳費；240 家、461 廠全數繳納，共 49.7 億元。',
     impact:'碳費從規劃變成實際支出。一般費率每公噸 300 元，提出自主減量計畫可適用 50 或 100 元；盤查數據品質直接決定繳費金額。',
     action:'替達門檻客戶建立碳費試算表，比較一般與優惠費率，並追蹤 2026 年排放量與減量計畫進度。' },
-  { id:'N2', date:'2026-02-12', cat:'reg', imp:3, lines:['fee','carbon'],
+  { id:'N2', date:'2026-02-12', cat:'reg', imp:3, lines:['carbon'],
     src:'環境部 115 年第 1 次碳費費率審議會會議紀錄', url:'https://service.cca.gov.tw/File/Get/cca/zh-tw/MJX5lArfODwFxjw',
     src2:'113 年第 5 次碳費費率審議會會議紀錄（2024-09-09）', url2:'https://service.cca.gov.tw/File/Get/cca/zh-tw/61Ia1G3QHo4b2zc',
     title:'碳費費率審議會：2030 年前分階段調升',
@@ -365,21 +368,21 @@ const NEWS = [
     sum:'強制適用改為實收資本額 20 億元以上，及受環境部納管應盤查查驗的上市櫃公司；家數由 1,970 家降至約 560 家，市值占比逾 87%。',
     impact:'未達門檻且非納管的公司仍須揭露氣候治理、風險管理與範疇一、二基本資訊。範疇三暫免揭露，第二、三階段母公司範疇一、二免確信。',
     action:'重新盤點客戶：約 560 家強制對象優先提供完整 S1/S2 服務，其餘客戶改推基本氣候揭露方案。' },
-  { id:'N5', date:'2026-01-01', cat:'intl', imp:3, lines:['cbam','carbon'],
+  { id:'N5', date:'2026-01-01', cat:'reg', imp:3, lines:['footprint','carbon'],
     src:'環境部氣候變遷署 CBAM 專區', url:'https://www.cca.gov.tw/affairs/cbam/regulations/25850.html',
     src2:'European Commission：CBAM', url2:'https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism_en',
     title:'歐盟 CBAM 正式期上路，2027 年首次繳交憑證',
     sum:'CBAM 2026 年 1 月 1 日進入正式期，涵蓋鋼鐵、水泥、鋁、肥料、電力、氫；2027 年 2 月起販售憑證，9 月 30 日前首次申報並繳交 CBAM 憑證。',
     impact:'出口歐盟的鋼鐵、鋁製品客戶，2026 年的出口量已開始計入憑證義務；缺少實際排放數據會被套用預設值。',
     action:'列出出口歐盟的鋼鐵與鋁客戶，協助建立產品碳含量計算與查證準備。' },
-  { id:'N6', date:'2025-10-17', cat:'intl', imp:2, lines:['cbam'],
+  { id:'N6', date:'2025-10-17', cat:'reg', imp:2, lines:['footprint'],
     src:'European Commission（DG TAXUD）', url:'https://taxation-customs.ec.europa.eu/news/officially-published-simplifications-carbon-border-adjustment-mechanism-cbam-2025-10-20_en',
     src2:'外貿協會《貿易雜誌》第 410 期', url2:'https://www.ieatpe.org.tw/magazine/ebook410/sustainable-future.html',
     title:'CBAM 簡化方案：每年 50 公噸微量豁免',
     sum:'歐盟規則 2025/2083 公布：每家進口商每年累計 50 公噸以下免適用 CBAM 憑證義務，約九成進口商豁免，仍涵蓋逾 99% 的內含排放。',
     impact:'小量進口的歐洲買家可能不再要求數據，但大宗鋼鋁進口商仍要完整排放資料，供應鏈壓力集中在大客戶。電力與氫不適用此豁免。',
     action:'確認客戶的歐盟進口商規模，判斷是否落在 50 公噸豁免內，避免過度投入。' },
-  { id:'N7', date:'2026-03-07', cat:'reg', imp:3, lines:['fee','carbon'],
+  { id:'N7', date:'2026-03-07', cat:'reg', imp:3, lines:['carbon'],
     src:'中國時報（旺得富）', url:'https://wantrich.chinatimes.com/news/20260307900015-420101',
     title:'自主減量計畫首波 273 廠通過，適用優惠費率',
     sum:'碳費徵收對象中 430 廠提出自主減量計畫，首波 273 廠通過審查；共約 2,700 項減量措施，預估 2030 年較 2025 年減量約 4,745 萬公噸。',
@@ -397,62 +400,112 @@ const NEWS = [
     sum:'擴大列管服務業、運輸業、醫療機構、大專院校等約 460 多家；小型逸散源低於總排放 0.05% 且未達 5 公噸，可連續 2 年沿用數據。',
     impact:'新列管對象多為服務業，不收碳費也不需查驗，但要盤查登錄，帶來基礎盤查與教育訓練需求。',
     action:'針對服務業、醫療與學校客群推出輕量盤查登錄方案。' },
-  { id:'N10', date:'2026-10-15', cat:'intl', imp:2, lines:['cbam','credit'],
+  { id:'N10', date:'2026-10-15', cat:'other', imp:2, lines:['footprint','netzero'],
     src:'GMK Center（引 Carbon Pulse）', url:'https://gmk.center/en/news/european-carbon-prices-rose-to-e88-t-in-october/',
     title:'EU ETS 碳價 10 月升至每噸 88 歐元',
     sum:'EUA 12 月期貨 10 月 12 日達每噸 88.3 歐元，為 1 月底以來高點；9 月均價 85.6 歐元。市場穩定準備（MSR）改革是後續變數。',
     impact:'EU ETS 價格決定 CBAM 憑證成本，目前約是台灣碳費一般費率的 10 倍，出口歐盟客戶的價差暴險仍大。',
     action:'用碳價戰情頁更新客戶的 CBAM 成本試算，並追蹤 MSR 改革協商結果。' },
-  { id:'N11', date:'2026-06-11', cat:'intl', imp:2, lines:['carbon','disclosure','credit'],
+  { id:'N11', date:'2026-06-11', cat:'reg', imp:2, lines:['netzero','disclosure'],
     src:'Enviliance（EnviX）', url:'https://enviliance.com/regions/others/global/report_16440',
     title:'SBTi 發布企業淨零標準 2.0 版',
     sum:'SBTi 發布企業淨零標準 2.0 版，重點從設定目標轉向落實：優先價值鏈直接減量，允許說明外部障礙，並認可碳移除等處理殘餘排放的行動。',
     impact:'已設定科學基礎減碳目標的客戶要規劃轉換，品牌客戶也可能更新對供應商的範疇三要求。',
     action:'盤點已設 SBT 的客戶，整理新舊版差異說明，作為下一輪顧問提案。' },
-  { id:'N12', date:'2026-04-01', cat:'intl', imp:2, lines:['carbon','credit'],
+  { id:'N12', date:'2026-04-01', cat:'reg', imp:2, lines:['netzero'],
     src:'AMT 法律事務所（Anderson Mōri & Tomotsune）', url:'https://amt-law.com/en/insights/trending-news/trending-news_20260519001_en_001/',
     src2:'經團連（Keidanren）意見書', url2:'https://www.keidanren.or.jp/policy/2026/008.html',
     title:'日本 GX-ETS 2026 年 4 月起強制實施',
     sum:'日本排放交易制度 GX-ETS 自 2026 年 4 月 1 日強制實施，對象為直接排放逾 10 萬公噸 CO2 的事業者；政府設定配額價格上下限。',
     impact:'日本客戶與日系供應鏈會把碳價納入採購考量，出口日本的台灣供應商可能被要求提供排放數據。',
     action:'整理日系客戶的供應鏈碳數據需求，說明 J-Credit 等抵換規則對台灣供應商的影響。' },
-  { id:'N13', date:'2026-08-28', cat:'comp', imp:2, lines:['energy','carbon'],
+  { id:'N13', date:'2026-08-28', cat:'client', imp:2, lines:['netzero'],
     src:'RECCESSARY（台積電 2025 永續報告書）', url:'https://www.reccessary.com/zh-tw/news/TSMC-2025-Sustainability-Report',
     title:'台積電 2025 年綠電占比 20.1%，台灣廠區 11.4%',
     sum:'台積電 2025 年全球用電 287.7 億度，再生能源占 20.1%，台灣廠區 11.4%；累計簽約再生能源 7.3GW，目標 2030 年 RE60、2040 年 RE100。',
     impact:'台積電大量採購綠電，排擠市場供給，供應商取得綠電的價格與合約年限壓力上升。',
     action:'協助半導體供應鏈客戶規劃綠電採購組合與合約策略。' },
-  { id:'N14', date:'2025-10-30', cat:'comp', imp:2, lines:['carbon','energy','cbam'],
+  { id:'N14', date:'2025-10-30', cat:'client', imp:2, lines:['carbon','netzero','footprint'],
     src:'工商時報（DIGITIMES 調查）', url:'https://www.ctee.com.tw/news/20251030700182-439901',
     title:'電子代工大廠淨零策略轉向協助供應商',
     sum:'電子六哥皆訂 2050 淨零，2030 年目標延伸到範疇三；平均再生能源占比由 2022 年 29% 升到 2024 年 55%，鴻海等由稽核轉為協助供應商。',
     impact:'代工大廠開始要求供應商提供範疇一、二數據並設減碳目標，二、三階供應商的盤查需求擴大。',
     action:'與代工大廠的供應商大會合作，推出供應商盤查與減碳輔導套裝。' },
-  { id:'N15', date:'2025-12-12', cat:'comp', imp:2, lines:['energy','disclosure'],
+  { id:'N15', date:'2025-12-12', cat:'peer', imp:2, lines:['netzero','disclosure'],
     src:'中央社', url:'https://www.cna.com.tw/news/afe/202512120163.aspx',
     title:'中經院啟動 TRE100，中小企業也能做綠電承諾',
     sum:'RE100 在台合作夥伴中經院推出 TRE100，不設用電門檻（RE100 門檻為年用電 1 億度），沿用 RE100 技術標準，首批成員有家登、全漢。',
     impact:'中小型出口商有了可對外聲明的綠電承諾框架，第三方驗證與年度揭露帶來新服務需求。',
     action:'對年用電未達 1 億度的出口客戶推廣 TRE100，提供加入與年度揭露輔導。' },
-  { id:'N16', date:'2026-05-12', cat:'data', imp:2, lines:['credit','fee'],
+  { id:'N16', date:'2026-05-12', cat:'other', imp:2, lines:['netzero','carbon'],
     src:'聯合報', url:'https://udn.com/news/story/6656/9496308',
     title:'碳交所國內減量額度上線 1 年半僅成交 69 公噸',
     sum:'臺灣碳權交易所國內減量額度平台上線約 1 年半，僅成交 5 筆、69 公噸；平台價每公噸約 3,000～4,000 元，遠高於碳費 300 元。',
     impact:'國內減量額度短期內不是降低碳費的划算工具，客戶詢問碳權時要先比較成本。',
     action:'在碳費諮詢中加入「繳費、自主減量、購買額度」三種做法的成本比較。' },
-  { id:'N17', date:'2025-12-22', cat:'data', imp:2, lines:['finance'],
+  { id:'N17', date:'2025-12-22', cat:'other', imp:2, lines:['finance'],
     src:'工商時報（櫃買中心資料）', url:'https://www.ctee.com.tw/news/20251222700160-430201',
     src2:'櫃買中心 永續發展債券專區', url2:'https://www.tpex.org.tw/zh-tw/bond/issue/sustainability/participation.html',
     title:'2025 年永續發展債券發行 2,090.6 億元創新高',
     sum:'2025 年櫃買中心永續發展債券發行量達 2,090.6 億元，首度突破 2 千億元，綠色債券占多數。',
     impact:'發債需求帶動資金用途評估、外部審查與存續期間影響報告的服務機會。',
     action:'對有發債計畫的客戶提供綠色融資架構與影響報告服務。' },
-  { id:'N18', date:'2026-10', cat:'self', imp:1, lines:['carbon','disclosure'],
+  { id:'N18', date:'2026-10', cat:'self', imp:1, lines:['disclosure'],
     src:'範例占位（請替換）', url:'',
-    title:'我方公司（請替換）：公司簡介占位',
-    sum:'範例條目。請替換成我方公司的服務客戶數、服務線與本週專案動態；這裡不放任何未經確認的數字。',
+    title:'優樂地永續：本週自家動態（請替換）',
+    sum:'範例條目。請替換成優樂地本週的專案、活動與得獎動態；這裡不放任何未經確認的數字。',
     impact:'自家動態可讓週報同時呈現市場訊號與我方的回應能力。',
     action:'每週由專案經理更新一次本則內容。' },
+  { id:'N19', date:'2026-10-15', cat:'reg', imp:3, lines:['nature','disclosure'],
+    src:'TNFD 官網', url:'https://tnfd.global/tnfd-releases-updated-guidance-as-adoption-passes-usd-26-trillion-in-aum/',
+    src2:'TNFD×SBTN×Nature Positive Initiative 一致性指引（10/13）', url2:'https://tnfd.global/tnfd-sbtn-and-nature-positive-initiative-release-aligned-guidance-to-strengthen-corporate-action-on-nature/',
+    title:'TNFD 更新指引，採用機構管理資產破 26 兆美元',
+    sum:'TNFD 10 月 15 日發布更新指引，採用 TNFD 的機構管理資產已超過 26 兆美元，下一步聚焦市場能力建置與支援準則制定；10 月 13 日另與 SBTN 等發布一致性指引。',
+    impact:'自然相關揭露需求加速。生物多樣性與 TNFD 是優樂地的強項服務，可主動更新客戶提案。',
+    action:'把本週兩份新指引重點加進 TNFD 工作坊教材，並通知上過課的客戶。' },
+  { id:'N20', date:'2026-10-12', cat:'other', imp:2, lines:['carbon','finance'],
+    src:'中央社', url:'https://www.cna.com.tw/news/afe/202610120264.aspx',
+    title:'台經院吳中書：永續金融面臨碳費偏低等 8 大挑戰',
+    sum:'台經院董事長吳中書指出台灣永續金融有 8 大挑戰，包括碳費偏低、跨部會 ESG 標準不一致，以及 171 萬家中小企業難以輔導。',
+    impact:'中小企業輔導缺口大，正好對應優樂地的中小企業盤查與培訓服務。',
+    action:'整理中小企業碳盤查與減碳輔導方案，搭配政府補助資訊對外推廣。' },
+  { id:'N21', date:'2026-10-08', cat:'reg', imp:2, lines:['impact','finance'],
+    src:'金管會 最新法令函釋', url:'https://www.fsc.gov.tw/ch/home.jsp?id=128&parentpath=0,3&mcustomize=lawnew_view.jsp&dataserno=202610080002&toolsflag=Y&dtable=NewsLaw',
+    title:'金管會訂定銀行辦理家族辦公室顧問業務規範',
+    sum:'金管會 10 月 8 日訂定「銀行辦理家族辦公室顧問業務規範」，即日生效；規範條文在附件，細節需看原文。',
+    impact:'家族辦公室與慈善、影響力投資相關，銀行顧問業務規範化後，可能帶來影響力評估的合作機會。',
+    action:'研讀規範附件，評估與銀行家族辦公室合作提供影響力評估（SROI）服務。' },
+  { id:'N22', date:'2026-10-08', cat:'policy', imp:1, lines:['netzero','finance'],
+    src:'經濟部能源署 焦點新聞', url:'https://www.moeaea.gov.tw/ECW/populace/news/News.aspx?kind=1&menu_id=41&news_id=34607',
+    title:'經濟部率金融業者考察金崙地熱，推動綠色融資',
+    sum:'經濟部 10 月 8 日帶金融業者參訪臺東金崙地熱案場，讓金融業了解地熱開發流程，加速提供綠色融資；案場預計 2027 年初併網。',
+    impact:'政府以綠色融資帶動再生能源，客戶的綠電來源與融資管道會更多元。',
+    action:'追蹤地熱等新型綠電的購電機會，納入客戶綠電採購建議。' },
+  { id:'N23', date:'2026-10-15', cat:'other', imp:2, lines:['nature'],
+    src:'台灣永續能源研究基金會 TAISE（轉載中鼎新聞稿）', url:'https://taise.org.tw/news/%e5%9c%b0%e7%90%83%e6%b0%b8%e7%ba%8c%e7%9a%84%e6%8a%8a%e9%97%9c%e8%80%85-%e4%b8%ad%e9%bc%8e%e9%9b%86%e5%9c%98%e6%94%9c%e6%89%8b%e7%be%8e%e5%b7%9d%e5%8d%94%e6%9c%83%e5%95%9f%e5%8b%95%e3%80%8c%e4%ba%94/',
+    title:'中鼎集團啟動五分港溪保育共生計畫',
+    sum:'中鼎集團與美川協會啟動為期 5 年的「五分港溪保育共生計畫」，結合供應鏈推動自然觀察與環境維護；中鼎表示已是 TNFD 先行者，目標 2045 年淨零。',
+    impact:'大型企業把河川保育與 TNFD 結合成長期計畫，是生物多樣性服務的標竿案例。',
+    action:'把這個案例放進生物多樣性提案素材，作為企業在地保育行動的參考。' },
+  { id:'N24', date:'2026-10-13', cat:'other', imp:2, lines:['netzero','nature'],
+    src:'中央社訊息平台（林業保育署）', url:'https://www.cna.com.tw/postwrite/chi/446836',
+    src2:'RECCESSARY', url2:'https://www.reccessary.com/zh-tw/news/chunghwa-telecom-bamboo-forest-carbon-sink-project',
+    title:'中華電信竹林碳匯專案，全臺首例通過註冊',
+    sum:'林保署媒合中華電信投入桃園復興竹林經營計畫，依環境部竹林經營碳匯方法學，10 月 2 日通過註冊審查，是全臺首件完成註冊的竹林碳匯自願減量專案。',
+    impact:'自然碳匯結合生物多樣性與原住民族部落合作，企業 ESG 預算有新的投入方向。',
+    action:'整理林保署媒合平臺與方法學流程，作為客戶自然碳匯專案的顧問素材。' },
+  { id:'N25', date:'2026-10-15', cat:'peer', imp:1, lines:['rating'],
+    src:'台灣永續能源研究基金會 TAISE', url:'https://taise.org.tw/events/awards/2027-%e7%ac%ac%e4%b8%89%e5%b1%86%e5%8f%b0%e7%81%a3%e5%bb%ba%e7%af%89%e6%b0%b8%e7%ba%8c%e7%8d%8e/',
+    title:'TAISE「2027 第三屆台灣建築永續獎」開放徵件',
+    sum:'台灣永續能源研究基金會開放「2027 第三屆台灣建築永續獎」徵件至 2026 年 11 月 27 日，以 ESG 架構評選建築全生命週期表現。',
+    impact:'同業持續以獎項經營企業關係，建設業客戶可能需要報名輔導。',
+    action:'通知建設與營造業客戶徵件時程，評估提供報名文件輔導。' },
+  { id:'N26', date:'2026-10-14', cat:'peer', imp:1, lines:['disclosure'],
+    src:'中時新聞網', url:'https://www.chinatimes.com/realtimenews/20261014003377-260410',
+    title:'勤業眾信合辦 AI 治理研討會，布局 AI 治理顧問',
+    sum:'勤業眾信與大數據公司合辦人機協作與 AI 治理研討會，強調企業導入 AI 時要把治理納入 AI 生命週期管理，涵蓋權責、風險評估與決策可追溯。',
+    impact:'大型會計師事務所把 AI 治理納入顧問服務，治理與揭露顧問的競爭範圍擴大。',
+    action:'觀察同業 AI 治理服務內容，評估是否納入優樂地的治理與揭露服務組合。' },
 ];
 
 /* 碳價基準：每筆都有日期與來源；查不到的不放 */
@@ -510,6 +563,7 @@ const KEY_DATA = [
   { text:'IFRS 永續揭露：2026 會計年度起資本額 100 億元以上適用；強制範圍調整為約 560 家', ref:['N3', 'N4'] },
   { text:'CBAM 2026-01-01 正式實施，2027-09-30 前首次繳交憑證；每年 50 公噸以下豁免', ref:['N5', 'N6'] },
   { text:'EU ETS 12 月期貨 10 月 12 日達每公噸 88.3 歐元', ref:['N10'] },
+  { text:'TNFD 採用機構管理資產超過 26 兆美元', ref:['N19'] },
 ];
 function ONE_LINER() {
   const eu = CARBON_PRICES.find(p => p.id === 'eu');
@@ -520,45 +574,108 @@ function ONE_LINER() {
 
 
 /* =================== 常數 =================== */
-const CONTEXT = '你服務的對象是一家台灣永續顧問與服務公司的研究與方案開發團隊，客戶是上市櫃企業與出口製造業，服務線包含碳盤查與查證、永續報告書與 IFRS 永續揭露、碳費與自主減量計畫、CBAM 申報、綠電採購與永續金融。';
-const CATS = { reg:'法規政策', intl:'國際趨勢', comp:'同業與客戶', data:'市場數據', self:'自家動態' };
-const LINES = { carbon:'碳盤查與查證', fee:'碳費與自主減量', disclosure:'永續揭露（IFRS S1/S2、報告書）',
-  cbam:'CBAM 與供應鏈碳管理', energy:'再生能源與綠電', credit:'碳權與抵換',
-  finance:'永續金融', nature:'自然與生物多樣性', social:'人權與社會' };
+const CONTEXT = '你服務的對象是優樂地永續服務股份有限公司（台灣永續顧問公司）的管理層與顧問團隊。服務線包含碳盤查與碳費、產品碳足跡與 CBAM、永續報告書與 IFRS 永續揭露、ESG 評鑑、生物多樣性與 TNFD、人權盡職調查與職場心理健康、影響力投資與 SROI、永續人才培訓、政府永續勞務採購，以及永續觀光與永續醫療。';
+/* 分組與「優樂地管理層系統」外部情報週報一致 */
+const CATS = { self:'自家品牌', reg:'法規與準則', policy:'政府採購與政策', peer:'同業動態', client:'客戶動態', other:'其他' };
+const LINES = { carbon:'碳盤查與碳費', footprint:'產品碳足跡與 CBAM', disclosure:'永續報告書與揭露', rating:'ESG 評鑑與獎項',
+  netzero:'淨零、綠電與碳權', nature:'生物多樣性與 TNFD', social:'人權與職場健康', impact:'影響力投資與 SROI',
+  talent:'永續人才與培訓', procure:'政府採購與補助', sector:'永續觀光與醫療', finance:'永續金融' };
 const IMP = { 3:'高', 2:'中', 1:'低' };
 const LINE_NOTE = {
-  carbon:'盤查邊界與查證時程是碳費、CBAM、揭露的共同基礎。',
-  fee:'試算客戶的碳費成本，評估是否提出自主減量計畫以適用優惠費率。',
-  disclosure:'對照接軌時程，盤點客戶的氣候相關財務資訊缺口。',
-  cbam:'確認客戶出口歐盟的產品是否受管制，準備產品碳含量數據。',
-  energy:'綠電取得成本與合約年限，是供應鏈減碳要求的關鍵。',
-  credit:'碳權只能有限度抵換，留意品質與適用規則。',
+  carbon:'盤查邊界與數據品質決定碳費金額，自主減量計畫可適用優惠費率。',
+  footprint:'出口客戶需要產品碳含量數據，ISO 14067 是共同基礎。',
+  disclosure:'對照 IFRS S1/S2 與報告書規範，盤點客戶的揭露缺口。',
+  rating:'評鑑與獎項是客戶展現成果的管道，也是提案切入點。',
+  netzero:'綠電與碳權是減碳路徑的關鍵，留意取得成本與抵換規則。',
+  nature:'TNFD 與自然碳匯是優樂地的強項，市場需求正在加速。',
+  social:'人權盡職調查與職場心理健康（ISO 45003）是供應鏈稽核重點。',
+  impact:'影響力評估與 SROI 能協助客戶說明社會價值。',
+  talent:'永續管理師與 ESG 培訓需求，常連動政府培訓計畫。',
+  procure:'留意永續勞務採購、培訓計畫與中小企業減碳補助標案。',
+  sector:'旅宿、遊程與醫療院所的永續標章與減碳需求。',
   finance:'永續金融的資訊要求與揭露內容要一致，避免漂綠風險。',
-  nature:'TNFD 等自然相關揭露是下一波需求。',
-  social:'人權盡職調查是供應鏈稽核的重點。',
 };
+/* 關鍵字：沿用「優樂地管理層系統」config/keywords.yaml（雲端版，2026-10-15 副執行長提供，不含客戶與人名）。
+   詞的寫法：「A＋B」兩個都要出現；「A／B」任一個即可。alone:false 表示要同時命中其他關鍵字才算。 */
+const NOT_ALONE = ['esg', '永續', '淨零'];
+const KEYWORDS = [
+  { t:'優樂地', cat:'自家品牌', w:5, syn:['Unity Sustainability','生物多樣性行動獎'], lines:[] },
+  { t:'碳費', cat:'法規與準則', w:5, syn:['自主減量計畫','溫室氣體盤查','碳盤查','ISO 14064-1'], lines:['carbon'] },
+  { t:'永續報告書', cat:'法規與準則', w:5, syn:['永續資訊揭露','IFRS S1','IFRS S2','TCFD','TNFD','TISFD','範疇三／Scope 3'], lines:['disclosure'] },
+  { t:'永續＋勞務採購', cat:'政府採購', w:5, syn:['永續＋培訓計畫','永續長','永續旅遊'], lines:['procure'] },
+  { t:'影響力投資', cat:'議題', w:5, syn:['社會企業','B 型企業／B Corp','公益信託','家族辦公室','慈善基金會','混合金融','慈善投資','信仰投資','SROI','社會投資報酬率','影響力評估','影響力管理','B4SI'], lines:['impact'] },
+  { t:'人權盡職調查', cat:'議題', w:5, syn:['HRDD','ISO 45003','心理社會風險','職場心理健康'], lines:['social'] },
+  { t:'勤業眾信', cat:'同業', w:4, syn:['安侯建業','資誠','安永'], lines:[] },
+  { t:'台灣永續能源研究基金會', cat:'同業', w:4, syn:['TAISE','台灣企業永續獎','TCSA'], lines:['rating'] },
+  { t:'頤得國際', cat:'同業', w:4, syn:['CSRone','三人恆好','環境友善種子'], lines:[] },
+  { t:'產品碳足跡', cat:'法規與準則', w:4, syn:['ISO 14067','碳標籤'], lines:['footprint'] },
+  { t:'ESG 評鑑', cat:'法規與準則', w:4, syn:['公司治理評鑑','MSCI ESG','S&P CSA','DJSI','DJBIC','永續評比'], lines:['rating'] },
+  { t:'中小企業＋碳盤查／減碳補助', cat:'政策', w:4, syn:['低碳轉型補助','綠色融資'], lines:['procure', 'carbon'] },
+  { t:'永續觀光', cat:'議題', w:4, syn:['綠色旅遊','旅宿業永續','低碳遊程','ISO 20121','永續活動','遊程碳足跡','永續標章'], lines:['sector'] },
+  { t:'永續醫療', cat:'議題', w:4, syn:['SusQi'], lines:['sector'] },
+  { t:'SGS', cat:'同業', w:3, syn:['BSI','DNV','TÜV','BV','CU'], lines:['carbon'] },
+  { t:'永訊智庫', cat:'同業', w:3, syn:[], lines:[] },
+  { t:'CBAM', cat:'法規與準則', w:3, syn:['碳邊境調整機制'], lines:['footprint'] },
+  { t:'淨零', cat:'議題', w:3, syn:['減碳路徑','SBTi','碳權','自願減量','碳權交易所'], lines:['netzero'] },
+  { t:'生物多樣性', cat:'議題', w:3, syn:['自然正向／Nature Positive'], lines:['nature'] },
+  { t:'永續人才', cat:'議題', w:3, syn:['永續管理師','ESG 培訓'], lines:['talent'] },
+  { t:'原住民族產業', cat:'議題', w:3, syn:['地方創生'], lines:['impact'] },
+  { t:'綠建築', cat:'議題', w:2, syn:['建築能效','循環經濟'], lines:['netzero'] },
+  { t:'環境部', cat:'主管機關', w:2, alone:false, syn:['金管會','氣候變遷署','觀光署','職安署'], lines:[] },
+];
+const KW_CAT = { '自家品牌':'self', '客戶':'client', '同業':'peer', '政府採購':'policy', '政策':'policy', '法規與準則':'reg', '主管機關':'reg', '議題':'other' };
+const KW_PRIORITY = ['自家品牌', '客戶', '同業', '政府採購', '法規與準則', '政策', '主管機關', '議題'];
+const SRC_GROUP = { '法規與準則':'reg', '同業動態':'peer', '客戶動態':'client', '其他':'other' };
 const RULES = {
-  cat:[ ['reg',/環境部|氣候變遷署|金管會|證交所|櫃買|子法|辦法|草案|預告|新制|上路|開徵|強制/],
-        ['intl',/歐盟|CBAM|ISSB|TNFD|SBTi|EU ETS|COP|國際|美國|日本|新加坡|韓國/],
-        ['comp',/供應商|客戶|台積電|鴻海|蘋果|RE100|承諾|宣布|推出|顧問|查驗證/],
-        ['data',/交易量|統計|年增|占比|億元|萬噸|發行量|裝置容量/],
-        ['self',/我方公司/] ],
-  lines:{ carbon:/盤查|查證|ISO 14064|範疇[一二三]|Scope/, fee:/碳費|自主減量|優惠費率|徵收費率/,
-    disclosure:/IFRS|S1|S2|永續報告書|揭露|確信/, cbam:/CBAM|碳邊境|產品碳足跡|供應鏈/,
-    energy:/綠電|再生能源|太陽光電|離岸風電|RE100|購電/, credit:/碳權|減量額度|抵換|交易所/,
-    finance:/綠色債券|永續債|永續連結|授信|ESG 基金|轉型金融/, nature:/生物多樣性|TNFD|自然/,
-    social:/人權|勞工|供應鏈稽核|多元|DEI/ },
-  hot:/開徵|上路|強制|罰|首次|正式實施|截止|期限|天花板|創新高/,
+  cat:[ ['self',/優樂地|我方公司/], ['policy',/採購|標案|補助/],
+        ['reg',/環境部|氣候變遷署|金管會|證交所|櫃買|子法|辦法|規範|草案|預告|新制|上路|開徵|強制|歐盟|CBAM|ISSB|TNFD|SBTi|準則/],
+        ['peer',/顧問|查驗證|勤業|安永|資誠|安侯|SGS|BSI|DNV/], ['client',/供應商|台積電|鴻海|宣布|推出/] ],
+  lines:{ carbon:/盤查|查證|ISO 14064|範疇[一二]|碳費|自主減量|優惠費率/, footprint:/碳足跡|ISO 14067|碳標籤|CBAM|碳邊境|供應鏈/,
+    disclosure:/IFRS|S1|S2|永續報告書|揭露|確信|TCFD|TISFD|範疇三|Scope 3/, rating:/評鑑|評比|MSCI|DJSI|永續獎|TCSA/,
+    netzero:/淨零|綠電|再生能源|RE100|碳權|減量額度|自願減量|SBTi|地熱|太陽光電|離岸風電/, nature:/生物多樣性|TNFD|自然正向|Nature Positive|碳匯|保育/,
+    social:/人權|勞工|職場|心理健康|ISO 45003|HRDD|DEI/, impact:/影響力|SROI|社會企業|B Corp|公益信託|家族辦公室|慈善|地方創生/,
+    talent:/人才|培訓|永續管理師|永續長/, procure:/採購|標案|補助|招標/, sector:/觀光|旅遊|旅宿|遊程|醫療|醫院/,
+    finance:/綠色債券|永續債|永續發展債券|永續連結|授信|綠色融資|轉型金融|永續金融/ },
+  hot:/開徵|上路|強制|罰|首次|正式實施|截止|期限|天花板|創新高|即日生效/,
 };
-// 重要度 = 1 +（符合 hot 加 1）+（影響面向含 fee、disclosure、cbam 任一項加 1），最高為 3
-function tag(text){
-  const t = String(text || '');
-  const hit = RULES.cat.find(([, re]) => re.test(t));
-  const cat = hit ? hit[0] : 'intl';
-  let lines = Object.keys(RULES.lines).filter(k => RULES.lines[k].test(t));
+const fold = t => String(t || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+function altHit(alt, text) {
+  // 短的英文縮寫（例如 BV、CU、SGS）前後不能是英數字，避免對到 obviously、customer
+  if (alt.length <= 4 && /^[0-9a-z&]+$/.test(alt)) return new RegExp(`(?<![0-9a-z])${alt.replace(/&/g, '\\&')}(?![0-9a-z])`).test(text);
+  return text.includes(alt);
+}
+// 回傳 null（沒命中）、'weak'（只靠不能單獨算的詞命中）或 'strong'
+function termHit(term, text) {
+  let strong = false;
+  for (const part of term.split('＋')) {
+    const hit = part.split('／').map(fold).filter(a => a && altHit(a, text));
+    if (!hit.length) return null;
+    if (hit.some(a => !NOT_ALONE.includes(a))) strong = true;
+  }
+  return strong ? 'strong' : 'weak';
+}
+// 相關度 = 命中關鍵字的權重加總；只有弱命中時不算相關
+function score(text) {
+  const t = fold(text), strong = [], weak = [], terms = [];
+  KEYWORDS.forEach(k => {
+    const kinds = [k.t, ...k.syn].map(x => [x, termHit(x, t)]).filter(([, v]) => v);
+    if (!kinds.length) return;
+    kinds.forEach(([x]) => { if (!terms.includes(x)) terms.push(x); });
+    (k.alone !== false && kinds.some(([, v]) => v === 'strong') ? strong : weak).push(k);
+  });
+  const hits = strong.length ? [...strong, ...weak] : [];
+  const best = hits.slice().sort((a, b) => b.w - a.w || KW_PRIORITY.indexOf(a.cat) - KW_PRIORITY.indexOf(b.cat))[0];
+  return { score: hits.reduce((a, k) => a + k.w, 0), maxW: best ? best.w : 0, best, hits, terms: hits.length ? terms : [] };
+}
+// 規則分類：類別依命中權重最高的關鍵字；重要度 = 1 +（最高權重達 5 加 1）+（符合 hot 加 1），最高為 3
+function tag(text, srcGroup) {
+  const t = String(text || ''), r = score(t);
+  let cat = r.best ? KW_CAT[r.best.cat] : null;
+  if (!cat) { const hit = RULES.cat.find(([, re]) => re.test(t)); cat = hit ? hit[0] : (SRC_GROUP[srcGroup] || 'other'); }
+  let lines = [...new Set([...r.hits.flatMap(k => k.lines), ...Object.keys(RULES.lines).filter(k => RULES.lines[k].test(t))])];
   if (!lines.length) lines = ['disclosure'];
-  let imp = 1 + (RULES.hot.test(t) ? 1 : 0) + (lines.some(l => ['fee','disclosure','cbam'].includes(l)) ? 1 : 0);
-  return { cat, lines, imp: Math.min(3, imp) };
+  const imp = r.score ? Math.min(3, 1 + (r.maxW >= 5 ? 1 : 0) + (RULES.hot.test(t) ? 1 : 0)) : 1;
+  return { cat, lines: lines.slice(0, 4), imp, score: r.score, terms: r.terms, relevant: r.score > 0 };
 }
 
 /* =================== 工具 =================== */
@@ -581,9 +698,13 @@ function isoWeek(dateStr) {
 }
 
 /* =================== 狀態 =================== */
+const WINDOW_DAYS = 14;  // 週報預設收錄：重要度高，或 AS_OF 前 14 天內的情報
+function recent(d) { const t = Date.parse(String(d).length === 7 ? d + '-01' : d); return t >= Date.parse(AS_OF) - WINDOW_DAYS * 86400000; }
+NEWS.forEach(n => { const r = tag(`${n.title} ${n.sum} ${n.impact.replace(/優樂地/g, "")}`); n.score = r.score; n.terms = r.terms; });
 const state = {
   extra: [],               // 使用者貼上（U）與即時新聞（L）
-  picked: new Set(NEWS.filter(n => n.imp === 3).map(n => n.id)),
+  picked: new Set(NEWS.filter(n => n.imp === 3 || recent(n.date)).map(n => n.id)),
+  low: [], anomalies: [], liveMeta: null, feedback: false,
   fCat: 'all', fLine: 'all',
   fx: Object.fromEntries(Object.entries(FX.rates).map(([k, v]) => [k, v])),
   icp: 300, uSeq: 0, lSeq: 0, exec: '',
@@ -695,11 +816,11 @@ function cardHTML(n, opts = {}) {
   const ai = state.aiCache[n.id];
   return `<article class="card i${n.imp}" data-id="${esc(n.id)}">
   <div class="meta"><span class="imp i${n.imp}">重要度 ${IMP[n.imp]}</span><span>${esc(CATS[n.cat])}</span>${linesText(n)}</div>
-  <div class="meta"><span class="idn">${esc(n.id)}</span><span class="num">${esc(n.date)}</span><span>來源：${n.url ? ext(n.url, n.src) : esc(n.src)}${n.url2 ? `；補充：${ext(n.url2, n.src2)}` : ''}</span></div>
+  <div class="meta"><span class="idn">${esc(n.id)}</span><span class="num">${esc(n.date)}</span><span>相關度 <b class="num">${n.score || 0}</b> 分${n.terms && n.terms.length ? `（命中：${esc(n.terms.join('、'))}）` : '（未命中關鍵字）'}</span><span>來源：${n.url ? ext(n.url, n.src) : esc(n.src)}${n.url2 ? `；補充：${ext(n.url2, n.src2)}` : ''}</span></div>
   <h3>${esc(n.title)}</h3>
   <p>${esc(n.sum)}</p>
   <details${opts.open ? ' open' : ''}><summary>影響分析與建議行動</summary>
-    <dl><dt>對我們的影響</dt><dd>${esc(n.impact)}</dd>
+    <dl><dt>對優樂地的意義</dt><dd>${esc(n.impact)}</dd>
     <dt>建議行動</dt><dd>${esc(n.action)}</dd>
     <dt>服務線提醒</dt><dd>${n.lines.map(l => `${esc(LINES[l])}：${esc(LINE_NOTE[l])}`).join('<br>')}</dd></dl>
   </details>
@@ -789,21 +910,21 @@ async function analyzePaste() {
   const t = tag(raw);
   const id = 'U' + (++state.uSeq);
   const firstLine = raw.split(/\n/)[0].slice(0, 60);
-  const n = { id, date: AS_OF, cat: t.cat, imp: t.imp, lines: t.lines, src: '使用者貼上', url: '',
+  const n = { id, date: AS_OF, cat: t.cat, imp: t.imp, lines: t.lines, score: t.score, terms: t.terms, src: '使用者貼上', url: '',
     title: firstLine, sum: raw.length > 60 ? raw.slice(0, 60) + '…' : raw,
     impact: t.lines.map(l => LINE_NOTE[l]).join(''), action: '確認原文出處與日期，再決定是否通知相關客戶。', user: true };
   state.extra.unshift(n);
   if (t.imp === 3) state.picked.add(id);
   state.fCat = 'all'; state.fLine = 'all';
   renderAll();
-  $('#pasteNote').textContent = `規則初判：${CATS[t.cat]}・${t.lines.map(l => LINES[l]).join('、')}・重要度 ${IMP[t.imp]}（${id}）`;
+  $('#pasteNote').textContent = `規則初判：${CATS[t.cat]}・${t.lines.map(l => LINES[l]).join('、')}・重要度 ${IMP[t.imp]}・相關度 ${t.score} 分${t.terms.length ? `（命中：${t.terms.join('、')}）` : ''}（${id}）`;
   if (!SAMPLE) return;
   const btn = $('#pasteBtn'); btn.disabled = true;
   $('#pasteNote').textContent += '。AI 抽取中…';
   const prompt = `${CONTEXT}
-把下列新聞整理成情報卡。只根據新聞內容，不要編造數字。
-類別只能是 reg、intl、comp、data、self 其中之一；lines 只能從（${Object.keys(LINES).join('、')}）中選；imp 為 1 到 3（3 表示本週必須處理）。
-只回 JSON：{"title":"40 字內","date":"YYYY-MM-DD 或 YYYY-MM，不知道就填 ${AS_OF}","cat":"…","lines":["…"],"imp":2,"sum":"60 字內摘要","impact":"對我們的影響，80 字內","action":"建議行動，60 字內"}
+把下列新聞整理成情報卡。只能使用新聞提供的文字，不要補充背景知識，不要推測，不可編造數字；數字、日期、機關名稱、專有名詞必須與原文完全一致；不要輸出任何網址。
+類別只能是 ${Object.entries(CATS).map(([k, v]) => `${k}（${v}）`).join('、')} 其中之一；lines 只能從（${Object.keys(LINES).join('、')}）中選；imp 為 1 到 3（3 表示本週必須處理）。
+只回 JSON：{"title":"40 字內","date":"YYYY-MM-DD 或 YYYY-MM，不知道就填 ${AS_OF}","cat":"…","lines":["…"],"imp":2,"sum":"兩句話，合計 80 字內","impact":"對優樂地的意義，40 字內；內容不足時寫「內容不足，待確認」","action":"建議行動，60 字內"}
 新聞：${raw.slice(0, 6000)}`;
   try {
     const j = await SAMPLE.json(prompt, { modelTier: 'quick' });
@@ -825,27 +946,38 @@ async function analyzePaste() {
 async function fetchLive() {
   const note = $('#liveNote');
   if (!IS_WEB) { note.textContent = '只有部署在網站上的版本才有這個功能。'; return; }
-  const btn = $('#liveBtn'); btn.disabled = true; note.textContent = '抓取中…';
+  const btn = $('#liveBtn'); btn.disabled = true; note.textContent = '抓取中，約需 5～10 秒…';
   try {
     const r = await fetch('/api/news');
     const j = await r.json();
     if (!r.ok || !Array.isArray(j.items)) throw new Error('bad');
-    const seen = new Set(allNews().map(n => n.url).filter(Boolean));
+    const seen = new Set(allNews().flatMap(n => [n.url, n.url2]).filter(Boolean));
+    state.low = []; state.anomalies = j.anomalies || [];
     let added = 0;
     j.items.forEach(it => {
       if (!it.link || seen.has(it.link)) return;
       seen.add(it.link);
-      const t = tag(it.title);
-      state.extra.push({ id: 'L' + (++state.lSeq), date: it.date || AS_OF, cat: t.cat, imp: t.imp, lines: t.lines,
-        src: it.source || 'Google News', url: it.link, title: it.title,
-        sum: '即時新聞（規則引擎自動分類，尚未人工確認）', impact: t.lines.map(l => LINE_NOTE[l]).join(''),
-        action: '打開原文確認細節，再決定是否通知客戶。', live: true });
+      const t = tag(`${it.title} ${it.excerpt || ''}`, it.group);
+      if (!t.relevant) { state.low.push(it); return; }
+      const ex = (it.excerpt || '').replace(/The post .*$/, '').trim();
+      state.extra.push({ id: 'L' + (++state.lSeq), date: it.date || AS_OF, cat: t.cat, imp: t.imp, lines: t.lines, score: t.score, terms: t.terms,
+        src: it.source, url: it.link, title: it.title,
+        sum: (ex ? (ex.length > 80 ? ex.slice(0, 80) + '…' : ex) : '僅標題，內容待確認。') + '（即時新聞，規則引擎自動分類，尚未人工確認）',
+        impact: t.lines.map(l => LINE_NOTE[l]).join(''), action: '打開原文確認細節，再決定是否通知客戶。', live: true });
       added++;
     });
-    note.textContent = `新增 ${added} 則（抓取時間 ${new Date(j.fetchedAt).toLocaleString('zh-TW')}）。`;
+    state.liveMeta = { sources: j.sources, total: j.items.length, added, fetchedAt: j.fetchedAt };
+    renderLive();
     renderAll();
   } catch { note.textContent = '即時新聞暫時抓不到，請稍後再試。'; }
   finally { btn.disabled = false; }
+}
+function renderLive() {
+  const m = state.liveMeta;
+  if (!m) return;
+  $('#liveNote').innerHTML = `從 ${m.sources} 個公開來源抓到近 7 天 ${m.total} 則，依優樂地關鍵字篩出 <b>${m.added}</b> 則相關、已加到雷達（編號 L）。抓取時間 ${esc(new Date(m.fetchedAt).toLocaleString('zh-TW'))}。` +
+    (state.anomalies.length ? `<br><b>來源異常：</b>${state.anomalies.map(a => `${esc(a.source)}（${esc(a.error)}）`).join('、')}` : '<br>來源異常：無') +
+    (state.low.length ? `<details class="dt"><summary>附錄：低相關與未列入（${state.low.length} 則）</summary><ul class="small">${state.low.slice(0, 80).map(it => `<li>${ext(it.link, it.title)}<span class="muted">・${esc(it.source)}</span></li>`).join('')}</ul>${state.low.length > 80 ? '<p class="note">只列前 80 則。</p>' : ''}</details>` : '');
 }
 
 /* =================== 圖表（手寫 SVG） =================== */
@@ -1074,22 +1206,52 @@ document.addEventListener('change', e => {
   e.target.checked ? state.picked.add(id) : state.picked.delete(id);
   renderReport(); renderRadar(); renderOverview();
 });
+const ZH = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+function itemBlock(n, i) {
+  return [`${i}.【重要度 ${IMP[n.imp]}】${n.title} [${n.id}]`,
+    `　來源：${n.src}｜日期：${n.date}｜相關度 ${n.score || 0} 分（命中：${n.terms && n.terms.length ? n.terms.join('、') : '無'}）`,
+    `　摘要：${n.sum}`,
+    `　對優樂地的意義：${n.impact}`,
+    `　原文連結：${n.url || '（使用者貼上，無網址）'}`];
+}
 function buildReport() {
   const d = todayStr();
+  const from = new Date(Date.parse(d) - 6 * 86400000).toISOString().slice(0, 10);
   const sel = sortNews(allNews().filter(n => state.picked.has(n.id)));
-  const refs = new Set();
-  const L = [`【永續市場情報週報】${d}（第 ${isoWeek(d)} 週，ISO 週數）`, ''];
-  const sec = (title, lines) => { if (lines.length) L.push(title, ...lines, ''); };
-  const hi = sel.filter(n => n.imp === 3);
-  sec('一、本週重點', hi.map(n => (refs.add(n.id), `・${n.title} [${n.id}]`)));
-  sec('二、關鍵數據', KEY_DATA.map(k => (k.ref.forEach(r => refs.add(r)), `・${k.text} [${k.ref.join('][')}]`)));
-  [['reg', '三、法規政策'], ['intl', '四、國際趨勢'], ['comp', '五、同業與客戶'], ['data', '六、市場數據']].forEach(([c, t]) =>
-    sec(t, sel.filter(n => n.cat === c).map(n => (refs.add(n.id), `・[${n.id}] ${n.title}${n.sum && n.sum !== n.title ? '：' + n.sum : ''}`))));
-  const selfItems = sel.filter(n => n.cat === 'self');
-  if (selfItems.length) sec('（自家動態）', selfItems.map(n => (refs.add(n.id), `・[${n.id}] ${n.title}：${n.sum}`)));
-  sec('七、建議行動', sel.map(n => (refs.add(n.id), `・${n.action} [${n.id}]`)));
-  const src = [...refs].map(byId).filter(Boolean).map(n => `[${n.id}] ${n.src}：${n.url || '（使用者貼上，無網址）'}`);
-  sec('資料來源', src);
+  const refs = new Set(sel.map(n => n.id));
+  const L = [`【優樂地 外部情報週報】${d}（第 ${isoWeek(d)} 週，ISO 週數）`, `資料等級：公開｜涵蓋 ${from}～${d}｜資料截至 ${AS_OF}`, ''];
+  const hi = sel.filter(n => n.imp === 3), rest = sel.filter(n => n.imp !== 3);
+  if (sel.length) {
+    const parts = Object.keys(CATS).map(c => [CATS[c], sel.filter(n => n.cat === c).length]).filter(([, k]) => k).map(([g, k]) => `${g} ${k} 則`);
+    const top = (hi.length ? hi : sel).slice(0, 2).map(n => `「${n.title}」[${n.id}]`).join('與');
+    L.push(`本期有 ${sel.length} 則相關動態：${parts.join('、')}。最重要的是${top}。`, '');
+  } else L.push('本期無符合項目。', '');
+  let k = 0;
+  const sec = (title, lines) => { if (lines.length) L.push(`${ZH[k++]}、${title}`, ...lines, ''); };
+  sec(`本週重點（重要度 高，${hi.length} 則）`, hi.flatMap((n, i) => itemBlock(n, i + 1)));
+  sec('關鍵數據', KEY_DATA.map(x => (x.ref.forEach(r => refs.add(r)), `・${x.text} [${x.ref.join('][')}]`)));
+  Object.keys(CATS).forEach(c => {
+    const rs = rest.filter(n => n.cat === c);
+    sec(`${CATS[c]}（${rs.length} 則）`, rs.flatMap((n, i) => itemBlock(n, i + 1)));
+  });
+  sec('建議行動', sel.map(n => `・${n.action} [${n.id}]`));
+  const live = state.liveMeta;
+  sec('說明', [
+    `・情報來源：已查證的知識庫 ${NEWS.length} 則${live ? `；即時新聞從 ${live.sources} 個公開來源抓取 ${live.total} 則，依優樂地關鍵字篩出 ${live.added} 則（編號 L，尚未人工確認）` : ''}。`,
+    '・【】內是重要度；相關度是命中關鍵字的權重加總（關鍵字沿用管理層系統 10/15 版）。點原文連結可開啟全文，判斷是否引用時請以原文為準。',
+    ...(live ? [`・來源異常：${state.anomalies.length ? state.anomalies.map(a => `${a.source}（${a.error}）`).join('、') : '無'}。`, `・附錄：低相關與未列入 ${state.low.length} 則，未放進本期週報。`] : []),
+    '・本週報只使用公開資料，由系統產生；請勿直接轉寄給客戶。',
+  ]);
+  const src = [...refs].map(byId).filter(Boolean).map(n => `[${n.id}] ${n.src}：${n.url || '（使用者貼上，無網址）'}${n.url2 ? `；${n.src2}：${n.url2}` : ''}`);
+  L.push('資料來源', ...src);
+  if (state.feedback && sel.length) {
+    L.push('', '──────────', '主管回饋單（把 ☐ 改成 ☑，在＿＿處填寫，存檔後回信即可；編號對應上方週報）', '',
+      '一、逐則判斷：這則是您想看的嗎？',
+      ...sel.map(n => `[${n.id}] ${n.title.length > 30 ? n.title.slice(0, 30) + '…' : n.title}　☐要 ☐不要`),
+      '週報漏掉的重要新聞（請寫標題）：＿＿＿＿', '',
+      '二、摘要與份量', '摘要長度：☐剛好 ☐太長 ☐太短', `每期則數（本期 ${sel.length} 則）：☐可以 ☐改成＿＿則`, '',
+      '三、其他意見：＿＿＿＿');
+  }
   return L.join('\n').trim();
 }
 function renderReport() {
@@ -1124,12 +1286,12 @@ ${buildReport()}`;
 }
 
 /* =================== 6 問情報官 =================== */
-const SUGG = ['碳費開徵後，哪些客戶最需要自主減量計畫？', 'CBAM 正式期對出口鋼鐵和鋁的客戶有什麼影響？', '第一階段 IFRS S2 揭露，客戶最常缺什麼？', '我們的內部碳定價應該訂多少？'];
+const SUGG = ['TNFD 本週的更新，對優樂地的生物多樣性服務有什麼影響？', '碳費開徵後，哪些客戶最需要自主減量計畫？', 'CBAM 正式期對出口鋼鐵和鋁的客戶有什麼影響？', 'IFRS 永續揭露範圍縮小後，我們的提案名單要怎麼調整？'];
 function terms(q) {
   const out = new Set();
   (q.match(/[A-Za-z0-9]{2,}/g) || []).forEach(w => out.add(w.toUpperCase()));
   (q.match(/[一-鿿]+/g) || []).forEach(run => { if (run.length === 1) out.add(run); for (let i = 0; i < run.length - 1; i++) out.add(run.slice(i, i + 2)); });
-  ['什麼', '哪些', '應該', '客戶', '我們', '影響', '最需', '需要', '多少', '常缺'].forEach(s => out.delete(s));
+  ['什麼', '哪些', '應該', '客戶', '我們', '影響', '最需', '需要', '多少', '常缺', '優樂', '樂地', '本週', '對優', '服務', '有什', '麼影'].forEach(s => out.delete(s));
   return [...out];
 }
 function localAnswer(q) {
@@ -1150,7 +1312,7 @@ async function ask(q) {
     const hits = localAnswer(q);
     ans.innerHTML = hits.length
       ? `離線模式：用關鍵字比對知識庫，最相關的 ${hits.length} 則是 ${hits.map(n => `<b>${esc(n.id)}</b>`).join('、')}。下方列出各則的影響分析與建議行動。`
-      : '知識庫中沒有符合的情報。試試其他關鍵字，例如「碳費」「CBAM」「IFRS」「綠電」。';
+      : '知識庫中沒有符合的情報。試試其他關鍵字，例如「碳費」「CBAM」「TNFD」「IFRS」。';
     cards.innerHTML = hits.map(n => cardHTML(n, { open: true })).join('');
     return;
   }
@@ -1195,7 +1357,9 @@ function init() {
   if (!IS_WEB) $('#liveNote').textContent = '只有部署在網站上的版本才有這個功能。';
   $('#copyBtn').addEventListener('click', copyReport);
   $('#execBtn').addEventListener('click', execSummary);
+  $('#fbToggle').addEventListener('change', e => { state.feedback = e.target.checked; renderReport(); });
   $('#pickHigh').addEventListener('click', () => { state.picked = new Set(allNews().filter(n => n.imp === 3).map(n => n.id)); renderAll(); });
+  $('#pickRecent').addEventListener('click', () => { state.picked = new Set(allNews().filter(n => n.imp === 3 || recent(n.date)).map(n => n.id)); renderAll(); });
   $('#pickAll').addEventListener('click', () => { state.picked = new Set(allNews().map(n => n.id)); renderAll(); });
   $('#pickNone').addEventListener('click', () => { state.picked = new Set(); renderAll(); });
   $('#sugg').innerHTML = SUGG.map(s => `<button class="chipbtn" type="button" data-q="${esc(s)}">${esc(s)}</button>`).join('');
