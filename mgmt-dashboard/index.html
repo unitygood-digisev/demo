@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; form-action 'none'">
+<title>管理層總覽面板</title>
+<link rel="stylesheet" href="../shared/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>管理層總覽面板</h1>
+    <p class="sub">專案、合約、請款、應收的總覽與警示。資料只存在這台電腦的瀏覽器，不連任何外部服務。</p>
+  </div>
+  <div class="actions">
+    <button class="btn" id="btnImport">匯入 Excel／CSV</button>
+    <button class="btn secondary" id="btnExport">匯出 Excel</button>
+  </div>
+</header>
+
+<main id="app">
+  <section class="cards" id="cards"></section>
+
+  <section id="empty" class="empty" hidden>
+    <h2>還沒有資料</h2>
+    <p>匯入專案清單（.xlsx 或 .csv），再匯入請款紀錄，面板就會算出總覽與警示。</p>
+    <button class="btn" id="btnImportFirst">匯入第一份資料</button>
+  </section>
+
+  <div class="split" id="split">
+    <div class="col-left">
+      <section class="panel">
+        <h2>需要決定的事</h2>
+        <ul class="alerts" id="alerts"></ul>
+      </section>
+      <section class="panel">
+        <h2>專案清單</h2>
+        <div class="table-wrap">
+          <table class="list">
+            <thead><tr><th>客戶代號</th><th>專案名稱</th><th class="num">合約總額</th><th class="num">請款進度</th><th>狀態</th></tr></thead>
+            <tbody id="projectRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <section class="panel col-right" id="detail">
+      <p class="muted">從左邊選一個專案或警示，查看詳情。</p>
+    </section>
+  </div>
+</main>
+
+<dialog id="importDialog">
+  <form class="dialog-body" id="importForm">
+    <h2>匯入資料</h2>
+    <div id="importStep1">
+      <label class="field">資料類型
+        <select id="importType">
+          <option value="project">專案清單</option>
+          <option value="invoice">請款紀錄</option>
+        </select>
+      </label>
+      <label class="field">選擇檔案（.xlsx、.csv）
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+      </label>
+      <p class="hint">專案以「合約編號」為鍵、請款以「專案名稱＋期別」為鍵；重複匯入會更新既有資料，不會新增重複。請款對應的專案不存在時，會先建立專案。客戶請只填代號，不要填全名。</p>
+    </div>
+    <div id="importStep2" hidden>
+      <h3>欄位對映</h3>
+      <p class="hint">把檔案中的欄位對到面板欄位；日期接受 YYYY/MM/DD、YYYY-MM-DD、YYYY.MM.DD。</p>
+      <div class="mapping" id="mapping"></div>
+      <h3>預覽（前 5 筆）</h3>
+      <div class="table-wrap"><table class="list" id="preview"></table></div>
+    </div>
+    <div id="importStep3" hidden>
+      <div id="importResult"></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn secondary" id="importCancel">取消</button>
+      <button type="button" class="btn" id="importConfirm" hidden>確認匯入</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="calc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
