@@ -12,7 +12,7 @@
 
 - `public/index.html`：整個前端（HTML＋CSS＋JS 內嵌，無框架、無打包）
 - `api/claude.js`：AI 代理，API Key 只存在伺服器
-- `api/news.js`：Google News RSS 即時新聞，不需要 AI 與金鑰
+- `api/news.js`：36 個公開 RSS 來源的即時新聞（與管理層系統相同），不需要 AI 與金鑰
 
 同一份 `index.html` 可在三種環境運作：Claude Artifact（`sample` 能力）、Vercel 網站（`/api/claude`）、離線（規則引擎）。
 
