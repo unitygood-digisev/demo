@@ -1,7 +1,7 @@
 // 驗收：公司知識庫搜尋與篩選（node --test tests/*.test.js）
 const test = require('node:test');
 const assert = require('node:assert');
-const KB = require('../knowledge-base/kb.js');
+const KB = require('../platform/lib/kb.js');
 
 const items = [
   { id: '1', kind: 'COMPANY_FACT', name: '永續報告書撰寫', category: '服務項目', detail: '依 GRI 準則協助資料蒐集與撰寫', dataLevel: '公開', updatedDate: '2026/10/01' },

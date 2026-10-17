@@ -120,6 +120,7 @@
   }
 
   // 嚴重度：0 最急。依嚴重度、再依天數或差距排序。
+  // publicMessage 不含金額，供週報與知識顧問使用；沒有另外指定時與 message 相同。
   function computeAll(projects, invoices, today) {
     today = startOfDay(today || new Date());
     const rows = projects.map((p) => ({ ...p, metrics: computeProject(p, invoices, today) }));
@@ -135,6 +136,7 @@
             type: 'overdue', severity: 0, projectId: p.id, sortKey: -od.days,
             title: '應收逾期',
             message: `${p.name}／${inv.period}：逾期 ${od.days} 天，尚欠 ${formatNTD(od.owed)}`,
+            publicMessage: `${p.name}／${inv.period}：逾期 ${od.days} 天`,
           });
         }
       }
@@ -161,6 +163,7 @@
         });
       }
     }
+    for (const a of alerts) if (!a.publicMessage) a.publicMessage = a.message;
     alerts.sort((a, b) => a.severity - b.severity || a.sortKey - b.sortKey);
 
     const totals = {
@@ -247,7 +250,32 @@
     return { created, updated, projectsCreated };
   }
 
+  // 給週報彙整員與知識顧問的摘要：只有非金額欄位。
+  function buildBriefing(projects, invoices, today) {
+    today = startOfDay(today || new Date());
+    const data = computeAll(projects, invoices, today);
+    return {
+      updatedDate: formatDate(today),
+      note: '本摘要不含金額與客戶機密；應收逾期只列專案、期別與應收日。',
+      projects: data.projects.map((p) => ({
+        name: p.name,
+        progress: Number(p.progress) || 0,
+        billingProgress: Math.round(p.metrics.billingProgress),
+        status: p.status || '',
+        dueDate: p.dueDate || '',
+      })),
+      receivables: invoices.map((i) => ({
+        projectName: i.projectName,
+        period: i.period,
+        dueDate: i.dueDate || '',
+        settled: (Number(i.amount) || 0) > 0 && (Number(i.receivedAmount) || 0) >= (Number(i.amount) || 0),
+      })),
+      alerts: data.alerts.map((a) => ({ type: a.type, title: a.title, message: a.publicMessage })),
+    };
+  }
+
   return {
+    buildBriefing,
     PROJECT_FIELDS, INVOICE_FIELDS, PROJECT_STATUSES, INVOICE_STATUSES,
     parseDate, formatDate, normalizeDate, parseNumber, daysBetween, formatNTD,
     invoiceOverdue, invoiceDisplayStatus, computeProject, computeAll,

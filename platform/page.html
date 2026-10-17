@@ -1,0 +1,292 @@
+<title>優樂地決策平台</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap">
+<style>
+/* 版面：頂部分頁列，下面是摘要在上、清單與詳情左右並排的工作區。 */
+:root {
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --ink: #18231f;
+  --muted: #5a6862;
+  --line: #d9e0db;
+  --accent: #1d5c57;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2eeec;
+  --crit: #a52a21;
+  --crit-soft: #f8e8e6;
+  --warn: #8a5800;
+  --warn-soft: #fbf0db;
+  --info: #2f4f86;
+  --info-soft: #e6ecf7;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121816; --surface: #1a2220; --ink: #e3ebe7; --muted: #95a49d; --line: #2e3a36;
+    --accent: #6dbab2; --accent-ink: #0d1513; --accent-soft: #1f3330;
+    --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17; --info: #a7c0ea; --info-soft: #1d283a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121816; --surface: #1a2220; --ink: #e3ebe7; --muted: #95a49d; --line: #2e3a36;
+  --accent: #6dbab2; --accent-ink: #0d1513; --accent-soft: #1f3330;
+  --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17; --info: #a7c0ea; --info-soft: #1d283a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: .02em; }
+h2 { font-size: 1.02rem; font-weight: 700; }
+h3 { font-size: .92rem; font-weight: 700; margin-top: 1rem; margin-bottom: .4rem; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1320px; margin: 0 auto; }
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 1rem .25rem; display: grid; gap: .6rem; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; }
+.brand p { margin: 0; color: var(--muted); font-size: .85rem; }
+nav.tabs { display: flex; gap: .25rem; overflow-x: auto; }
+nav.tabs button { font: inherit; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: .5rem .8rem; cursor: pointer; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+main.wrap { padding-block: 1rem 3rem; }
+.status { font-size: .85rem; color: var(--muted); margin: 0 0 .75rem; }
+.toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.toolbar .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.btn { font: inherit; font-size: .9rem; background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 6px; padding: .4rem .85rem; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); }
+.btn.small { font-size: .82rem; padding: .2rem .6rem; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, .chip:focus-visible, nav.tabs button:focus-visible, .rowbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 1rem; }
+.figures > div { padding: .8rem 1rem; border-left: 1px solid var(--line); }
+.figures > div:first-child { border-left: 0; }
+.figures .k { font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
+.figures .v { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.figures .crit .v { color: var(--crit); }
+@media (max-width: 720px) { .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); } .figures > div:nth-child(3) { border-left: 0; } .figures > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: grid; gap: 1rem; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; min-width: 0; }
+.panel > h2 { margin-bottom: .7rem; }
+.detail { position: sticky; top: 1rem; }
+@media (max-width: 900px) { .detail { position: static; } }
+.alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.alerts li { display: grid; grid-template-columns: 6.5em 1fr; gap: .6rem; align-items: baseline; padding: .45rem .6rem; border-radius: 6px; border-left: 4px solid; }
+.alerts li.click { cursor: pointer; }
+.alerts .tag { font-weight: 700; font-size: .85rem; }
+.sev0 { background: var(--crit-soft); border-color: var(--crit); } .sev0 .tag { color: var(--crit); }
+.sev1 { background: var(--warn-soft); border-color: var(--warn); } .sev1 .tag { color: var(--warn); }
+.sev2 { background: var(--info-soft); border-color: var(--info); } .sev2 .tag { color: var(--info); }
+.scroll { overflow-x: auto; }
+table.list { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table.list th, table.list td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.list th { color: var(--muted); font-weight: 500; font-size: .82rem; }
+table.list tbody tr.click { cursor: pointer; }
+table.list tbody tr.click:hover, table.list tbody tr.sel { background: var(--accent-soft); }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.bar { display: inline-block; width: 4.5em; height: .45em; background: var(--line); border-radius: 99px; vertical-align: middle; margin-left: .4em; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem 1rem; margin: 0; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 2px solid var(--line); display: grid; gap: .7rem; }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: calc(-1rem - 6px); top: .5rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.timeline li.late::before { background: var(--crit); }
+.pill { display: inline-block; font-size: .76rem; padding: 0 .5rem; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.crit { color: var(--crit); border-color: var(--crit); }
+.pill.accent { color: var(--accent); border-color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
+.empty { text-align: center; padding: 2.5rem 1rem; background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; display: grid; gap: .6rem; justify-items: center; }
+.empty p { margin: 0; color: var(--muted); max-width: 34em; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+label.f { display: grid; gap: .2rem; font-size: .88rem; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .4rem .55rem; width: 100%; min-width: 0; }
+textarea { min-height: 7rem; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: .6rem 0; }
+.chip { font: inherit; font-size: .84rem; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 99px; padding: .1rem .7rem; cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li { border-bottom: 1px solid var(--line); }
+.rowbtn { all: unset; box-sizing: border-box; display: block; width: 100%; padding: .55rem .5rem; cursor: pointer; }
+.rowbtn:hover, li.sel .rowbtn { background: var(--accent-soft); }
+.meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .2rem; }
+.notice { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: .45rem .7rem; border-radius: 6px; font-size: .87rem; margin: 0; }
+.prose { white-space: pre-wrap; overflow-wrap: anywhere; }
+.prose a { color: var(--accent); }
+dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 0; width: min(780px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .5rem .75rem; }
+.req { color: var(--crit); }
+.errs { color: var(--crit); font-size: .87rem; margin: 0; padding-left: 1.2rem; }
+.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.agent { display: grid; gap: .5rem; align-content: start; }
+.agent .when { font-size: .85rem; color: var(--accent); font-weight: 500; }
+.agent p { margin: 0; font-size: .9rem; }
+.answer { border-top: 1px solid var(--line); padding-top: .75rem; }
+#toast { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: .5rem 1rem; border-radius: 6px; font-size: .9rem; max-width: calc(100vw - 32px); z-index: 20; }
+@media (prefers-reduced-motion: no-preference) { #toast { transition: opacity .2s; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>優樂地決策平台</h1>
+      <p>給執行長與主管：這週先催哪筆款、先救哪個專案、哪個約要續。</p>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="dash" id="tab-dash">管理層總覽</button>
+      <button role="tab" data-tab="kb" id="tab-kb">公司知識庫</button>
+      <button role="tab" data-tab="notes" id="tab-notes">筆記</button>
+      <button role="tab" data-tab="team" id="tab-team">員工</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="status" id="conn">正在連線到資料庫…</p>
+
+  <!-- 管理層總覽 -->
+  <section id="view-dash" hidden>
+    <div class="toolbar">
+      <p class="muted small" style="margin:0">金額只在這一頁顯示；週報與知識顧問只拿到不含金額的摘要。客戶請只填代號。</p>
+      <div class="actions">
+        <button class="btn" id="btnImport" type="button">匯入 Excel／CSV</button>
+        <button class="btn ghost" id="btnTemplate" type="button">下載匯入範本</button>
+        <button class="btn ghost" id="btnExport" type="button">匯出 Excel</button>
+      </div>
+    </div>
+    <div class="figures" id="figures"></div>
+    <div class="empty" id="dashEmpty" hidden>
+      <h2>還沒有專案資料</h2>
+      <p>先匯入專案清單，再匯入請款紀錄。面板會算出合約總額、已請款、未收款、逾期應收，並列出需要決定的事。</p>
+      <button class="btn" id="btnImportFirst" type="button">匯入第一份資料</button>
+    </div>
+    <div class="split" id="dashBody">
+      <div class="stack">
+        <section class="panel">
+          <h2>需要決定的事</h2>
+          <ul class="alerts" id="alerts"></ul>
+        </section>
+        <section class="panel">
+          <h2>專案清單</h2>
+          <div class="scroll">
+            <table class="list">
+              <thead><tr><th>客戶代號</th><th>專案名稱</th><th class="num">合約總額</th><th class="num">請款進度</th><th>狀態</th></tr></thead>
+              <tbody id="projectRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <section class="panel detail" id="projectDetail"></section>
+    </div>
+  </section>
+
+  <!-- 公司知識庫 -->
+  <section id="view-kb" hidden>
+    <div class="toolbar">
+      <p class="muted small" style="margin:0">內部敏感與客戶機密只存摘要與「請洽內部」的索引。</p>
+      <div class="actions">
+        <button class="btn" id="btnNewFact" type="button">新增公司資料</button>
+        <button class="btn" id="btnNewEntry" type="button">新增知識條目</button>
+      </div>
+    </div>
+    <div class="empty" id="kbEmpty" hidden>
+      <h2>知識庫還是空的</h2>
+      <p>新增服務項目、部門、流程等公司資料，或 SOP、案例、提案範本等知識條目。公司知識顧問每週一也會從「知識庫素材」筆記整理進來。</p>
+      <button class="btn" id="btnKbFirst" type="button">新增第一筆</button>
+    </div>
+    <div class="split" id="kbBody">
+      <section class="panel">
+        <input type="search" id="kbSearch" placeholder="搜尋名稱、摘要、全文、標籤、內容" aria-label="搜尋知識庫">
+        <div class="chips" id="kbKinds"></div>
+        <div class="chips" id="kbSubs"></div>
+        <ul class="items" id="kbItems"></ul>
+      </section>
+      <section class="panel detail" id="kbDetail"></section>
+    </div>
+  </section>
+
+  <!-- 筆記 -->
+  <section id="view-notes" hidden>
+    <div class="toolbar">
+      <div class="chips" id="noteFolders" style="margin:0"></div>
+      <div class="actions"><button class="btn" id="btnNewNote" type="button">新增筆記</button></div>
+    </div>
+    <div class="split">
+      <section class="panel"><ul class="items" id="noteItems"></ul></section>
+      <section class="panel detail" id="noteDetail"></section>
+    </div>
+  </section>
+
+  <!-- 員工 -->
+  <section id="view-team" hidden>
+    <div class="agents" id="agents"></div>
+    <section class="panel">
+      <h2>問公司知識顧問</h2>
+      <p class="muted small">只根據知識庫（公開、內部一般全文；敏感與機密只有索引）與不含金額的專案摘要回答，每個結論附引用條目。</p>
+      <div class="row" style="margin-top:.6rem">
+        <label class="f" style="flex:1 1 20rem">問題<textarea id="askInput" style="min-height:4rem" placeholder="例如：公司提供哪些碳盤查相關服務？由哪個部門負責？"></textarea></label>
+        <button class="btn" id="askBtn" type="button">詢問</button>
+      </div>
+      <div class="answer prose" id="askAnswer" hidden></div>
+    </section>
+  </section>
+</main>
+
+<dialog id="importDlg">
+  <form id="importForm">
+    <h2>匯入資料</h2>
+    <div id="imp1" class="grid2">
+      <label class="f">資料類型
+        <select id="impType"><option value="project">專案清單</option><option value="invoice">請款紀錄</option></select>
+      </label>
+      <label class="f">檔案（.xlsx、.csv）<input type="file" id="impFile" accept=".xlsx,.xls,.csv"></label>
+      <p class="muted small" style="grid-column:1/-1;margin:0">專案以合約編號為鍵、請款以「專案名稱＋期別」為鍵，重複匯入會更新既有資料。請款對到不存在的專案時，會先建立專案。</p>
+    </div>
+    <div id="imp2" hidden>
+      <h3>欄位對映</h3>
+      <p class="muted small" style="margin:0 0 .5rem">日期接受 YYYY/MM/DD、YYYY-MM-DD、YYYY.MM.DD。</p>
+      <div class="grid2" id="impMap"></div>
+      <h3>預覽（前 5 筆）</h3>
+      <div class="scroll"><table class="list" id="impPreview"></table></div>
+    </div>
+    <div id="imp3" hidden></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="impCancel">取消</button>
+      <button type="button" class="btn" id="impGo" hidden>確認匯入</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="editDlg">
+  <form id="editForm">
+    <h2 id="editTitle"></h2>
+    <p class="notice" id="editNotice" hidden></p>
+    <div id="editFields" class="grid2"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="editCancel">取消</button>
+      <button type="submit" class="btn" id="editSave">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/*__CALC__*/
+</script>
+<script>
+/*__KB__*/
+</script>
+<script>
+/*__UI__*/
+</script>

@@ -1,7 +1,7 @@
 // 驗收：管理層總覽面板計算規則（node --test tests/）
 const test = require('node:test');
 const assert = require('node:assert');
-const C = require('../mgmt-dashboard/calc.js');
+const C = require('../platform/lib/calc.js');
 
 const TODAY = new Date(2026, 9, 17); // 2026/10/17
 
@@ -88,4 +88,16 @@ test('匯入失敗原因', () => {
   const r = C.mapRow({ a: '專案', b: '', c: '2026/13/01' }, { name: 'a', contractNo: 'b', dueDate: 'c' }, C.PROJECT_FIELDS);
   assert.match(r.error, /合約到期日.*無法辨識/);
   assert.match(r.error, /缺少合約編號/);
+});
+
+test('週報摘要不含金額', () => {
+  const { store, pRecs, iRecs } = fixture();
+  C.upsertProjects(store, pRecs);
+  C.upsertInvoices(store, iRecs);
+  const b = C.buildBriefing(store.projects, store.invoices, TODAY);
+  const text = JSON.stringify(b);
+  assert.ok(!/NT\$|1200000|600000|150000|contractAmount|amount/i.test(text), text);
+  assert.strictEqual(b.alerts.length, 3);
+  assert.strictEqual(b.alerts[0].message, '碳盤查專案／第 1 期：逾期 1 天');
+  assert.strictEqual(b.receivables.filter((r) => !r.settled).length, 2);
 });
