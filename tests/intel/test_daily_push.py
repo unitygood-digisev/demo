@@ -710,3 +710,13 @@ def test_brief_layout_rules(config_dir):
     )
     h2 = brief.render_html(b2)
     assert "商機與行動雷達</h2>" in h2 and "研判一句" in h2 and "觀點一句" in h2
+
+
+def test_excerpt_boilerplate_removed():
+    from intel.pipeline import _clean_excerpt
+
+    assert (
+        _clean_excerpt("重點一句。 The post 標題 appeared first on ESG遠見 - 永續共好 .")
+        == "重點一句。"
+    )
+    assert _clean_excerpt("徵件開始。 〈 獎項 〉這篇文章最早發佈於《 基金會 》。") == "徵件開始。"

@@ -308,7 +308,7 @@ def _h2(text: str) -> str:
 
 def render_html(b: Brief) -> str:
     c = b.catalog
-    font = "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif"
+    font = "'Noto Sans TC','PingFang TC','Microsoft JhengHei','Helvetica Neue',Arial,sans-serif"
     p = []
     p.append(
         f"<!doctype html><html lang='zh-Hant'><head><meta charset='utf-8'>"
@@ -451,7 +451,7 @@ def render_html(b: Brief) -> str:
                     f"<div style='font-size:17px;font-weight:800;margin:8px 0 2px;line-height:1.5'>"
                     f"<a href='{e(it['url'])}' style='color:{INK};text-decoration:none'>{e(it['title'])}</a></div>"
                     f"<div style='font-size:13px;color:{MUTED}'>{e(it['sources'])}｜{e(it['date'])}｜命中：{e(it['terms'])}</div>"
-                    f"<div style='font-size:12px;color:{MUTED};word-break:break-all'>原文：<a href='{e(it['url'])}' style='color:{MUTED}'>{e(it['url'])}</a></div>"
+                    f"<div style='font-size:12px;color:{MUTED};word-break:break-all'>原文：<a href='{e(it['url'])}' style='color:{MUTED}'>{e(it['url'].split('?utm_')[0])}</a></div>"
                 )
                 if it["excerpt"]:
                     p.append(

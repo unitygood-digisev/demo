@@ -149,7 +149,9 @@ def compose(
 
 
 def run(cfg: PushConfig) -> PushResult:
-    _int_threshold("daily_mail_max_items", 1, cfg.config_dir, allow_none=True)  # 新版面不設總則數上限，只檢查設定
+    _int_threshold(
+        "daily_mail_max_items", 1, cfg.config_dir, allow_none=True
+    )  # 新版面不設總則數上限，只檢查設定
     per_topic = _int_threshold("daily_mail_per_topic", 1, cfg.config_dir, allow_none=True)
     lookback = _int_threshold("daily_mail_lookback_days", 0, cfg.config_dir)
     res = run_intel(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,6 +46,14 @@ class RunResult:
     run_id: str
     day: dict
     files: dict[str, Path] = field(default_factory=dict)
+
+
+def _clean_excerpt(text: str | None) -> str:
+    """去掉 RSS 簡介結尾的轉載宣告（例如 WordPress 的「The post … appeared first on …」）。"""
+    t = text or ""
+    t = re.split(r"\s*The post .{0,300}? appeared first on ", t, maxsplit=1)[0]
+    t = re.split(r"\s*〈.{0,200}?〉這篇文章最早發佈於", t, maxsplit=1)[0]
+    return t.strip()
 
 
 def default_keywords_path(config_dir: Path = PROJECT_ROOT / "config") -> Path:
@@ -176,7 +185,7 @@ def run(cfg: RunConfig) -> RunResult:
                 "score": sc.score,
                 "importance": sc.importance,
                 "topic": sc.topic,
-                "excerpt": (ev.main.excerpt or "")[:300]
+                "excerpt": _clean_excerpt(ev.main.excerpt)[:300]
                 or None,  # 來源自帶的簡介（原文，不是摘要）
                 "matched_terms": list(sc.matched_terms),
                 "group": sc.group,
