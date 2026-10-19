@@ -175,6 +175,9 @@ def run(cfg: RunConfig) -> RunResult:
                 "first_seen": cfg.as_of.isoformat(),
                 "score": sc.score,
                 "importance": sc.importance,
+                "topic": sc.topic,
+                "excerpt": (ev.main.excerpt or "")[:300]
+                or None,  # 來源自帶的簡介（原文，不是摘要）
                 "matched_terms": list(sc.matched_terms),
                 "group": sc.group,
                 "relevant": rel,

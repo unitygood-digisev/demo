@@ -45,6 +45,7 @@ class Keyword:
     synonyms: tuple[str, ...] = field(default_factory=tuple)
     standalone: bool = True  # false：這一組只在同時命中其他關鍵字時才算（例如主管機關名稱）
     restricted_words: tuple[str, ...] = field(default_factory=tuple)  # 不能單獨算的詞（已正規化）
+    topic: str = ""  # 郵件分組用的主題名稱；沒寫時用「詞」
 
     @property
     def all_terms(self) -> tuple[str, ...]:
@@ -183,6 +184,7 @@ def load_keywords(path: Path) -> tuple[list[Keyword], list[str]]:
                 tuple(clean),
                 standalone=not alone,
                 restricted_words=tuple(sorted(restricted)),
+                topic=str(k.get("主題") or "").strip() or term,
             )
         )
     return out, problems

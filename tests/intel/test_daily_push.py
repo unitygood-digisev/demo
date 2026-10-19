@@ -617,3 +617,45 @@ def test_cst_means_taiwan_time():
 
     d = _published({"published": "Wed, 15 Oct 2026 09:30:00 CST"})
     assert d.isoformat() == "2026-10-15T09:30:00+08:00"
+
+
+# ---- 副執行長 2026-10-19 回饋：依主題分組、每主題前 3 則、不限總則數 ----
+def test_compose_groups_by_topic_top_n():
+    from intel.daily_push import compose
+
+    recs = [dict(_rec(f"a{i}", "2026-10-14", 5 - (i % 2)), topic="碳費") for i in range(5)]
+    recs += [dict(_rec("b1", "2026-10-14", 3), topic="生物多樣性", excerpt="來源自帶的簡介")]
+    recs += [dict(_rec("c1", "2026-10-14", 4))]  # 沒有主題 → 其他
+    subject, body = compose(_day("2026-10-14", recs), 3, 1)
+    assert body.startswith("今天有 7 則相關新聞，分成 3 個主題")
+    assert (
+        "■ 碳費（5 則，列出前 3 則）" in body
+        and "■ 生物多樣性（1 則）" in body
+        and "■ 其他（1 則）" in body
+    )
+    assert (
+        body.index("■ 碳費") < body.index("■ 其他") < body.index("■ 生物多樣性")
+    )  # 依最高重要程度
+    assert body.count("連結：") == 5 and "來源簡介：來源自帶的簡介" in body
+    assert "另有 2 則同主題的新聞未列出" in body
+    _, body_all = compose(_day("2026-10-14", recs), None, 1)
+    assert body_all.count("連結：") == 7  # 不限總則數
+
+
+def test_topic_from_keyword_and_standalone_source_keyword(tmp_path):
+    body = """
+keywords:
+  - 詞: 碳費
+    主題: 碳費與盤查
+    類別: 法規與準則
+    權重: 5
+  - 詞: 基金會甲
+    主題: 同業
+    類別: 同業
+    權重: 4
+    單獨不算: true
+"""
+    k = kws(tmp_path, body)
+    assert score_event(ev("基金會甲 年會"), k, {}).score == 0  # 只當來源，單獨不列入
+    sc = score_event(ev("基金會甲談碳費"), k, {})
+    assert sc.score == 9 and sc.topic == "碳費與盤查"

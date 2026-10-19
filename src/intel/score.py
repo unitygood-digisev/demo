@@ -40,6 +40,7 @@ class Scored:
     matched_keywords: tuple[Keyword, ...]
     group: str
     importance: int = 0  # 命中關鍵字中最高的重要程度（權重）
+    topic: str = ""  # 郵件分組用的主題：可單獨成立的命中中，重要程度最高那一組的主題
 
 
 def _fold(s: str) -> str:
@@ -99,4 +100,16 @@ def score_event(event: Event, keywords: list[Keyword], sources: dict[str, Source
         src = sources.get(event.main.source_id)
         cat = src.category if src else "其他"
         group = SOURCE_CATEGORY_TO_GROUP.get(cat, cat)
-    return Scored(total, tuple(terms), tuple(hits), group, max((k.weight for k in hits), default=0))
+    lead = (
+        min(strong, key=lambda k: (-k.weight, CATEGORY_PRIORITY.index(k.category)))
+        if strong
+        else None
+    )
+    return Scored(
+        total,
+        tuple(terms),
+        tuple(hits),
+        group,
+        max((k.weight for k in hits), default=0),
+        lead.topic if lead else "",
+    )

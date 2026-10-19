@@ -43,10 +43,12 @@ def test_committed_sources_and_keywords_safe():
 
 
 def test_every_threshold_marked_pending():
+    """每個門檻都要標狀態：待主管確認，或「已確認（誰 日期）」。"""
     data = yaml.safe_load((ROOT / "config" / "thresholds.yaml").read_text(encoding="utf-8"))
     for system, items in data.items():
         for key, item in items.items():
-            assert item["status"] == "待主管確認", f"{system}.{key}"
+            st = item["status"]
+            assert st == "待主管確認" or st.startswith("已確認（"), f"{system}.{key}"
             assert "value" in item and item.get("說明"), f"{system}.{key}"
 
 

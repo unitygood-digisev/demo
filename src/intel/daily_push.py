@@ -43,8 +43,10 @@ class PushResult:
     message: str
 
 
-def _int_threshold(key: str, minimum: int, config_dir: Path | None) -> int:
+def _int_threshold(key: str, minimum: int, config_dir: Path | None, allow_none: bool = False):
     v = threshold("intel", key, config_dir)[0]
+    if v is None and allow_none:
+        return None
     if isinstance(v, bool) or not isinstance(v, int) or v < minimum:
         raise MailError(
             f"config/thresholds.yaml 的 intel.{key} 應為 {minimum} 以上的整數（目前是「{v}」）"
@@ -62,9 +64,16 @@ def mail_level(day: dict) -> str:
     return Classifier().highest([LEVEL, day.get("level") or LEVEL])
 
 
-def compose(day: dict, max_items: int, lookback_days: int | None = None) -> tuple[str, str]:
+def compose(
+    day: dict,
+    per_topic: int | None = 3,
+    lookback_days: int | None = None,
+    max_items: int | None = None,
+) -> tuple[str, str]:
     """回傳 (主旨, 內文)。第一句講結論。
 
+    依主題分組（副執行長 2026-10-19 回饋）：每個主題列重要程度最高的前 per_topic 則；
+    主題依其中最高的重要程度排序。max_items 是總則數上限，None＝不設上限。
     lookback_days：只列最近幾天發布的新聞。雲端排程每天是全新環境、記不得昨天寄過什麼，
     用發布日期避免同一則新聞連續幾天出現。沒有發布日期的不列入，並註明則數。
     """
@@ -75,25 +84,47 @@ def compose(day: dict, max_items: int, lookback_days: int | None = None) -> tupl
         undated = sum(1 for r in rel if not r["published"])
         old = sum(1 for r in rel if r["published"] and r["published"] < start)
         rel = [r for r in rel if r["published"] and r["published"] >= start]
-    rel.sort(key=lambda r: (-r.get("importance", 0), -r["score"], r["published"] or "", r["id"]))
-    top = rel[:max_items]
+    order = lambda r: (-r.get("importance", 0), -r["score"], r["published"] or "", r["id"])  # noqa: E731
+    groups: dict[str, list[dict]] = {}
+    for r in sorted(rel, key=order):
+        groups.setdefault(r.get("topic") or "其他", []).append(r)
+    topics = sorted(groups, key=lambda t: (order(groups[t][0]), t))
+    shown: list[tuple[str, list[dict]]] = []
+    count = 0
+    for t in topics:
+        take = groups[t][: per_topic or None]
+        if max_items is not None:
+            take = take[: max(0, max_items - count)]
+        if take:
+            shown.append((t, take))
+            count += len(take)
     n5 = sum(1 for r in rel if r.get("importance", 0) >= 5)
     if rel:
-        first = f"今天有 {len(rel)} 則相關新聞，其中重要程度 5 的有 {n5} 則。"
+        first = (
+            f"今天有 {len(rel)} 則相關新聞，分成 {len(groups)} 個主題，"
+            f"其中重要程度 5 的有 {n5} 則。"
+        )
     else:
         first = "今天沒有符合關鍵字的新聞。"
     lines = [first, ""]
-    for i, r in enumerate(top, start=1):
-        src = "、".join(r["sources"]) or "待補"
-        terms = "、".join(r["matched_terms"]) or "待補"
-        lines += [
-            f"{i}. 【重要程度 {r.get('importance', 0)}】{r['title']}",
-            f"   來源：{src}｜日期：{r['published'] or '待補'}｜關鍵字：{terms}",
-            f"   連結：{r['url']}",
-            "",
-        ]
-    if len(rel) > len(top):
-        lines += [f"（另有 {len(rel) - len(top)} 則，見本機的情報日報檔）", ""]
+    i = 0
+    for t, rs in shown:
+        more = len(groups[t]) - len(rs)
+        lines.append(f"■ {t}（{len(groups[t])} 則" + (f"，列出前 {len(rs)} 則）" if more else "）"))
+        for r in rs:
+            i += 1
+            src = "、".join(r["sources"]) or "待補"
+            terms = "、".join(r["matched_terms"]) or "待補"
+            lines += [
+                f"{i}. 【重要程度 {r.get('importance', 0)}】{r['title']}",
+                f"   來源：{src}｜日期：{r['published'] or '待補'}｜關鍵字：{terms}",
+            ]
+            if r.get("excerpt"):
+                ex = r["excerpt"] if len(r["excerpt"]) <= 150 else r["excerpt"][:149] + "…"
+                lines.append(f"   來源簡介：{ex}")
+            lines += [f"   連結：{r['url']}", ""]
+    if len(rel) > count:
+        lines += [f"（另有 {len(rel) - count} 則同主題的新聞未列出，見本機的情報日報檔）", ""]
     if old or undated:
         parts = ([f"{old} 則較早發布"] if old else []) + (
             [f"{undated} 則沒有發布日期"] if undated else []
@@ -117,7 +148,8 @@ def compose(day: dict, max_items: int, lookback_days: int | None = None) -> tupl
 
 
 def run(cfg: PushConfig) -> PushResult:
-    max_items = _int_threshold("daily_mail_max_items", 1, cfg.config_dir)
+    max_items = _int_threshold("daily_mail_max_items", 1, cfg.config_dir, allow_none=True)
+    per_topic = _int_threshold("daily_mail_per_topic", 1, cfg.config_dir, allow_none=True)
     lookback = _int_threshold("daily_mail_lookback_days", 0, cfg.config_dir)
     res = run_intel(
         RunConfig(
@@ -131,7 +163,7 @@ def run(cfg: PushConfig) -> PushResult:
             log_dir=cfg.log_dir,
         )
     )
-    subject, body = compose(res.day, max_items, lookback)
+    subject, body = compose(res.day, per_topic, lookback, max_items)
     level = mail_level(res.day)
     draft = cfg.out_dir / f"郵件_情報日報_{cfg.as_of.strftime('%Y%m%d')}.txt"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)

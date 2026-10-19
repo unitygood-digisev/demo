@@ -5,12 +5,16 @@
 intel:
   daily_mail_lookback_days:
     value: 1
-    status: 待主管確認
+    status: 已確認（副執行長 2026-10-19）
     說明: 每日情報郵件只列最近幾天發布的新聞（今天往前算，含今天）；週一自動多含週六、週日。沒有發布日期的新聞不列入，郵件會註明則數
+  daily_mail_per_topic:
+    value: 3
+    status: 已確認（副執行長 2026-10-19）
+    說明: 每日情報郵件依主題分組，每個主題最多列幾則（依重要程度排序）；主題寫在關鍵字檔的「主題」
   daily_mail_max_items:
-    value: 10
-    status: 待主管確認
-    說明: 每日情報郵件最多列幾則（依重要程度排序），其餘請看情報日報檔
+    value: null
+    status: 已確認（副執行長 2026-10-19）
+    說明: 每日情報郵件總則數上限；null＝不設上限（副執行長：篇幅不限於 10 則）
   relevance_min_score:
     value: 1
     status: 待主管確認
