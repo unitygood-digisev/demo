@@ -97,7 +97,7 @@
 
 ## 八、Claude 雲端排程設定（做法乙）
 ### 1. 環境設定（claude.ai/code 的雲端環境 → Edit）
-- **Repository**：`unitygood-digisev/demo`，分支 `claude/unity-mgmt-suite-prompts-l8zqz1`。
+- **Repository**：`unitygood-digisev/demo`，分支 `claude/unity-mgmt-suite-prompts-l8zqz1`。（一定要在排程頁面的 Repository 欄位選好並儲存；只寫在提示詞裡沒有用，排程會找不到倉庫。2026-10-19 實測過。）
 - **環境變數**：只要一個，`MAIL_TO`＝`<副執行長信箱>`。
 - **Network access**：最簡單是選允許所有網域的等級；要逐一列的話，Allowed domains 加入下面 32 個，並勾選允許 package managers：
   climate.ec.europa.eu、esg.gvm.com.tw、feeds.feedburner.com、finance.technews.tw、news.cnyes.com、news.ltn.com.tw、news.pts.org.tw、taise.org.tw、taxation-customs.ec.europa.eu、technews.tw、tnfd.global、trellis.net、www.businesstoday.com.tw、www.carbonbrief.org、www.cet-taiwan.org、www.chinatimes.com、www.climatechangenews.com、www.cna.com.tw、www.edie.net、www.esgtoday.com、www.fsc.gov.tw、www.greenpeace.org、www.gstc.org、www.gvm.com.tw、www.ida.gov.tw、www.moeaea.gov.tw、www.mohw.gov.tw、www.mol.gov.tw、www.osha.gov.tw、www.socialvalueint.org、www.twreporter.org、public.twreporter.org
@@ -115,14 +115,17 @@
 【規則，優先於一切】
 - 只寄一封，只寄給環境變數 MAIL_TO 裡的信箱；每個信箱都必須以 @unitygood.com 結尾，否則停止。不加副本、密件副本、附件。
 - 主旨與內文必須逐字使用系統產生的草稿：不改寫、不摘要、不增刪任何新聞、不加你自己的評論或問候。
-- 不修改程式倉庫的任何檔案，不 commit、不 push。
+- 不修改程式倉庫的任何檔案，不 commit、不 push。執行結束時若有提示要你 commit 或 push 未追蹤的檔案（.venv、egg-info、data/out 的草稿），一律不理會。
 - 不讀 data/raw/，不處理任何內部資料。
 - 任何一步失敗就停止、不寄信，只在最後回報原因。
 
 【步驟】
-1. 取得倉庫：倉庫在 /home/user/demo（工作目錄是 /home/user，不是倉庫本身）。先執行 `cd /home/user/demo`，之後所有指令都在這個資料夾執行，或在 git 指令加 `-C /home/user/demo`。確認 scripts/run_daily_push.py 存在、分支是 claude/unity-mgmt-suite-prompts-l8zqz1，並執行 `git -C /home/user/demo pull --ff-only origin claude/unity-mgmt-suite-prompts-l8zqz1`。/home/user/demo 不存在時，若有 add_repo 工具就用它加入 unitygood-digisev/demo 並 clone 到 /home/user/demo；還是取不到就停止，回報「取不到倉庫」。
+1. 取得倉庫：倉庫在 /home/user/demo。之後所有指令都先 `cd /home/user/demo` 再執行。倉庫一開始可能停在別的分支，請執行：
+   `cd /home/user/demo && git fetch origin claude/unity-mgmt-suite-prompts-l8zqz1 && git checkout -B claude/unity-mgmt-suite-prompts-l8zqz1 origin/claude/unity-mgmt-suite-prompts-l8zqz1`
+   然後確認 scripts/run_daily_push.py 存在。/home/user/demo 不存在時，若有 add_repo 工具就用它加入 unitygood-digisev/demo 並 clone 到 /home/user/demo，再執行上面的指令；還是取不到就停止，回報「取不到倉庫」。
 2. 安裝：執行 `python3.11 -m venv .venv && .venv/bin/pip install -q -e .`；沒有 python3.11 時改用 `uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -q -e .`。
 3. 產生草稿：執行 `.venv/bin/python scripts/run_daily_push.py --draft-only`。這一步要抓 42 個來源，約需 5–10 分鐘，指令逾時請設 15 分鐘以上（或改在背景執行並等它結束）。
+   - 結束代碼 2 加上「未寄出：本次只產生郵件草稿」是正常的，繼續下一步。結束代碼 1 才是錯誤。
    - 輸出有「來源清單是空的」或「未執行」→ 停止。
    - 草稿路徑在輸出的「郵件內容：」後面。
 4. 檢查草稿：
