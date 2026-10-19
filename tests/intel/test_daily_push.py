@@ -2,6 +2,7 @@
 
 import datetime as dt
 import json
+import re
 import subprocess
 
 import pytest
@@ -217,18 +218,26 @@ def test_daily_push_end_to_end(mail_env, config_dir, monkeypatch):
     draft = res.draft.read_text(encoding="utf-8")
     assert draft.startswith("主旨：")
     body = draft.split("\n\n", 1)[1]
-    assert body.splitlines()[0].startswith("今天有 ")  # 第一句講結論
-    items = [ln for ln in body.splitlines() if ln[:3].strip().rstrip(".").isdigit()]
-    assert 0 < len(items) <= 10
-    assert body.count("連結：http") == len(items)
-    assert "資料等級：內部一般" in body
+    lines = body.splitlines()
+    assert lines[0].startswith("資料等級：內部一般") and lines[1].startswith(
+        "永續情資日報　2026-10-14"
+    )
+    assert lines[4] == "今日一句話" and lines[5].startswith("本期涵蓋 ")  # 第一段講結論
+    detail = lines[lines.index("三、主題情資") :]
+    cards = [ln for ln in detail if re.match(r"^[A-E]\d-\d　【\d】", ln)]
+    assert 0 < len(cards) and body.count("連結：http") == len(cards)
+    assert "本期從缺" in body  # 從缺主題保留不刪
     msg = FakeSMTP.sent[0]
-    assert "永續情報日報 2026-10-14" in msg["Subject"]
-    # 重要程度高的排前面
-    imps = [
-        int(x.split("重要程度 ")[1][0]) for x in body.splitlines() if "重要程度 " in x and "】" in x
-    ]
-    assert imps == sorted(imps, reverse=True)
+    assert "永續情資日報 2026-10-14" in msg["Subject"]
+    html_part = msg.get_body(preferencelist=("html",)).get_content()
+    assert (
+        "今日一句話" in html_part and "主題索引" in html_part and "<a href='https://" in html_part
+    )
+    assert res.draft.with_suffix(".html").is_file()
+    # 每個主題內，重要程度高的排前面
+    for code in {c[:2] for c in cards}:
+        imps = [int(c.split("【")[1][0]) for c in cards if c.startswith(code)]
+        assert imps == sorted(imps, reverse=True)
     # 同一天重跑：不重寄，草稿相同
     res2 = daily_push.run(
         daily_push.PushConfig(
@@ -659,3 +668,45 @@ keywords:
     assert score_event(ev("基金會甲 年會"), k, {}).score == 0  # 只當來源，單獨不列入
     sc = score_event(ev("基金會甲談碳費"), k, {})
     assert sc.score == 9 and sc.topic == "碳費與盤查"
+
+
+# ---- 永續情資日報版面（副執行長 2026-10-19 版面） ----
+def test_brief_layout_rules(config_dir):
+    from intel import brief
+
+    cat = brief.Catalog.load(config_dir)
+    assert len(cat.topics) == 16 and [c["id"] for c in cat.categories] == ["壹", "貳", "參", "肆"]
+    recs = [
+        dict(_rec("a", "2026-10-19", 5), topic="碳管理法規", title="<script>x</script>"),
+        dict(_rec("b", "2026-10-17", 4), topic="客戶動態"),
+        dict(_rec("c", "2026-10-15", 5), topic="碳管理法規"),  # 早於本期，不收
+        dict(_rec("d", "2026-10-18", 3), topic="不在清單的主題"),
+    ]
+    day = {
+        "as_of": "2026-10-19",
+        "run_id": "r",
+        "records": recs,
+        "anomalies": [],
+        "level": "內部一般",
+    }
+    b = brief.build(day, cat, dt.date(2026, 10, 16), 3)
+    assert b.total == 2 and b.empty == 14 and b.topic_count == 16
+    assert [p["code"] for p in b.points] == ["A1-1", "E1-1"]
+    assert "含週末" in b.headline and "客戶方面" in b.headline
+    assert any("沒有對應主題" in n for n in b.notes)
+    h = brief.render_html(b)
+    assert "<script>x</script>" not in h and "&lt;script&gt;" in h  # 標題一律跳脫
+    assert "商機與行動雷達</h2>" not in h and "<b>對優樂地的意涵</b>" not in h  # 沒有研判就不出現
+    b2 = brief.build(
+        day,
+        cat,
+        dt.date(2026, 10, 16),
+        3,
+        extras={
+            "radar": [["事件", "服務", "動作", "時點"], ["甲", "乙", "丙", "丁"]],
+            "implications": {"a": "研判一句"},
+            "views": {"A1": "觀點一句"},
+        },
+    )
+    h2 = brief.render_html(b2)
+    assert "商機與行動雷達</h2>" in h2 and "研判一句" in h2 and "觀點一句" in h2

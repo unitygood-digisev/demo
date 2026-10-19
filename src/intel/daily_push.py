@@ -10,6 +10,7 @@ import datetime as dt
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from intel import brief as briefmod
 from intel.pipeline import RunConfig, default_keywords_path
 from intel.pipeline import run as run_intel
 from shared.classify import Classifier
@@ -148,7 +149,7 @@ def compose(
 
 
 def run(cfg: PushConfig) -> PushResult:
-    max_items = _int_threshold("daily_mail_max_items", 1, cfg.config_dir, allow_none=True)
+    _int_threshold("daily_mail_max_items", 1, cfg.config_dir, allow_none=True)  # 新版面不設總則數上限，只檢查設定
     per_topic = _int_threshold("daily_mail_per_topic", 1, cfg.config_dir, allow_none=True)
     lookback = _int_threshold("daily_mail_lookback_days", 0, cfg.config_dir)
     res = run_intel(
@@ -163,9 +164,17 @@ def run(cfg: PushConfig) -> PushResult:
             log_dir=cfg.log_dir,
         )
     )
-    subject, body = compose(res.day, per_topic, lookback, max_items)
     level = mail_level(res.day)
-    draft = cfg.out_dir / f"郵件_情報日報_{cfg.as_of.strftime('%Y%m%d')}.txt"
+    # 版面依副執行長修訂版（永續情資日報）：依 16 個主題分組、每主題前 per_topic 則
+    catalog = briefmod.Catalog.load(cfg.config_dir)
+    start = window_start(cfg.as_of, lookback)
+    b = briefmod.build(res.day, catalog, start, per_topic, cfg.keywords_path)
+    b.level = level
+    subject = f"【優樂地】{catalog.title} {cfg.as_of.isoformat()}（{b.total} 則）"
+    body, html_body = briefmod.render_text(b), briefmod.render_html(b)
+    stem = f"郵件_情資日報_{cfg.as_of.strftime('%Y%m%d')}"
+    draft = cfg.out_dir / f"{stem}.txt"
+    html_draft = cfg.out_dir / f"{stem}.html"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
     can_send = cfg.send and cfg.as_of == (cfg.today or today_tw())
     if draft.is_file() and mail.already_sent(KIND, cfg.as_of):
@@ -173,6 +182,7 @@ def run(cfg: PushConfig) -> PushResult:
         return PushResult(draft, False, "今天已經寄過，沒有重寄，寄出的草稿保留不動")
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(f"主旨：{subject}\n\n{body}", encoding="utf-8")
+    html_draft.write_text(html_body, encoding="utf-8")
     if any("來源清單是空的" in p for p in res.day["config_problems"]):
         return PushResult(draft, False, "未寄出：來源清單是空的，請先設定 config/sources.yaml")
     if not cfg.send:
@@ -180,7 +190,7 @@ def run(cfg: PushConfig) -> PushResult:
     if not can_send:
         return PushResult(draft, False, "未寄出：只能寄今天的日報（指定了其他日期時只產生草稿）")
     try:
-        sent = mail.send(subject, body, level=level, kind=KIND, day=cfg.as_of)
+        sent = mail.send(subject, body, level=level, kind=KIND, day=cfg.as_of, html=html_body)
     except MailNotConfigured as e:
         return PushResult(draft, False, f"未寄出：{e}")
     if not sent:

@@ -76,7 +76,16 @@ class MailClient:
                 return True
         return False
 
-    def send(self, subject: str, body: str, *, level: str, kind: str, day: dt.date) -> bool:
+    def send(
+        self,
+        subject: str,
+        body: str,
+        *,
+        level: str,
+        kind: str,
+        day: dt.date,
+        html: str | None = None,
+    ) -> bool:
         """寄出回傳 True；今天已寄過回傳 False。違反規則丟 MailError。"""
         if not self.cfg.get("enabled", False):
             raise MailNotConfigured("config/mail.yaml 的 enabled 為 false，不寄信")
@@ -111,6 +120,8 @@ class MailClient:
         msg = EmailMessage()
         msg["Subject"], msg["From"], msg["To"] = subject, sender, ", ".join(to)
         msg.set_content(body)
+        if html:
+            msg.add_alternative(html, subtype="html")  # 郵件軟體會優先顯示排版版本
         try:
             with self.smtp_factory(
                 self.cfg["smtp_host"], int(self.cfg["smtp_port"]), timeout=30

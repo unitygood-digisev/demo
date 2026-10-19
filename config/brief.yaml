@@ -1,0 +1,40 @@
+# 永續情資日報的版面設定（依副執行長 2026-10-15 修訂版、2026-10-19 Claude Design 版面）
+# 主題分類：16 個主題、四大類。關鍵字檔每一組的「主題」要寫這裡的主題名稱。
+
+title: 永續情資日報
+subtitle: 優樂地永續服務｜依關鍵字清單主題彙整｜每主題當期前三大新聞
+audience: 僅供公司內部主管閱讀
+
+categories:
+  - {id: 壹, name: 法規與準則, color: "#2C4F8F"}
+  - {id: 貳, name: 政策與市場, color: "#8A6514"}
+  - {id: 參, name: 產業與議題, color: "#6E3D99"}
+  - {id: 肆, name: 客戶與同業動態, color: "#A0442C"}
+
+topics:
+  - {code: A1, name: 碳管理法規, category: 壹}
+  - {code: A2, name: 永續揭露與準則, category: 壹}
+  - {code: A3, name: ESG 評鑑, category: 壹}
+  - {code: B1, name: 政府採購與政策補助, category: 貳}
+  - {code: B2, name: 淨零與碳權, category: 貳}
+  - {code: B3, name: 永續金融與影響力投資, category: 貳}
+  - {code: C1, name: 人權與職場心理健康, category: 參}
+  - {code: C2, name: 永續觀光, category: 參}
+  - {code: C3, name: 永續醫療, category: 參}
+  - {code: D1, name: 生物多樣性與自然, category: 參}
+  - {code: D2, name: 永續人才與培訓, category: 參}
+  - {code: D3, name: 原住民族產業與地方創生, category: 參}
+  - {code: D4, name: 綠建築與循環經濟, category: 參}
+  - {code: E1, name: 客戶動態, category: 肆}
+  - {code: E2, name: 同業與生態系動態, category: 肆}
+  - {code: E3, name: 自家品牌, category: 肆}
+
+# 重要程度的說明文字（5 最高）
+importance:
+  5: 直接影響案源或營收
+  4: 核心服務相關
+  3: 需掌握的趨勢
+  2: 背景資訊
+  1: 背景資訊
+
+key_points: 4   # 「今日要點」張數：取重要程度最高、主題不重複的前幾則
