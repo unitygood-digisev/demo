@@ -1,0 +1,221 @@
+# 永續情資日報｜品牌行銷部版 的關鍵字（2026-10-20 建立）
+# 由使用者提供：品牌行銷部同仁 2026-10-19 填寫的關鍵字表單（Word 檔，不提交）。逐字照表單轉成本檔格式，未增刪詞。
+# 這是「雲端版」：不含客戶名稱與人名，可以提交、可以給雲端排程用。
+# 表單第 35 列「現有與目標客戶」的客戶名稱尚待填寫；填好後請放本機的 keywords_brand_marketing.local.yaml（不提交），系統會優先用它。
+#
+# 轉檔時的處理（請品牌行銷部確認）：
+#   1. 表單寫「以上皆搭配『＋永續』」「後四者皆搭配『＋生物多樣性』」的，已逐一展開成「詞＋永續」「詞＋生物多樣性」。
+#   2. 表單的「排除詞」系統還不支援，先寫在每組上方的註解裡保留，暫時不會生效。
+#   3. 每組第一個詞當「詞」，其餘當「同義詞」；權重照表單的重要程度。
+#   4. 類別只能用系統允許的值：同業動態→同業、自辦活動→自家品牌、揭露準則→法規與準則、主管機關→政策、標案→政府採購，其餘→議題。
+#
+# 詞的寫法（全形符號）：「A＋B」＝兩個都要出現；「A／B」＝任一個即可。格式說明見 keywords.yaml。
+
+不能單獨算的詞: [ESG, 永續, 淨零]
+輸出等級: 內部一般
+
+keywords:
+  # 主題：國際永續獎項｜排除詞（尚未生效）：股價、徵才
+  - 詞: Earthshot Prize
+    主題: 國際永續獎項
+    類別: 議題
+    權重: 5
+    同義詞: [Zayed Sustainability Prize, UN Global Climate Action Awards, Champions of the Earth, Corporate Knights Global 100, Fast Company World Changing Ideas]
+  # 主題：可報名的國際獎項｜排除詞（尚未生效）：股價、徵才、學生獎
+  - 詞: Asia Responsible Enterprise Awards
+    主題: 可報名的國際獎項
+    類別: 議題
+    權重: 5
+    同義詞: [Stevie Awards＋CSR, Anthem Awards, Green Apple Award, World Responsible Tourism Awards, UN Tourism Awards, Green Destinations Awards, call for entries＋sustainability, award＋deadline＋ESG]
+  # 主題：永續質感活動援引｜排除詞（尚未生效）：票價、優惠、搶票
+  - 詞: 永續策展
+    主題: 永續質感活動援引
+    類別: 議題
+    權重: 5
+    同義詞: [淨零策展, 永續藝術節, Dutch Design Week, Milan Design Week＋sustainability, London Design Festival＋sustainability, 台灣設計展＋永續, 臺灣文博會＋永續, COP＋side event, Art Basel＋sustainability]
+  # 主題：國際日與倡議接軌｜排除詞（尚未生效）：優惠、促銷、天氣
+  - 詞: 世界環境日
+    主題: 國際日與倡議接軌
+    類別: 議題
+    權重: 5
+    同義詞: [World Environment Day, 地球日, Earth Day, 國際生物多樣性日, 世界旅遊日, World Tourism Day, 地球一小時, Earth Hour, 世界海洋日]
+  # 主題：國際社會設計｜排除詞（尚未生效）：招生、徵才、課程
+  - 詞: social design
+    主題: 國際社會設計
+    類別: 議題
+    權重: 5
+    同義詞: [design for good, social innovation＋case study, Stanford Social Innovation Review, IDEO.org, Design Council＋case study, Nesta＋social innovation, Dezeen＋sustainability, Design Indaba, 社會設計＋案例]
+  # 主題：永續品牌創意｜排除詞（尚未生效）：促銷、優惠、開箱
+  - 詞: sustainable branding
+    主題: 永續品牌創意
+    類別: 議題
+    權重: 5
+    同義詞: [brand purpose campaign, sustainability campaign case study, Ads of the World＋sustainability, Creative Review＋sustainability, Dieline＋sustainable packaging, B Corp＋campaign, Patagonia＋campaign, Oatly＋campaign, IKEA＋sustainability, 台灣品牌＋永續行銷案例]
+  # 主題：2B 產業凝聚｜排除詞（尚未生效）：股價、營收、徵才
+  - 詞: 供應鏈＋減碳＋案例
+    主題: 2B 產業凝聚
+    類別: 議題
+    權重: 5
+    同義詞: [大帶小＋永續, Scope 3＋supplier engagement, CDP Supply Chain, Project Gigaton, Responsible Business Alliance, Together for Sustainability, 產業永續聯盟, 碳管理平台＋案例, ESG＋AI＋平台]
+  # 主題：同業動態與市場脈絡｜排除詞（尚未生效）：財報、審計、稅務、徵才、股價
+  - 詞: 資誠＋永續
+    主題: 同業動態與市場脈絡
+    類別: 同業
+    權重: 5
+    同義詞: [PwC Taiwan＋永續, 勤業眾信＋永續, Deloitte Taiwan＋永續, 安永＋永續, EY Taiwan＋永續, 安侯建業＋永續, KPMG Taiwan＋永續, SGS＋永續, BSI＋永續, DNV＋永續, 社企流＋永續, TAISE＋永續, ERM, South Pole, EcoVadis, Watershed, Persefoni, ESG顧問＋新服務, 永續顧問＋併購, sustainability consulting＋market]
+  # 主題：合作切角｜跨界夥伴｜排除詞（尚未生效）：股價、徵才、優惠
+  - 詞: 永續＋策略聯盟
+    主題: 合作切角｜跨界夥伴
+    類別: 議題
+    權重: 5
+    同義詞: [永續＋合作備忘錄, MOU＋永續, 共同主辦＋論壇, NPO＋企業＋永續合作, 環境NGO＋企業夥伴, 公私協力＋永續, 聯名＋永續, cross-sector partnership＋sustainability, multi-stakeholder＋partnership]
+  # 主題：品牌觀點｜行銷與商業策略｜排除詞（尚未生效）：促銷、優惠、開箱、代操
+  - 詞: B2B marketing＋sustainability
+    主題: 品牌觀點｜行銷與商業策略
+    類別: 議題
+    權重: 5
+    同義詞: [thought leadership＋sustainability, 品牌敘事＋永續, 議題行銷＋永續, 永續議題＋社群聲量, B2B＋短影音, LinkedIn＋B2B內容, 廣告趨勢＋AI, Google Trends＋永續]
+  # 主題：講者｜永續研討會｜排除詞（尚未生效）：徵才、票價
+  - 詞: keynote speaker＋sustainability
+    主題: 講者｜永續研討會
+    類別: 議題
+    權重: 5
+    同義詞: [永續論壇＋講者名單, 永續論壇＋主講, TEDx＋sustainability, Climate Week＋speaker, Sustainable Brands＋speaker, 永續長＋專訪, Chief Sustainability Officer＋interview]
+  # 主題：講者｜生物多樣性｜排除詞（尚未生效）：寵物、動物園、門票
+  - 詞: keynote＋biodiversity
+    主題: 講者｜生物多樣性
+    類別: 議題
+    權重: 5
+    同義詞: [生物多樣性＋專家＋專訪, 保育學者＋演講, TNFD＋speaker, Nature Positive＋keynote, 中央研究院生物多樣性研究中心, 林業及自然保育署＋論壇, 荒野保護協會＋生物多樣性, 中華民國野鳥學會＋生物多樣性, WWF＋生物多樣性, IUCN＋生物多樣性, Conservation International＋生物多樣性]
+  # 主題：講者｜人資與組織｜排除詞（尚未生效）：徵才、職缺、求職
+  - 詞: 人資長＋永續
+    主題: 講者｜人資與組織
+    類別: 議題
+    權重: 5
+    同義詞: [CHRO＋ESG, HR＋sustainability, 雇主品牌＋永續, DEI＋企業＋案例, 員工參與＋ESG, 綠領人才, 勞動人權＋盡職調查]
+  # 主題：自辦活動｜排除詞（尚未生效）：徵才
+  - 詞: 優樂地＋論壇
+    主題: 自辦活動
+    類別: 自家品牌
+    權重: 5
+    同義詞: [優樂地＋獎項, 優樂地＋生物多樣性, Unity Sustainability＋forum]
+  # 主題：ISO 20121｜排除詞（尚未生效）：徵才、課程招生
+  - 詞: ISO 20121
+    主題: ISO 20121
+    類別: 議題
+    權重: 5
+    同義詞: [ISO20121, 永續活動管理, 永續活動＋認證, Sustainable Event Management]
+  # 主題：永續旅遊｜排除詞（尚未生效）：優惠、團購、美食推薦、訂房
+  - 詞: 永續旅遊
+    主題: 永續旅遊
+    類別: 議題
+    權重: 5
+    同義詞: [永續觀光, 永續遊程, GSTC, Sustainable Tourism, UN Tourism＋永續, Glasgow Declaration]
+  # 主題：供應鏈與減碳｜排除詞（尚未生效）：股價、營收
+  - 詞: 供應鏈＋碳盤查
+    主題: 供應鏈與減碳
+    類別: 議題
+    權重: 4
+    同義詞: [供應鏈＋永續盡職調查, 中小企業＋減碳, CBAM, 碳邊境調整機制, CSDDD, CSRD]
+  # 主題：揭露準則與法規｜排除詞（尚未生效）：股價、營收、股利
+  - 詞: IFRS S1
+    主題: 揭露準則與法規
+    類別: 法規與準則
+    權重: 4
+    同義詞: [IFRS S2, ISSB, GRI Standards, 永續報告書＋準則, 永續發展路徑圖＋金管會, 永續資訊揭露]
+  # 主題：生物多樣性｜排除詞（尚未生效）：寵物、動物園、門票
+  - 詞: CBD COP17
+    主題: 生物多樣性
+    類別: 議題
+    權重: 5
+    同義詞: [生物多樣性公約, 生物多樣性＋企業, TNFD, 自然正向, Nature Positive, 昆明-蒙特婁全球生物多樣性框架]
+  # 主題：氣候峰會｜排除詞（尚未生效）：颱風、豪雨、氣象
+  - 詞: COP31
+    主題: 氣候峰會
+    類別: 議題
+    權重: 4
+    同義詞: [聯合國氣候峰會, UNFCCC, Climate Week, 氣候行動＋企業倡議]
+  # 主題：國內永續獎項｜排除詞（尚未生效）：獎學金
+  - 詞: 天下永續公民獎
+    主題: 國內永續獎項
+    類別: 議題
+    權重: 4
+    同義詞: [天下企業公民獎, 國家永續發展獎, 永續獎＋徵件, 永續獎＋得獎名單]
+  # 主題：生物多樣性與自然獎項｜排除詞（尚未生效）：獎學金、寵物
+  - 詞: 生物多樣性＋獎項
+    主題: 生物多樣性與自然獎項
+    類別: 議題
+    權重: 4
+    同義詞: [自然保育＋獎項, Nature Positive＋award, Biodiversity＋award]
+  # 主題：國內論壇與展會｜排除詞（尚未生效）：徵才
+  - 詞: 永續論壇＋報名
+    主題: 國內論壇與展會
+    類別: 議題
+    權重: 4
+    同義詞: [永續高峰會, ESG Summit＋台灣, 永續博覽會, 亞太永續博覽會, 淨零＋展覽]
+  # 主題：國際峰會與週｜排除詞（尚未生效）：股價
+  - 詞: Climate Week NYC
+    主題: 國際峰會與週
+    類別: 議題
+    權重: 4
+    同義詞: [London Climate Action Week, ChangeNOW, Global Goals Week, Sustainable Brands, World Economic Forum＋sustainability]
+  # 主題：永續會展與大型活動｜排除詞（尚未生效）：票價、搶票、婚宴
+  - 詞: 永續會展
+    主題: 永續會展與大型活動
+    類別: 議題
+    權重: 4
+    同義詞: [綠色會議, 零廢棄活動, Zero Waste Event, Net Zero Carbon Events, IMEX＋sustainability, 音樂節＋永續, 演唱會＋減碳]
+  # 主題：廣告獎項｜排除詞（尚未生效）：徵才、招生
+  - 詞: Cannes Lions＋永續
+    主題: 廣告獎項
+    類別: 議題
+    權重: 4
+    同義詞: [SDG Lions, D&AD＋Impact, One Show＋Greener Good, Clio＋Sustainability, ADFEST＋永續, 時報廣告金像獎＋永續]
+  # 主題：永續行銷手法｜排除詞（尚未生效）：促銷、優惠、團購
+  - 詞: 永續行銷
+    主題: 永續行銷手法
+    類別: 議題
+    權重: 4
+    同義詞: [綠色行銷, purpose-driven marketing, cause marketing, 品牌永續溝通, 永續短影音, sustainability storytelling]
+  # 主題：國際倡議行動
+  - 詞: Ad Net Zero
+    主題: 國際倡議行動
+    類別: 議題
+    權重: 3
+    同義詞: [SDG Media Compact, Global Goals＋campaign, UN Global Compact＋campaign]
+  # 主題：調查與洞察｜排除詞（尚未生效）：優惠、促銷
+  - 詞: Edelman Trust Barometer
+    主題: 調查與洞察
+    類別: 議題
+    權重: 3
+    同義詞: [Kantar＋sustainability, WARC＋sustainability, 永續消費＋調查, 消費者＋永續＋趨勢]
+  # 主題：漂綠與廣告規範｜排除詞（尚未生效）：股價
+  - 詞: 漂綠
+    主題: 漂綠與廣告規範
+    類別: 議題
+    權重: 5
+    同義詞: [greenwashing, 公平會＋環保宣稱, 綠色宣稱, Green Claims, Empowering Consumers Directive, Directive 2024/825]
+  # 主題：ESG 爭議｜排除詞（尚未生效）：股價、營收
+  - 詞: ESG＋爭議
+    主題: ESG 爭議
+    類別: 議題
+    權重: 4
+    同義詞: [永續報告書＋更正, 碳盤查＋爭議, ESG評等＋調降, ESG＋裁罰]
+  # 主題：主管機關政策與公告｜排除詞（尚未生效）：股價、人事任命
+  - 詞: 金管會＋永續
+    主題: 主管機關政策與公告
+    類別: 政策
+    權重: 4
+    同義詞: [環境部＋氣候, 碳費＋徵收, 氣候變遷因應法, 自主減量計畫, 觀光署＋永續, 經濟部＋淨零]
+  # 主題：標案與補助｜排除詞（尚未生效）：施工、營造、設備採購、工程
+  - 詞: 永續＋標案
+    主題: 標案與補助
+    類別: 政府採購
+    權重: 4
+    同義詞: [永續活動＋標案, 永續轉型＋補助, 中小企業＋淨零輔導, 永續輔導計畫]
+  # 主題：旅宿與會展客戶線索｜排除詞（尚未生效）：住宿優惠、訂房、促銷
+  - 詞: 綠色旅宿
+    主題: 旅宿與會展客戶線索
+    類別: 議題
+    權重: 4
+    同義詞: [環保標章旅館, 旅宿業＋永續, 會展業＋永續, 展覽公司＋永續, 旅行社＋永續]

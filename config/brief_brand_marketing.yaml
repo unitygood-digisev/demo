@@ -1,0 +1,69 @@
+# 永續情資日報｜品牌行銷部版 的版面設定（2026-10-20）
+# 依品牌行銷部同仁 2026-10-19 填寫的關鍵字表單整理成 9 類、35 個主題。
+# 關鍵字檔 keywords_brand_marketing.yaml 每一組的「主題」要寫這裡的主題名稱。
+
+title: 永續情資日報｜品牌行銷部版
+subtitle: 優樂地永續服務｜依品牌行銷部關鍵字表單主題彙整｜每主題當期前五則新聞
+audience: 僅供品牌行銷部內部閱讀
+
+# 「說明」區的主題分類文字（沒寫時用主管版的文字）
+topic_note: 依品牌行銷部 2026-10-19 填寫的關鍵字表單整理
+feedback_note: 新聞來源暫時沿用主管版的來源清單；表單列的設計、廣告、旅遊媒體尚未加入，相關主題從缺較多。
+
+categories:
+  - {id: 一, name: 案例庫, color: "#1F5C4A"}
+  - {id: 二, name: 同業與合作, color: "#2C4F8F"}
+  - {id: 三, name: 創意與數據, color: "#A0442C"}
+  - {id: 四, name: 講者雷達, color: "#6E3D99"}
+  - {id: 五, name: 自家品牌與專業, color: "#8A6514"}
+  - {id: 六, name: 議題與政策, color: "#2C4F8F"}
+  - {id: 七, name: 獎項與活動, color: "#1F5C4A"}
+  - {id: 八, name: 危機, color: "#A0442C"}
+  - {id: 九, name: 商機與客戶, color: "#8A6514"}
+
+topics:
+  - {code: A1, name: 國際永續獎項, category: 一}
+  - {code: A2, name: 可報名的國際獎項, category: 一}
+  - {code: A3, name: 永續質感活動援引, category: 一}
+  - {code: A4, name: 國際日與倡議接軌, category: 一}
+  - {code: A5, name: 國際社會設計, category: 一}
+  - {code: A6, name: 永續品牌創意, category: 一}
+  - {code: A7, name: 2B 產業凝聚, category: 一}
+  - {code: B1, name: 同業動態與市場脈絡, category: 二}
+  - {code: B2, name: 合作切角｜跨界夥伴, category: 二}
+  - {code: B3, name: 品牌觀點｜行銷與商業策略, category: 二}
+  - {code: C1, name: 廣告獎項, category: 三}
+  - {code: C2, name: 永續行銷手法, category: 三}
+  - {code: C3, name: 國際倡議行動, category: 三}
+  - {code: C4, name: 調查與洞察, category: 三}
+  - {code: D1, name: 講者｜永續研討會, category: 四}
+  - {code: D2, name: 講者｜生物多樣性, category: 四}
+  - {code: D3, name: 講者｜人資與組織, category: 四}
+  - {code: E1, name: 自辦活動, category: 五}
+  - {code: E2, name: ISO 20121, category: 五}
+  - {code: E3, name: 永續旅遊, category: 五}
+  - {code: E4, name: 供應鏈與減碳, category: 五}
+  - {code: E5, name: 揭露準則與法規, category: 五}
+  - {code: F1, name: 生物多樣性, category: 六}
+  - {code: F2, name: 氣候峰會, category: 六}
+  - {code: F3, name: 主管機關政策與公告, category: 六}
+  - {code: G1, name: 國內永續獎項, category: 七}
+  - {code: G2, name: 生物多樣性與自然獎項, category: 七}
+  - {code: G3, name: 國內論壇與展會, category: 七}
+  - {code: G4, name: 國際峰會與週, category: 七}
+  - {code: G5, name: 永續會展與大型活動, category: 七}
+  - {code: H1, name: 漂綠與廣告規範, category: 八}
+  - {code: H2, name: ESG 爭議, category: 八}
+  - {code: I1, name: 標案與補助, category: 九}
+  - {code: I2, name: 旅宿與會展客戶線索, category: 九}
+  - {code: I3, name: 現有與目標客戶, category: 九}
+
+# 重要程度的說明文字（依表單填寫說明）
+importance:
+  5: 影響公司形象或需立即處理
+  4: 品牌行銷工作直接相關
+  3: 需要知道的趨勢
+  2: 背景參考
+  1: 背景參考
+
+key_points: 4

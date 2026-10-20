@@ -14,7 +14,7 @@ from intel import brief as briefmod
 from intel.pipeline import RunConfig, default_keywords_path
 from intel.pipeline import run as run_intel
 from shared.classify import Classifier
-from shared.config import PROJECT_ROOT, threshold
+from shared.config import PROJECT_ROOT, load_yaml, threshold
 from shared.dates import today_tw
 from shared.mail_client import MailClient, MailError, MailNotConfigured
 
@@ -35,6 +35,54 @@ class PushConfig:
     mail: MailClient | None = None
     send: bool = True
     today: dt.date | None = None  # 測試用；預設台灣今天。只有今天的日報可以寄
+    # 以下為「版本」設定（config/push_profiles.yaml）；預設值＝主管版，行為與原本相同
+    brief_name: str = "brief.yaml"
+    kind: str = KIND
+    draft_prefix: str = "郵件_情資日報"
+    recipients_env: str | None = None  # 只有指定版本時才換收件人變數，避免寄到主管版收件人
+    per_topic: int | None = None  # None＝用 thresholds.yaml 的 daily_mail_per_topic
+
+
+class ProfileError(MailError):
+    """版本設定有問題時丟出，不產生草稿、不寄信。"""
+
+
+def apply_profile(cfg: PushConfig, name: str, config_dir: Path | None = None) -> str:
+    """依 config/push_profiles.yaml 套用指定版本，回傳版本名稱。設定不完整就報錯。"""
+    cdir = config_dir or PROJECT_ROOT / "config"
+    try:
+        profiles = load_yaml("push_profiles.yaml", config_dir).get("profiles") or {}
+    except FileNotFoundError as e:
+        raise ProfileError("找不到 config/push_profiles.yaml，無法使用 --profile") from e
+    p = profiles.get(name)
+    if not isinstance(p, dict):
+        raise ProfileError(
+            f"config/push_profiles.yaml 沒有「{name}」這個版本（目前有：{'、'.join(profiles) or '無'}）"
+        )
+    need = ("名稱", "關鍵字", "版面", "資料夾", "收件人環境變數", "郵件種類")
+    missing = [k for k in need if not str(p.get(k) or "").strip()]
+    if missing:
+        raise ProfileError(f"版本「{name}」缺少欄位：{'、'.join(missing)}")
+    kw = cdir / str(p["關鍵字"])
+    local = kw.with_name(kw.stem + ".local.yaml")
+    cfg.keywords_path = local if local.is_file() else kw
+    if not cfg.keywords_path.is_file():
+        raise ProfileError(f"找不到版本「{name}」的關鍵字檔 {kw.name}")
+    if not (cdir / str(p["版面"])).is_file():
+        raise ProfileError(f"找不到版本「{name}」的版面檔 {p['版面']}")
+    cfg.brief_name = str(p["版面"])
+    folder = str(p["資料夾"])
+    cfg.interim_dir = PROJECT_ROOT / "data" / "interim" / folder
+    cfg.out_dir = PROJECT_ROOT / "data" / "out" / folder
+    cfg.kind = str(p["郵件種類"])
+    cfg.recipients_env = str(p["收件人環境變數"])
+    cfg.draft_prefix = f"郵件_情資日報_{p['名稱']}"
+    n = p.get("每主題則數")
+    if n is not None:
+        if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+            raise ProfileError(f"版本「{name}」的每主題則數應為 1 以上的整數（目前是「{n}」）")
+        cfg.per_topic = n
+    return str(p["名稱"])
 
 
 @dataclass
@@ -152,7 +200,9 @@ def run(cfg: PushConfig) -> PushResult:
     _int_threshold(
         "daily_mail_max_items", 1, cfg.config_dir, allow_none=True
     )  # 新版面不設總則數上限，只檢查設定
-    per_topic = _int_threshold("daily_mail_per_topic", 1, cfg.config_dir, allow_none=True)
+    per_topic = cfg.per_topic or _int_threshold(
+        "daily_mail_per_topic", 1, cfg.config_dir, allow_none=True
+    )
     lookback = _int_threshold("daily_mail_lookback_days", 0, cfg.config_dir)
     res = run_intel(
         RunConfig(
@@ -168,18 +218,20 @@ def run(cfg: PushConfig) -> PushResult:
     )
     level = mail_level(res.day)
     # 版面依副執行長修訂版（永續情資日報）：依 16 個主題分組、每主題前 per_topic 則
-    catalog = briefmod.Catalog.load(cfg.config_dir)
+    catalog = briefmod.Catalog.load(cfg.config_dir, cfg.brief_name)
     start = window_start(cfg.as_of, lookback)
     b = briefmod.build(res.day, catalog, start, per_topic, cfg.keywords_path)
     b.level = level
     subject = f"【優樂地】{catalog.title} {cfg.as_of.isoformat()}（{b.total} 則）"
     body, html_body = briefmod.render_text(b), briefmod.render_html(b)
-    stem = f"郵件_情資日報_{cfg.as_of.strftime('%Y%m%d')}"
+    stem = f"{cfg.draft_prefix}_{cfg.as_of.strftime('%Y%m%d')}"
     draft = cfg.out_dir / f"{stem}.txt"
     html_draft = cfg.out_dir / f"{stem}.html"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
+    if cfg.recipients_env:
+        mail.cfg["recipients_env"] = cfg.recipients_env
     can_send = cfg.send and cfg.as_of == (cfg.today or today_tw())
-    if draft.is_file() and mail.already_sent(KIND, cfg.as_of):
+    if draft.is_file() and mail.already_sent(cfg.kind, cfg.as_of):
         # 已經寄過：保留寄出的那份草稿，不覆蓋（只產生草稿時也一樣）
         return PushResult(draft, False, "今天已經寄過，沒有重寄，寄出的草稿保留不動")
     draft.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +244,7 @@ def run(cfg: PushConfig) -> PushResult:
     if not can_send:
         return PushResult(draft, False, "未寄出：只能寄今天的日報（指定了其他日期時只產生草稿）")
     try:
-        sent = mail.send(subject, body, level=level, kind=KIND, day=cfg.as_of, html=html_body)
+        sent = mail.send(subject, body, level=level, kind=cfg.kind, day=cfg.as_of, html=html_body)
     except MailNotConfigured as e:
         return PushResult(draft, False, f"未寄出：{e}")
     if not sent:

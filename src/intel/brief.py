@@ -49,10 +49,12 @@ class Catalog:
     topics: list[dict]
     importance: dict[int, str]
     key_points: int = 4
+    topic_note: str = ""  # 「說明」的主題分類依據；沒寫時用主管版文字
+    feedback_note: str = ""  # 「說明」的回饋調整文字；沒寫時用主管版文字
 
     @classmethod
-    def load(cls, config_dir: Path | None = None) -> Catalog:
-        c = load_yaml("brief.yaml", config_dir)
+    def load(cls, config_dir: Path | None = None, name: str = "brief.yaml") -> Catalog:
+        c = load_yaml(name, config_dir)
         return cls(
             title=c["title"],
             subtitle=c["subtitle"],
@@ -61,6 +63,8 @@ class Catalog:
             topics=list(c["topics"]),
             importance={int(k): str(v) for k, v in (c.get("importance") or {}).items()},
             key_points=int(c.get("key_points", 4)),
+            topic_note=str(c.get("topic_note") or ""),
+            feedback_note=str(c.get("feedback_note") or ""),
         )
 
 
@@ -201,10 +205,14 @@ def build(
     b.notes = [
         f"蒐集範圍：以 {wd(as_of)} 為簡報日，收錄 {span} 發布的新聞{('，週末併入本期' if weekend else '')}；"
         "沒有發布日期的新聞不收。",
-        f"主題分類：依副執行長 10/15 提供的關鍵字清單整併為 {b.topic_count} 個主題、四大類；"
-        f"每主題列前 {per_topic or '全部'} 則，總則數不設上限。"
+        (
+            f"主題分類：{catalog.topic_note}，共 {b.topic_count} 個主題、{len(catalog.categories)} 大類；"
+            if catalog.topic_note
+            else f"主題分類：依副執行長 10/15 提供的關鍵字清單整併為 {b.topic_count} 個主題、四大類；"
+        )
+        + f"每主題列前 {per_topic or '全部'} 則，總則數不設上限。"
         + (f"本期另有 {b.more} 則同主題新聞未列出。" if b.more else ""),
-        "依回饋單調整：TAISE 只當來源（須命中其他關鍵字才列入）。",
+        catalog.feedback_note or "依回饋單調整：TAISE 只當來源（須命中其他關鍵字才列入）。",
         "【】重要程度："
         + "、".join(
             f"{k} {v}" for k, v in sorted(catalog.importance.items(), reverse=True) if k >= 2
