@@ -1,0 +1,30 @@
+# 永續情資日報｜品牌行銷部版的版面設定。關鍵字檔每一組的「主題」要寫這裡的主題名稱。
+# 主題分類為草稿，待品牌行銷部確認。
+
+title: 永續情資日報｜品牌行銷部版
+subtitle: 優樂地永續服務｜品牌行銷部關注主題｜每主題當期前三大新聞
+audience: 僅供公司內部同仁閱讀
+
+categories:
+  - {id: 壹, name: 永續溝通與法規風險, color: "#2C4F8F"}
+  - {id: 貳, name: 市場與消費趨勢, color: "#8A6514"}
+  - {id: 參, name: 同業與自家品牌, color: "#A0442C"}
+
+topics:
+  - {code: A1, name: 漂綠與廣告規範, category: 壹}
+  - {code: A2, name: 永續揭露與標章, category: 壹}
+  - {code: B1, name: 永續行銷與品牌溝通, category: 貳}
+  - {code: B2, name: 永續消費與綠色產品, category: 貳}
+  - {code: B3, name: 永續獎項與評比, category: 貳}
+  - {code: B4, name: 永續觀光與活動, category: 貳}
+  - {code: C1, name: 同業與生態系動態, category: 參}
+  - {code: C2, name: 自家品牌, category: 參}
+
+importance:
+  5: 直接影響品牌或案源
+  4: 核心服務相關
+  3: 需掌握的趨勢
+  2: 背景資訊
+  1: 背景資訊
+
+key_points: 4

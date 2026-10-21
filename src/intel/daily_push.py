@@ -35,6 +35,8 @@ class PushConfig:
     mail: MailClient | None = None
     send: bool = True
     today: dt.date | None = None  # 測試用；預設台灣今天。只有今天的日報可以寄
+    brief_name: str = "brief.yaml"  # 版面設定檔（config/ 下）；各部門版各用自己的
+    kind: str = KIND  # 郵件種類；一天一封的控管依它區分，各部門版不可共用
 
 
 @dataclass
@@ -168,7 +170,7 @@ def run(cfg: PushConfig) -> PushResult:
     )
     level = mail_level(res.day)
     # 版面依副執行長修訂版（永續情資日報）：依 16 個主題分組、每主題前 per_topic 則
-    catalog = briefmod.Catalog.load(cfg.config_dir)
+    catalog = briefmod.Catalog.load(cfg.config_dir, cfg.brief_name)
     start = window_start(cfg.as_of, lookback)
     b = briefmod.build(res.day, catalog, start, per_topic, cfg.keywords_path)
     b.level = level
@@ -179,7 +181,7 @@ def run(cfg: PushConfig) -> PushResult:
     html_draft = cfg.out_dir / f"{stem}.html"
     mail = cfg.mail or MailClient(config_dir=cfg.config_dir)
     can_send = cfg.send and cfg.as_of == (cfg.today or today_tw())
-    if draft.is_file() and mail.already_sent(KIND, cfg.as_of):
+    if draft.is_file() and mail.already_sent(cfg.kind, cfg.as_of):
         # 已經寄過：保留寄出的那份草稿，不覆蓋（只產生草稿時也一樣）
         return PushResult(draft, False, "今天已經寄過，沒有重寄，寄出的草稿保留不動")
     draft.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +194,7 @@ def run(cfg: PushConfig) -> PushResult:
     if not can_send:
         return PushResult(draft, False, "未寄出：只能寄今天的日報（指定了其他日期時只產生草稿）")
     try:
-        sent = mail.send(subject, body, level=level, kind=KIND, day=cfg.as_of, html=html_body)
+        sent = mail.send(subject, body, level=level, kind=cfg.kind, day=cfg.as_of, html=html_body)
     except MailNotConfigured as e:
         return PushResult(draft, False, f"未寄出：{e}")
     if not sent:

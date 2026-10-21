@@ -720,3 +720,22 @@ def test_excerpt_boilerplate_removed():
         == "重點一句。"
     )
     assert _clean_excerpt("徵件開始。 〈 獎項 〉這篇文章最早發佈於《 基金會 》。") == "徵件開始。"
+
+
+def test_brand_marketing_profile_is_separate(mail_env, config_dir):
+    """品牌行銷部版：自己的設定、主旨與郵件種類，不碰主管版的資料夾。"""
+    from intel import daily_push
+    from scripts.run_daily_push import apply_profile
+
+    cfg = daily_push.PushConfig(as_of=AS_OF, send=False)
+    apply_profile(cfg, "brand_marketing")
+    assert cfg.kind != daily_push.KIND and cfg.out_dir.name == "intel_brand_marketing"
+    cfg.sources_path = SAMPLE / "sources_sample.yaml"
+    cfg.interim_dir, cfg.out_dir = mail_env / "interim", mail_env / "out"
+    cfg.offline, cfg.log_dir, cfg.mail = True, mail_env / "logs", client(mail_env, config_dir)
+    res = daily_push.run(cfg)
+    draft = res.draft.read_text(encoding="utf-8")
+    assert draft.startswith("主旨：【優樂地】永續情資日報｜品牌行銷部版 2026-10-14")
+    assert "資料等級：內部一般" in draft
+    assert not any(w in draft for w in ("公關部", "內部敏感", "客戶機密"))
+    assert res.draft.with_suffix(".html").is_file()

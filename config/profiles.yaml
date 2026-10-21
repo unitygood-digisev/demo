@@ -1,0 +1,8 @@
+# 永續情資日報的部門版。每個部門版有自己的關鍵字、版面、郵件種類（一天一封各算各的）與輸出資料夾。
+# 用法：scripts/run_daily_push.py --profile <名稱>；不指定時是主管版（keywords.yaml＋brief.yaml）。
+profiles:
+  brand_marketing:
+    keywords: keywords_brand_marketing.yaml
+    brief: brief_brand_marketing.yaml
+    kind: intel_daily_brand_marketing
+    folder: intel_brand_marketing
