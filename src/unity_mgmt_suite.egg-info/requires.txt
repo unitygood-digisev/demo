@@ -1,0 +1,13 @@
+pandas
+openpyxl
+pydantic>=2
+PyYAML
+requests
+feedparser
+python-docx
+gspread
+google-auth
+
+[dev]
+pytest
+ruff

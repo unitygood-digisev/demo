@@ -34,6 +34,7 @@ class PushConfig:
     log_dir: Path | None = None
     mail: MailClient | None = None
     send: bool = True
+    brief_name: str = "brief.yaml"  # 版面檔；品牌行銷部版等其他版本用自己的檔
     today: dt.date | None = None  # 測試用；預設台灣今天。只有今天的日報可以寄
 
 
@@ -168,7 +169,7 @@ def run(cfg: PushConfig) -> PushResult:
     )
     level = mail_level(res.day)
     # 版面依副執行長修訂版（永續情資日報）：依 16 個主題分組、每主題前 per_topic 則
-    catalog = briefmod.Catalog.load(cfg.config_dir)
+    catalog = briefmod.Catalog.load(cfg.config_dir, cfg.brief_name)
     start = window_start(cfg.as_of, lookback)
     b = briefmod.build(res.day, catalog, start, per_topic, cfg.keywords_path)
     b.level = level

@@ -1,0 +1,50 @@
+# 品牌行銷部版的版面設定：主題為 keywords_brand_marketing.yaml 涵蓋的主題（待主管確認）
+
+title: 永續情資日報｜品牌行銷部版
+subtitle: 優樂地永續服務｜品牌行銷相關主題彙整｜每主題當期前三大新聞
+audience: 僅供公司內部主管閱讀
+categories:
+- id: 壹
+  name: 法規與準則
+  color: '#2C4F8F'
+- id: 貳
+  name: 政策與市場
+  color: '#8A6514'
+- id: 參
+  name: 產業與議題
+  color: '#6E3D99'
+- id: 肆
+  name: 客戶與同業動態
+  color: '#A0442C'
+topics:
+- code: A2
+  name: 永續揭露與準則
+  category: 壹
+- code: A3
+  name: ESG 評鑑
+  category: 壹
+- code: B2
+  name: 淨零與碳權
+  category: 貳
+- code: B3
+  name: 永續金融與影響力投資
+  category: 貳
+- code: C2
+  name: 永續觀光
+  category: 參
+- code: D1
+  name: 生物多樣性與自然
+  category: 參
+- code: E2
+  name: 同業與生態系動態
+  category: 肆
+- code: E3
+  name: 自家品牌
+  category: 肆
+importance:
+  5: 直接影響案源或營收
+  4: 核心服務相關
+  3: 需掌握的趨勢
+  2: 背景資訊
+  1: 背景資訊
+key_points: 4

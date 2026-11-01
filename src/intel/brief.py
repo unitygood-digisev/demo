@@ -51,8 +51,8 @@ class Catalog:
     key_points: int = 4
 
     @classmethod
-    def load(cls, config_dir: Path | None = None) -> Catalog:
-        c = load_yaml("brief.yaml", config_dir)
+    def load(cls, config_dir: Path | None = None, name: str = "brief.yaml") -> Catalog:
+        c = load_yaml(name, config_dir)
         return cls(
             title=c["title"],
             subtitle=c["subtitle"],

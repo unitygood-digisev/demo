@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from intel.daily_push import PushConfig, run  # noqa: E402
 from intel.store import IntelDataError  # noqa: E402
+from shared.config import load_yaml  # noqa: E402
 from shared.dates import DateParseError, today_tw  # noqa: E402
 from shared.mail_client import MailError  # noqa: E402
 
@@ -31,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="每日情報郵件")
     ap.add_argument("--as-of", default=None, help="日期 YYYY-MM-DD，預設台灣今天")
     ap.add_argument("--draft-only", action="store_true", help="只產生郵件草稿，不寄出")
+    ap.add_argument("--profile", default=None, help="日報版本，見 config/profiles.yaml（例如 brand_marketing）")
     ap.add_argument("--sample", action="store_true", help="用假資料試跑（不連網路、不寄信）")
     args = ap.parse_args(argv)
     try:
@@ -39,6 +41,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"未執行：--as-of「{args.as_of}」不是正確的日期，請寫成 YYYY-MM-DD")
         return 1
     cfg = PushConfig(as_of=as_of, send=not args.draft_only)
+    if args.profile:
+        try:
+            prof = load_yaml("profiles.yaml")[args.profile]
+            cfg.keywords_path = ROOT / "config" / prof["關鍵字檔"]
+            cfg.brief_name = prof["版面檔"]
+            cfg.interim_dir = ROOT / "data" / "interim" / prof["輸出資料夾"]
+            cfg.out_dir = ROOT / "data" / "out" / prof["輸出資料夾"]
+        except (KeyError, TypeError, OSError):
+            print(f"未執行：config/profiles.yaml 找不到版本「{args.profile}」或欄位不完整")
+            return 1
     if args.sample:
         cfg.sources_path = SAMPLE / "sources_sample.yaml"
         cfg.keywords_path = SAMPLE / "keywords_sample.yaml"
