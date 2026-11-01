@@ -32,3 +32,6 @@ config/meeting_aliases.yaml
 
 # 本機關鍵字清單（含客戶名稱、人名，只放本機）
 config/keywords.local.yaml
+
+# pip install -e 產生的暫存檔，不提交
+*.egg-info/

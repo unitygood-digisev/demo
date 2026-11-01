@@ -1,0 +1,22 @@
+# 每日情報郵件的「版本」設定（2026-10-20 新增品牌行銷部版）。
+# 不寫 --profile 時是主管版，沿用 keywords.yaml、brief.yaml，行為與原本完全相同。
+# 每個版本各自用一份關鍵字檔、一份版面檔、一個資料夾，草稿與去重紀錄互不影響。
+#
+# 欄位：
+#   名稱:          顯示用名稱
+#   關鍵字:        config/ 下的關鍵字檔；同資料夾有「檔名.local.yaml」時優先用本機版（可放客戶名稱，不提交）
+#   版面:          config/ 下的版面檔（標題、主題、類別）
+#   資料夾:        草稿與暫存放在 data/out/<資料夾>、data/interim/<資料夾>
+#   收件人環境變數: 用公司電腦 SMTP 寄出時，收件人從 .env 的這個變數讀（不和主管版的 MAIL_TO 共用）
+#   郵件種類:      寄送紀錄裡的種類，用來防止同一天重寄
+#   每主題則數:    每個主題最多列幾則（可省略，省略時用 thresholds.yaml）
+
+profiles:
+  brand_marketing:
+    名稱: 品牌行銷部版
+    關鍵字: keywords_brand_marketing.yaml
+    版面: brief_brand_marketing.yaml
+    資料夾: intel_brand_marketing
+    收件人環境變數: MAIL_TO_BRAND_MARKETING
+    郵件種類: intel_daily_brand_marketing
+    每主題則數: 5   # 表單勾選「每個主題列 5 則」；主管版沿用 thresholds.yaml 的 daily_mail_per_topic

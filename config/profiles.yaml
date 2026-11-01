@@ -1,7 +1,0 @@
-# 日報版本（scripts/run_daily_push.py --profile 名稱）
-# 每個版本各自的關鍵字檔、版面檔與輸出資料夾；不寫 --profile 時用原本的主管版設定。
-brand_marketing:
-  名稱: 品牌行銷部版
-  關鍵字檔: keywords_brand_marketing.yaml
-  版面檔: brief_brand_marketing.yaml
-  輸出資料夾: intel_brand_marketing
