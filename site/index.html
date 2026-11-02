@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>臺灣永續大數據庫｜完成版示範</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root{
+ --bg:#F3F5F1;--panel:#FFFFFF;--ink:#1D2A28;--soft:#5D6B68;--line:#D9DED8;
+ --jade:#2F7D6D;--jade2:#A9D4C8;--indigo:#34508A;--ochre:#C8962E;--rose:#B5527A;--slate:#7E8B88;
+ --hatch:#E6E9E4;--hi:#FFF3C9;
+ color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --bg:#121A19;--panel:#1A2422;--ink:#E7EEEB;--soft:#9DAEA9;--line:#2E3B38;
+ --jade:#5FB8A2;--jade2:#1F4A41;--indigo:#7C98D6;--ochre:#E0B455;--rose:#DB7FA4;--slate:#8C9A97;
+ --hatch:#24302E;--hi:#3A3418;color-scheme:dark}}
+:root[data-theme="dark"]{
+ --bg:#121A19;--panel:#1A2422;--ink:#E7EEEB;--soft:#9DAEA9;--line:#2E3B38;
+ --jade:#5FB8A2;--jade2:#1F4A41;--indigo:#7C98D6;--ochre:#E0B455;--rose:#DB7FA4;--slate:#8C9A97;
+ --hatch:#24302E;--hi:#3A3418;color-scheme:dark}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+h1,h2,h3{font-family:"Noto Serif TC","Songti TC","PMingLiU",serif;line-height:1.3;margin:0}
+h2{font-size:clamp(24px,3.2vw,34px);font-weight:900}
+h3{font-size:18px;font-weight:600;margin:20px 0 8px}
+p{margin:0 0 10px;max-width:68ch}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:10px 20px}
+.brand{font-family:"Noto Serif TC",serif;font-weight:900;font-size:17px;white-space:nowrap}
+.nav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+.nav a{white-space:nowrap;text-decoration:none;color:var(--soft);padding:4px 10px;border-radius:999px;font-size:14px}
+.nav a:hover,.nav a.on{background:var(--jade2);color:var(--ink)}
+.flag{font-size:12px;border:1px solid var(--ochre);color:var(--ochre);padding:2px 8px;border-radius:4px;white-space:nowrap}
+main{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+section{padding:56px 0 8px;border-bottom:1px solid var(--line)}
+.lead{color:var(--soft);font-size:16px}
+.hero{padding-top:40px}
+.hero h1{font-size:clamp(30px,5.4vw,58px);font-weight:900;letter-spacing:.02em}
+.hero .sub{font-size:17px;color:var(--soft);margin:10px 0 18px}
+.flow{width:100%;height:auto;display:block;margin:10px 0 6px}
+.flow text{font-size:13px;fill:var(--ink)}
+.flow .s{fill:var(--soft);font-size:11px}
+.wire{fill:none;stroke:var(--jade);stroke-width:1.4;stroke-dasharray:3 9;opacity:.55;animation:run 1.6s linear infinite}
+.wire.b{stroke:var(--indigo)}
+@keyframes run{to{stroke-dashoffset:-24}}
+.node{fill:var(--panel);stroke:var(--line)}
+.core{fill:var(--jade);}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:14px}
+.stats div{background:var(--panel);padding:12px 14px}
+.stats b{display:block;font-family:"Noto Serif TC",serif;font-size:28px;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--soft)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}.brand{display:none}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:3px;background:var(--hatch);color:var(--soft);margin-right:4px}
+.cA{background:#2F7D6D22;color:var(--jade)}.cB{background:#C8962E26;color:var(--ochre)}.cC{background:#B5527A22;color:var(--rose)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;white-space:nowrap}
+th{color:var(--soft);font-weight:500}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.tabs button{border:1px solid var(--line);background:var(--panel);padding:4px 12px;border-radius:999px;cursor:pointer;font-size:14px}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.heat{display:grid;grid-template-columns:72px repeat(6,minmax(0,1fr));gap:3px;font-size:13px}
+.heat .h{color:var(--soft);text-align:center;padding:4px 0;font-size:12px}
+.heat .r{color:var(--soft);display:flex;align-items:center}
+.cell{border:0;border-radius:4px;min-height:54px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;transition:transform .15s}
+.cell:hover{transform:scale(1.04)}
+.cell small{font-size:11px;opacity:.8}
+.cell.na{background:repeating-linear-gradient(45deg,var(--hatch) 0 6px,transparent 6px 12px);color:var(--soft);cursor:default}
+.cell.sel{outline:3px solid var(--ochre)}
+.bar{height:10px;background:var(--hatch);border-radius:2px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--jade);transition:width .8s}
+.zrow{display:grid;grid-template-columns:110px 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.zbar{height:12px;position:relative;background:var(--hatch);border-radius:2px}
+.zbar i{position:absolute;top:0;bottom:0;background:var(--jade)}
+.zbar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--soft)}
+.decide{border-left:4px solid var(--ochre);background:var(--hi);padding:10px 14px;border-radius:0 6px 6px 0;margin-top:12px}
+.decide b{display:block;font-size:13px;color:var(--soft);font-weight:500}
+.wrow{display:grid;grid-template-columns:28px minmax(110px,1.2fr) 2fr 54px 46px;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.wrow:hover{background:var(--hatch)}
+.stack{display:flex;height:26px;border-radius:3px;overflow:hidden;margin:4px 0 10px}
+.stack span{transition:flex-grow .8s;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;min-width:0;overflow:hidden}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--soft)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.steps button{flex:1;min-width:120px;border:1px solid var(--line);background:var(--panel);padding:8px;border-radius:6px;cursor:pointer;text-align:left;font-size:13px}
+.steps button[aria-pressed="true"]{border-color:var(--jade);box-shadow:inset 0 -3px 0 var(--jade)}
+.term{background:var(--ink);color:var(--bg);border-radius:6px;padding:14px;font-size:13px;min-height:220px;white-space:pre-wrap;overflow-x:auto;line-height:1.7}
+.term .k{color:var(--ochre)}
+.report{background:var(--panel);border:1px solid var(--line);max-width:780px;margin:0 auto;padding:28px 32px;box-shadow:0 1px 0 var(--line),0 12px 30px -18px #0004}
+.report h3{border-bottom:2px solid var(--ink);padding-bottom:4px}
+.report ol{padding-left:20px;margin:6px 0}
+.tl{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:0;overflow-x:auto;margin-top:12px}
+.tl div{border-top:4px solid var(--line);padding:10px 10px 0 0;font-size:13px}
+.tl div.done{border-color:var(--jade)}.tl div.gate{border-color:var(--ochre)}
+.tl b{display:block;font-size:14px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:4px;opacity:0;transition:opacity .1s;z-index:20;max-width:240px}
+.foot{font-size:13px;color:var(--soft);padding-top:24px}
+select{border:1px solid var(--line);background:var(--panel);padding:5px 8px;border-radius:4px}
+.ev{font-size:15px;line-height:1.9}
+@media (prefers-reduced-motion:reduce){.wire{animation:none}*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="brand">優樂地永續大數據庫</div>
+ <nav class="nav" id="nav">
+  <a href="#overview">總覽</a><a href="#pipeline">資料流程</a><a href="#tables">六張表</a><a href="#q1">Q1 動員力</a><a href="#q2">Q2 市場空白</a><a href="#q3">Q3 資金組合</a><a href="#q4">Q4 跨域議題</a><a href="#report">季報</a><a href="#bid">投標評估</a><a href="#ops">治理與時程</a>
+ </nav>
+ <span class="flag">模擬資料</span>
+</header>
+<main>
+
+<section id="overview" class="hero">
+ <h1>每季選題會議，比的是數字</h1>
+ <p class="sub">這是臺灣永續大數據庫做完之後的樣子：14 個公開來源進來，整理成六張表，算出四個分析模組，最後變成一頁季報和投標評估的證據欄。畫面上的鄉鎮、組織與數字全部是虛構的示範資料。</p>
+ <svg class="flow" viewBox="0 0 1100 430" role="img" aria-label="資料從 14 個來源流入六張表，再產出四個模組與季報">
+  <g id="srcs"></g><g id="wires"></g>
+  <rect x="440" y="95" width="210" height="240" rx="10" class="core"/>
+  <text x="545" y="125" text-anchor="middle" style="fill:#fff;font-weight:700;font-size:15px">Google Sheets 主資料表</text>
+  <g id="tbls"></g>
+  <text x="545" y="360" text-anchor="middle" class="s">Claude Project：分類、抽取、計算</text>
+  <g id="mods"></g>
+  <rect x="975" y="170" width="115" height="90" rx="8" class="node"/>
+  <text x="1032" y="208" text-anchor="middle" style="font-weight:700">季報</text>
+  <text x="1032" y="230" text-anchor="middle" class="s">投標評估</text>
+ </svg>
+ <div class="stats" id="stats"></div>
+</section>
+
+<section id="pipeline">
+ <h2>一筆標案怎麼變成資料</h2>
+ <p class="lead">以政府電子採購網的一筆決標資料為例，依主指示與 B2 提示詞處理。點選步驟看每一段的輸入與輸出。</p>
+ <div class="steps" id="steps"></div>
+ <div class="grid2"><div class="term" id="term" aria-live="polite"></div><div class="box" id="stepNote"></div></div>
+</section>
+
+<section id="tables">
+ <h2>六張表</h2>
+ <p class="lead">全庫用四個共用鍵串起來：專案ID、組織ID、鄉鎮代碼、議題代碼。點選表名看欄位與樣本列。</p>
+ <div class="tabs" id="tblTabs"></div>
+ <div class="grid2"><div class="box scroll" id="tblRows"></div><div class="box" id="tblInfo"></div></div>
+</section>
+
+<section id="q1">
+ <h2>Q1 區域動員力：在哪種地方用哪種做法最容易做起來</h2>
+ <p class="lead">比較單位是「地區類型 × 專案模式」。分數是組織數、跨部門比例、延續年數、再獲資助率、在地組織占比五個 z 分數的平均。點格子看拆解。</p>
+ <div class="grid2">
+  <div><div class="heat" id="heat"></div>
+   <div class="legend" style="margin-top:8px"><span><i style="background:var(--jade)"></i>分數高</span><span><i style="background:var(--jade2)"></i>分數低</span><span><i style="background:repeating-linear-gradient(45deg,var(--hatch) 0 3px,transparent 3px 6px);border:1px solid var(--line)"></i>樣本不足（專案數少於 5）</span></div></div>
+  <div class="box" id="heatInfo"></div>
+ </div>
+ <h3>每個地區類型的前三名模式</h3>
+ <div class="scroll"><table id="top3"></table></div>
+ <div class="decide"><b>這個結果建議</b>原鄉的提案優先設計成「社區營造＋培力課程」，避免以場域活動為主體；離島樣本不足，投標前要另外找佐證。</div>
+</section>
+
+<section id="q2">
+ <h2>Q2 市場空白：哪裡需求高、但做的人少</h2>
+ <p class="lead">白地指數 = 需求分數 D ÷ 每萬人近三年專案數 S′，再標準化。兩個版本可切換：以專案數或以資金額計算供給。點列看需求拆解。</p>
+ <div class="tabs" id="wTabs"><button aria-pressed="true" data-v="n">專案數版</button><button aria-pressed="false" data-v="f">資金額版</button></div>
+ <div class="grid2">
+  <div class="box"><div class="wrow" style="cursor:default;color:var(--soft)"><span>#</span><span>鄉鎮</span><span>白地指數 W</span><span>信心</span><span>差異</span></div><div id="wList"></div></div>
+  <div class="box" id="wInfo"></div>
+ </div>
+ <div class="decide"><b>這個結果建議</b><span id="wDecide"></span></div>
+</section>
+
+<section id="q3">
+ <h2>Q3 資金組合：哪裡有公益加商業資本可以一起動</h2>
+ <p class="lead">每個專案依資金事件歸成五種資金類型。慈善與企業捐贈揭露不完整，這裡只比較相對分布，絕對金額低估。</p>
+ <div class="tabs" id="fTabs"><button aria-pressed="true" data-v="n">筆數占比</button><button aria-pressed="false" data-v="a">金額占比</button></div>
+ <div class="legend" id="fLegend"></div>
+ <div id="fStacks" style="margin-top:10px"></div>
+ <div class="grid2" style="margin-top:10px">
+  <div><h3>混合型案例</h3><div class="scroll"><table id="mixT"></table></div></div>
+  <div><h3>進場順序：先有慈善或公部門，後來進了商業資金</h3><div id="seq"></div></div>
+ </div>
+ <div class="decide"><b>這個結果建議</b>把下列三個「慈善先行」或「公部門先行」的地區議題列為新創車庫優先案源，先約談當地執行團隊，確認是否有可接續的商業模式。</div>
+</section>
+
+<section id="q4">
+ <h2>Q4 跨域議題：下一個值得投入的組合</h2>
+ <p class="lead">同一專案出現兩個議題就算一次共現。橫軸是今年共現數，縱軸是近兩年平均成長率；虛線是兩者的中位數，左上角是「小而快」。所有候選都只是待驗證假設。</p>
+ <div class="grid2">
+  <div class="box"><svg id="mx" viewBox="0 0 560 380" style="width:100%;height:auto" role="img" aria-label="議題組合規模與成長率矩陣"></svg></div>
+  <div><h3>小而快象限（依 G 排序）</h3><div id="g4"></div><h3>觀察名單（今年共現數少於 3，不排名）</h3><div id="obs" style="font-size:14px"></div></div>
+ </div>
+ <div class="decide"><b>這個結果建議</b>從小而快象限挑兩個組合，作為下季論壇與專欄選題，並各找一個既有客戶做小規模驗證。</div>
+</section>
+
+<section id="report">
+ <h2>一頁季報</h2>
+ <p class="lead">每季選題會議前一週由 B8 產出。四段固定內容，每個數字都附信心等級與樣本數。</p>
+ <div class="report" id="rep"></div>
+</section>
+
+<section id="bid">
+ <h2>投標評估的「資料庫證據」欄</h2>
+ <p class="lead">評估標案時輸入地點、模式和主議題，B9 會從最新計算結果查出證據，寫成三句話。</p>
+ <div class="box">
+  <label>執行地點 <select id="bTown"></select></label>
+  <label style="margin-left:10px">專案模式 <select id="bMode"></select></label>
+  <label style="margin-left:10px">主議題 <select id="bIssue"></select></label>
+  <div class="grid2" style="margin-top:14px"><div class="ev" id="bOut"></div><div id="bFacts" class="scroll"></div></div>
+ </div>
+</section>
+
+<section id="ops">
+ <h2>治理與時程</h2>
+ <p class="lead">示範時間點設在 2027 年 9 月，資料庫進入常態運作。下面是走到這裡的過程與現在的資料品質。</p>
+ <div class="tl" id="tl"></div>
+ <div class="grid2" style="margin-top:24px">
+  <div><h3>資料品質</h3><div id="qual"></div></div>
+  <div><h3>第一年成本（建議方案）</h3><div class="scroll"><table id="cost"></table></div>
+  <p style="font-size:13px;color:var(--soft);margin-top:8px">打平標準：一年避開 3 到 5 個不適合的標案，或促成一個新服務線。外部價格為 2026 年 11 月估計，以廠商報價為準。</p></div>
+ </div>
+ <p class="foot">本頁依《臺灣永續大數據庫 執行規劃》與 Project 主指示 v1.0 製作，所有鄉鎮名稱、組織名稱與數字均為模擬示範資料，不代表任何真實分析結果。</p>
+</section>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const $=s=>document.querySelector(s), el=(t,a={},h="")=>{const e=document.createElement(t);for(const k in a)e.setAttribute(k,a[k]);e.innerHTML=h;return e};
+const NS="http://www.w3.org/2000/svg", sv=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=n=>n.toLocaleString("zh-TW");
+const tip=$("#tip");function showTip(e,h){tip.innerHTML=h;tip.style.opacity=1;tip.style.left=Math.min(e.clientX+12,innerWidth-250)+"px";tip.style.top=(e.clientY+12)+"px"}function hideTip(){tip.style.opacity=0}
+const conf=c=>`<span class="tag c${c}">信心 ${c}</span>`;
+
+/* ---------- 總覽動畫 ---------- */
+const SRC=[["PCC","採購網"],["NDC","地方創生"],["USR","大學社責"],["MOC","社造"],["MOA","農村再生"],["CIP","原民會"],["MOL","多元就業"],["MOHW","公益勸募"],["MOEA","社創登錄"],["STAT","人口統計"],["ESG","永續報告書"],["FDN","基金會年報"],["AWD","永續獎項"],["ULD","自有專案"]];
+SRC.forEach((s,i)=>{const y=22+i*28.5;
+ $("#srcs").append(sv("rect",{x:10,y:y-12,width:150,height:22,rx:4,class:"node"}));
+ const t=sv("text",{x:20,y:y+4});t.textContent=s[0];t.style.fontWeight=700;t.style.fontSize="12px";$("#srcs").append(t);
+ const t2=sv("text",{x:68,y:y+4,class:"s"});t2.textContent=s[1];$("#srcs").append(t2);
+ $("#wires").append(sv("path",{d:`M160 ${y} C 300 ${y}, 300 ${215}, 440 ${215}`,class:"wire"}));});
+["projects 專案","organizations 組織","funding_events 資金事件","regions 地區","issues 議題","project_org 關係"].forEach((t,i)=>{
+ $("#tbls").append(sv("rect",{x:458,y:142+i*31,width:174,height:24,rx:3,fill:"#ffffff30"}));
+ const x=sv("text",{x:468,y:159+i*31});x.textContent=t;x.style.fill="#fff";x.style.fontSize="12px";$("#tbls").append(x);});
+[["Q1","區域動員力"],["Q2","市場空白"],["Q3","資金組合"],["Q4","跨域議題"]].forEach((m,i)=>{const y=70+i*90;
+ $("#wires").append(sv("path",{d:`M650 215 C 700 215, 700 ${y+22}, 760 ${y+22}`,class:"wire b"}));
+ $("#wires").append(sv("path",{d:`M920 ${y+22} C 950 ${y+22}, 950 215, 975 215`,class:"wire b"}));
+ $("#mods").append(sv("rect",{x:760,y:y,width:160,height:44,rx:6,class:"node"}));
+ const t=sv("text",{x:774,y:y+27});t.textContent=m[0]+"  "+m[1];t.style.fontWeight=700;$("#mods").append(t);});
+const STATS=[[12486,"專案"],[3214,"組織"],[18902,"資金事件"],[368,"鄉鎮市區"],[20,"自訂議題"],[14,"資料來源"]];
+STATS.forEach(s=>$("#stats").append(el("div",{},`<b data-to="${s[0]}">0</b><span>${s[1]}</span>`)));
+function countUp(){document.querySelectorAll("[data-to]").forEach(b=>{const to=+b.dataset.to,t0=performance.now(),d=matchMedia("(prefers-reduced-motion:reduce)").matches?1:1400;
+ (function f(t){const p=Math.min(1,(t-t0)/d);b.textContent=fmt(Math.round(to*(1-Math.pow(1-p,3))));if(p<1)requestAnimationFrame(f)})(t0)})}
+countUp();
+
+/* ---------- 資料流程 ---------- */
+const STEPS=[
+ ["原始資料","政府電子採購網匯出",`<span class="k">決標公告｜匯出 CSV 第 418 列</span>
+標案名稱：山嵐鄉小農品牌輔導暨通路媒合委託專業服務案
+機關名稱：東岸縣政府農業處
+得標廠商：示範地方設計有限公司
+決標金額：2,860,000
+決標日期：2026-04-17
+履約地點：東岸縣山嵐鄉`,"原始欄位很多，主指示第 2 節「決策先於資料」規定只留下六張表定義的欄位，其餘不輸出。"],
+ ["篩選","依議題判斷是否保留",`<span class="k">保留判斷</span>
+工程硬體採購？否
+與永續、社會、地方發展相關？是
+→ 保留
+
+<span class="k">本批統計</span>
+匯出 1,240 筆｜保留 386 筆｜排除 854 筆
+排除原因：道路與建物工程 612、設備購置 171、一般行政 71`,"工程與設備採購除非有明確社會目的，否則排除，並列出排除筆數與原因分類。"],
+ ["分類","模式、議題、地點、延續",`<span class="k">專案模式</span>  M3 產業輔導（主要經費花在品牌與通路）
+<span class="k">次要模式</span>  M4 場域活動（寫在備註）
+<span class="k">議題代碼</span>  U06 農業與食農；U05 地方創生與青年返鄉
+<span class="k">執行鄉鎮</span>  98001040 山嵐鄉（履約地點直接佐證）
+<span class="k">延續次數</span>  2（同機關、名稱高度相似，2024、2025 各一次）
+<span class="k">信心等級</span>  B（模式需要判斷）`,"模式看「經費最多花在哪一種產出」；議題只標專案實質處理的，不因標題出現關鍵字就標。"],
+ ["寫入六表","專案、組織、資金、關係",`<span class="k">projects</span>
+P-PCC-2026-0418｜M3｜U06;U05｜98001040｜2,860,000｜公部門主導｜B
+<span class="k">organizations</span>
+O-0912 東岸縣政府（政府）｜O-2207 示範地方設計有限公司（企業，小）
+<span class="k">funding_events</span>
+F-14033｜P-PCC-2026-0418｜O-0912｜2,860,000｜公部門｜採購｜無｜2026
+<span class="k">project_org</span>
+O-0912 出資 在地｜O-2207 執行 否（登記在海灣市）`,"總金額、資金類型、是否在地三欄由 Sheets 公式自動計算，正式值由 Claude 回填並補上備註。"],
+ ["抽檢","資料管理員抽 10%",`<span class="k">本批抽檢 39 筆（10.1%）</span>
+優先抽：信心 C 全部 11 筆、模式判斷困難 28 筆
+
+錯誤 3 筆｜錯誤率 7.7%（≤10% 通過）
+- 模式 M3 應為 M1：1 筆（規則定義不清）
+- 鄉鎮代碼錯：1 筆（原始資料不足）
+- 議題多標：1 筆（Claude 判斷錯誤）`,"錯誤率超過 10% 時，B6 會提出規則修改文字與新版本號，並列出要重跑的範圍。"]];
+STEPS.forEach((s,i)=>{const b=el("button",{"aria-pressed":i?"false":"true"},`<b>${i+1}. ${s[0]}</b><br><span style="color:var(--soft)">${s[1]}</span>`);b.onclick=()=>step(i);$("#steps").append(b)});
+let typing;function step(i){[...$("#steps").children].forEach((b,j)=>b.setAttribute("aria-pressed",j==i));$("#stepNote").innerHTML=`<h3 style="margin-top:0">${STEPS[i][0]}</h3><p>${STEPS[i][3]}</p>`;
+ clearInterval(typing);const full=STEPS[i][2],term=$("#term");if(matchMedia("(prefers-reduced-motion:reduce)").matches){term.innerHTML=full;return}
+ let n=0;typing=setInterval(()=>{n+=6;let s=full.slice(0,n);if(s.lastIndexOf("<")>s.lastIndexOf(">"))s=s.slice(0,s.lastIndexOf("<"));term.innerHTML=s+(n<full.length?"▍":"");if(n>=full.length)clearInterval(typing)},16)}
+step(0);
+
+/* ---------- 六張表 ---------- */
+const TB={
+ projects:{name:"專案表",n:12486,cols:["專案ID","專案名稱","模式","議題","鄉鎮","總金額","資金類型","信心"],rows:[
+  ["P-PCC-2026-0418","山嵐鄉小農品牌輔導","M3","U06;U05","山嵐鄉","2,860,000","公部門主導","B"],
+  ["P-NDC-2025-0112","溪谷鄉青年返鄉基地","M2","U05;U14","溪谷鄉","4,200,000","混合型","A"],
+  ["P-USR-2026-0031","石梯部落文化共學","M1","U04;U13","石梯鄉","3,000,000","公部門主導","A"],
+  ["P-ESG-2026-0207","海灣市海廢循環計畫","M6","U07;U11","海灣市港區","1,500,000","企業CSR","B"],
+  ["P-ULD-2025-0019","內部專案 ULD-19","M5","U18","全國","980,000","商業型","A"]],
+  info:"一筆專案一列。延續次數、起訖日期、產出與成果指標、來源網址等欄位在完整表中。資金類型依資金事件計算，不直接判斷。"},
+ organizations:{name:"組織表",n:3214,cols:["組織ID","組織名稱","統一編號","類型","規模","所在鄉鎮"],rows:[
+  ["O-0912","東岸縣政府","（有）","政府","大","東岸縣"],["O-2207","示範地方設計有限公司","（有）","企業","小","海灣市"],
+  ["O-1350","示範永續基金會","（有）","基金會","中","海灣市"],["O-3011","溪谷社區發展協會","（有）","社區組織","小","溪谷鄉"],["O-0457","示範大學","（有）","大學","大","海灣市"]],
+  info:"同一組織不同寫法要合併，統一編號是合併主要依據。只收組織層級資料，不收個人姓名與聯絡方式。"},
+ funding_events:{name:"資金事件表",n:18902,cols:["事件ID","專案ID","出資組織","金額","來源類型","工具","報酬預期","年度"],rows:[
+  ["F-14033","P-PCC-2026-0418","O-0912","2,860,000","公部門","採購","無","2026"],["F-08811","P-NDC-2025-0112","O-0912","2,500,000","公部門","補助","無","2025"],
+  ["F-08812","P-NDC-2025-0112","O-1350","700,000","基金會","捐贈","無","2025"],["F-11920","P-NDC-2025-0112","O-2988","1,000,000","投資人","債","低於市場","2026"],["F-12404","P-ESG-2026-0207","O-3320","1,500,000","企業","捐贈","無","2026"]],
+  info:"一個專案可以有多筆資金事件。資金類型與進場順序都從這張表算出來。"},
+ regions:{name:"地區表",n:368,cols:["鄉鎮代碼","縣市","鄉鎮","地區類型","人口","老化率","需求分數 D"],rows:[
+  ["98001040","東岸縣","山嵐鄉","農村","8,412","27.9%","1.18"],["98001050","東岸縣","溪谷鄉","原鄉","5,930","22.4%","1.41"],["98001060","東岸縣","石梯鄉","原鄉","4,105","24.8%","1.36"],
+  ["97000010","海灣市","港區","都會","182,330","16.2%","-0.72"],["98003010","霧島縣","霧島鄉","離島","11,740","25.1%","0.94"]],
+  info:"368 鄉鎮市區各一列，需求指標來自開放資料，缺值留空不估。需求分數 D 由 Q2 計算後回填。"},
+ issues:{name:"議題分類表",n:20,cols:["議題代碼","議題名稱","SDG targets","服務類別"],rows:[
+  ["U01","高齡照顧與健康老化","3.8；11.7","（服務類別）"],["U04","原住民族發展","4.5；10.2","（服務類別）"],["U05","地方創生與青年返鄉","8.6；11.a","（服務類別）"],["U07","循環經濟與減廢","12.5","（服務類別）"],["U17","社會金融與影響力投資","8.3；17.3","（服務類別）"]],
+  info:"上層是優樂地自訂 20 個議題，底層對應 SDG targets 與 IRIS+ 指標。每個專案一到三個議題，第一個是主議題。"},
+ project_org:{name:"專案－組織關係表",n:31507,cols:["專案ID","組織ID","角色","是否在地"],rows:[
+  ["P-NDC-2025-0112","O-0912","出資","是"],["P-NDC-2025-0112","O-3011","執行","是"],["P-NDC-2025-0112","O-1350","出資","否"],["P-NDC-2025-0112","O-2988","出資","否"],["P-PCC-2026-0418","O-2207","執行","否"]],
+  info:"一個專案的每個參與組織一列。動員力的組織數、跨部門比例、在地組織占比都從這張表算。"}};
+Object.keys(TB).forEach((k,i)=>{const b=el("button",{"aria-pressed":i?"false":"true"},TB[k].name);b.onclick=()=>tbl(k);$("#tblTabs").append(b)});
+function tbl(k){[...$("#tblTabs").children].forEach(b=>b.setAttribute("aria-pressed",b.textContent==TB[k].name));const t=TB[k];
+ $("#tblRows").innerHTML=`<table><tr>${t.cols.map(c=>`<th>${c}</th>`).join("")}</tr>${t.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
+ $("#tblInfo").innerHTML=`<h3 style="margin-top:0">${t.name}｜<code>${k}</code></h3><p style="font-size:28px;font-family:'Noto Serif TC',serif;margin:4px 0">${fmt(t.n)} <span style="font-size:14px;color:var(--soft)">列</span></p><p>${t.info}</p>`}
+tbl("projects");
+
+/* ---------- Q1 熱力表 ---------- */
+const RT=["都會","城郊","農村","原鄉","離島"],MD=[["M1","培力課程"],["M2","社區營造"],["M3","產業輔導"],["M4","場域活動"],["M5","研究盤點"],["M6","平台聯盟"]];
+const HM=[[[.42,214],[-.18,96],[.31,158],[.12,301],[.55,87],[.71,64]],[[.28,132],[.22,118],[.47,141],[-.05,166],[.09,42],[.18,25]],[[.36,188],[.61,203],[.58,176],[-.21,149],[-.12,38],[-.30,12]],[[.52,97],[.74,88],[.19,46],[-.44,61],[-.08,9],[null,3]],[[.15,21],[.33,17],[-.02,11],[.06,24],[null,2],[null,1]]];
+const ZN=["組織數","跨部門比例","延續年數","再獲資助率","在地組織占比"];
+function zsplit(v,r,m){let s=[],seed=(r*7+m*13+3);for(let i=0;i<5;i++){seed=(seed*9301+49297)%233280;s.push(+(v+(seed/233280-.5)*1.2).toFixed(2))}const d=v*5-s.reduce((a,b)=>a+b,0);s[4]=+(s[4]+d).toFixed(2);return s}
+const heat=$("#heat");heat.append(el("div"));MD.forEach(m=>heat.append(el("div",{class:"h"},`${m[0]}<br>${m[1]}`)));
+function shade(v){const t=Math.max(0,Math.min(1,(v+.5)/1.3));return `color-mix(in srgb, var(--jade) ${Math.round(15+t*85)}%, var(--jade2))`}
+RT.forEach((r,ri)=>{heat.append(el("div",{class:"r"},r));HM[ri].forEach(([v,n],mi)=>{
+ const c=el("button",{class:"cell"+(v===null?" na":""),"aria-label":`${r} ${MD[mi][1]}`},v===null?`樣本不足<small>n=${n}</small>`:`${v.toFixed(2)}<small>n=${n}</small>`);
+ if(v!==null){c.style.background=shade(v);c.style.color=v>.3?"#fff":"var(--ink)";c.onclick=()=>hsel(ri,mi,c)}else c.disabled=true;heat.append(c)})});
+function hsel(ri,mi,c){document.querySelectorAll(".cell.sel").forEach(x=>x.classList.remove("sel"));c.classList.add("sel");const[v,n]=HM[ri][mi],z=zsplit(v,ri,mi);
+ const rank=HM[ri].map((x,i)=>[x[0]??-9,i]).sort((a,b)=>b[0]-a[0]).findIndex(x=>x[1]==mi)+1;
+ $("#heatInfo").innerHTML=`<h3 style="margin-top:0">${RT[ri]} × ${MD[mi][0]} ${MD[mi][1]}</h3><p>動員力 M = <b style="font-size:22px">${v.toFixed(2)}</b>，在${RT[ri]}六種模式中排第 ${rank}。有效專案 ${n} 筆。</p>`+
+ z.map((x,i)=>`<div class="zrow"><span>${ZN[i]}</span><div class="zbar"><i style="${x>=0?`left:50%;width:${Math.min(50,x*30)}%`:`right:50%;width:${Math.min(50,-x*30)}%`};background:${x>=0?"var(--jade)":"var(--rose)"}"></i></div><span class="num">${x>0?"+":""}${x.toFixed(2)}</span></div>`).join("")+
+ `<p style="font-size:13px;color:var(--soft);margin-top:10px">五個 z 分數以同一次計算的全部有效樣本為母體，等權平均。中線為 0。</p>`}
+hsel(3,1,heat.children[7+3*7+2]);
+$("#top3").innerHTML=`<tr><th>地區類型</th><th>第一</th><th>第二</th><th>第三</th><th>樣本不足的格子</th></tr>`+RT.map((r,ri)=>{const s=HM[ri].map((x,i)=>[x[0],i]).filter(x=>x[0]!==null).sort((a,b)=>b[0]-a[0]).slice(0,3);
+ const na=HM[ri].map((x,i)=>x[0]===null?MD[i][0]:null).filter(Boolean);return `<tr><td>${r}</td>${s.map(x=>`<td>${MD[x[1]][0]} ${MD[x[1]][1]}（${x[0].toFixed(2)}）</td>`).join("")}<td>${na.join("、")||"無"}</td></tr>`}).join("");
+
+/* ---------- Q2 白地 ---------- */
+const TW=[["山嵐鄉","東岸縣","農村",8412,1.18,1,3.1],["溪谷鄉","東岸縣","原鄉",5930,1.41,2,4.4],["石梯鄉","東岸縣","原鄉",4105,1.36,0,0],["雲脊鄉","東岸縣","原鄉",3620,1.29,1,1.2],["霧島鄉","霧島縣","離島",11740,.94,1,6.8],["鹽埕鄉","南灘縣","農村",12880,1.02,2,2.0],["竹嶺鄉","中嶺縣","農村",9050,.97,1,.6],["月灣鄉","南灘縣","農村",14210,1.08,3,9.5],["鷺洲鎮","南灘縣","城郊",21300,.48,6,1.9],["茶坑鄉","中嶺縣","農村",7330,.83,1,.8],["岩門鄉","中嶺縣","原鄉",6120,1.12,3,11.2],["潮音鄉","霧島縣","離島",5480,.91,1,1.1],["稻埕鄉","南灘縣","農村",10410,.79,1,4.6],["楓林鄉","中嶺縣","農村",8890,.74,1,.9],["石滬鄉","霧島縣","離島",3970,.86,0,0],["梅谷鄉","北嶺縣","原鄉",5210,1.05,4,7.3],["蘆溪鎮","南灘縣","城郊",33200,.41,9,5.2],["沙崙鄉","南灘縣","農村",11630,.66,1,.7],["柚園鄉","北嶺縣","農村",9770,.69,2,1.4],["溪埔鎮","北嶺縣","城郊",28410,.38,8,2.2],["港區","海灣市","都會",182330,-.72,61,212],["新市區","海灣市","都會",141020,-.55,38,96],["橋頭鎮","北嶺縣","城郊",45200,.21,9,15],["林口鄉","中嶺縣","城郊",39880,.18,7,8.6]];
+const zs=a=>{const m=a.reduce((x,y)=>x+y,0)/a.length,s=Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length);return a.map(x=>(x-m)/s)};
+const Wn=zs(TW.map(t=>t[4]/((t[5]+1)/t[3]*1e4))),Wf=zs(TW.map(t=>t[4]/((t[6]*1e6+1)/t[3])));
+const rankOf=a=>{const o=a.map((v,i)=>[v,i]).sort((x,y)=>y[0]-x[0]),r=[];o.forEach((x,k)=>r[x[1]]=k+1);return r};const Rn=rankOf(Wn),Rf=rankOf(Wf);
+const CONF=i=>[3,14].includes(i)?"C":[4,11,9].includes(i)?"B":"A";
+let wv="n";
+function wlist(){const W=wv=="n"?Wn:Wf,R=wv=="n"?Rn:Rf,O=wv=="n"?Rf:Rn,mx=Math.max(...W);
+ const idx=W.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,20).map(x=>x[1]);
+ $("#wList").innerHTML=idx.map((i,k)=>{const d=O[i]-R[i],t=TW[i];return `<div class="wrow" tabindex="0" data-i="${i}"><span>${k+1}</span><span>${t[0]}<br><span style="color:var(--soft);font-size:12px">${t[1]}｜${t[2]}</span></span><div class="bar"><i style="width:0" data-w="${Math.max(3,W[i]/mx*100)}"></i></div><span>${conf(CONF(i)).replace("信心 ","")}</span><span class="num" style="color:${Math.abs(d)>=5?"var(--rose)":"var(--soft)"}">${d>0?"+":""}${d}</span></div>`}).join("");
+ requestAnimationFrame(()=>document.querySelectorAll("#wList i").forEach(b=>b.style.width=b.dataset.w+"%"));
+ document.querySelectorAll(".wrow[data-i]").forEach(r=>{r.onclick=()=>winfo(+r.dataset.i);r.onkeydown=e=>{if(e.key=="Enter")winfo(+r.dataset.i)}});
+ winfo(idx[0]);
+ const big=idx.filter(i=>Math.abs(Rn[i]-Rf[i])>=5).sort((a,b)=>Math.abs(Rn[b]-Rf[b])-Math.abs(Rn[a]-Rf[a])).slice(0,3).map(i=>TW[i][0]);
+ $("#wDecide").textContent=`${TW[idx[0]][0]}、${TW[idx[1]][0]}、${TW[idx[2]][0]}列為下季新服務試點候選；${idx.filter(i=>TW[i][5]==0).map(i=>TW[i][0]).join("、")}近三年零專案，先做電話與田野確認是真白地還是資料盲區。兩版排名差異最大的${big.join("、")||"鄉鎮"}，報告中要說明是專案少還是金額小。`}
+function winfo(i){const t=TW[i],sp=((t[5]+1)/t[3]*1e4),parts=["老化率","人口流失率","災害潛勢","所得（取負）","一級產業比"],seed=i*17+5;
+ const z=parts.map((p,k)=>+(t[4]+Math.sin(seed+k*2.1)*.55).toFixed(2));
+ $("#wInfo").innerHTML=`<h3 style="margin-top:0">${t[1]} ${t[0]}｜${t[2]}</h3><p>${conf(CONF(i))}${t[5]==0?'<span class="tag cC">待確認：真白地或資料盲區</span>':""}</p>
+ <table><tr><td>需求分數 D</td><td class="num">${t[4].toFixed(2)}</td></tr><tr><td>人口</td><td class="num">${fmt(t[3])}</td></tr><tr><td>近三年專案數</td><td class="num">${t[5]}</td></tr><tr><td>供給密度 S′（每萬人）</td><td class="num">${sp.toFixed(2)}</td></tr><tr><td>近三年資金總額</td><td class="num">${t[6]?t[6]+" 百萬":"0"}</td></tr><tr><td>專案數版排名／資金額版排名</td><td class="num">${Rn[i]}／${Rf[i]}</td></tr></table>
+ <h3>需求 D 的組成（z 分數）</h3>${z.map((x,k)=>`<div class="zrow"><span>${parts[k]}</span><div class="zbar"><i style="${x>=0?`left:50%;width:${Math.min(50,x*25)}%`:`right:50%;width:${Math.min(50,-x*25)}%`}"></i></div><span class="num">${x.toFixed(2)}</span></div>`).join("")}`}
+document.querySelectorAll("#wTabs button").forEach(b=>b.onclick=()=>{wv=b.dataset.v;document.querySelectorAll("#wTabs button").forEach(x=>x.setAttribute("aria-pressed",x==b));wlist()});
+wlist();
+
+/* ---------- Q3 資金組合 ---------- */
+const FT=[["公部門主導","--indigo"],["慈善主導","--rose"],["企業CSR","--ochre"],["混合型","--jade"],["商業型","--slate"]];
+const FD={n:[[48,9,18,14,11],[61,10,12,10,7],[72,8,6,11,3],[66,15,5,12,2],[78,7,6,7,2]],a:[[39,5,14,22,20],[55,6,9,19,11],[70,4,4,18,4],[63,9,3,23,2],[80,4,4,10,2]]};
+FT.forEach(f=>$("#fLegend").append(el("span",{},`<i style="background:var(${f[1]})"></i>${f[0]}`)));
+function fdraw(v){$("#fStacks").innerHTML=RT.map((r,ri)=>`<div style="display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center"><span>${r}</span><div class="stack">${FD[v][ri].map((p,k)=>`<span style="flex-grow:${p};background:var(${FT[k][1]})" title="${FT[k][0]} ${p}%">${p>=8?p+"%":""}</span>`).join("")}</div></div>`).join("")}
+fdraw("n");document.querySelectorAll("#fTabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#fTabs button").forEach(x=>x.setAttribute("aria-pressed",x==b));fdraw(b.dataset.v)});
+$("#mixT").innerHTML=`<tr><th>專案ID</th><th>名稱</th><th>鄉鎮</th><th>議題</th><th>資金事件摘要</th></tr>`+[
+ ["P-NDC-2025-0112","溪谷鄉青年返鄉基地","溪谷鄉","U05","公部門補助 250 萬＋基金會 70 萬＋低利債 100 萬"],
+ ["P-AWD-2026-0044","月灣鄉友善稻作契作","月灣鄉","U06","企業採購 300 萬＋影響力投資股權 500 萬＋農業補助 120 萬"],
+ ["P-FDN-2026-0310","海灣市高齡共餐社企","港區","U01","基金會 200 萬＋社企股權 150 萬"],
+ ["P-MOEA-2026-0087","霧島鄉海廢再製品牌","霧島鄉","U07","公部門補助 90 萬＋群募 60 萬＋天使投資 200 萬"]].map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("");
+$("#seq").innerHTML=[["月灣鄉","U06 農業與食農","慈善先行",[[2023,"基金會捐贈"],[2024,"農業補助"],[2026,"影響力投資"]]],["溪谷鄉","U05 地方創生","公部門先行",[[2022,"地方創生補助"],[2024,"基金會"],[2026,"低利債"]]],["霧島鄉","U07 循環經濟","慈善先行",[[2023,"群募"],[2025,"公部門補助"],[2026,"天使投資"]]]].map(s=>
+ `<div class="box" style="margin-bottom:8px"><b>${s[0]}｜${s[1]}</b> <span class="tag cA">${s[2]}</span><div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${s[3].map((e,k)=>`<span style="font-size:13px;padding:2px 8px;border-radius:3px;background:${k==2?"var(--jade)":"var(--hatch)"};color:${k==2?"#fff":"var(--ink)"}">${e[0]} ${e[1]}</span>`).join('<span style="color:var(--soft)">›</span>')}</div></div>`).join("");
+
+/* ---------- Q4 跨域 ---------- */
+const IS={U01:"高齡",U02:"兒少教育",U04:"原民",U05:"地方創生",U06:"食農",U07:"循環經濟",U08:"淨零",U09:"氣候調適",U11:"水與海洋",U12:"永續觀光",U13:"文化",U14:"就業",U15:"心理健康",U17:"社會金融",U18:"ESG",U19:"數位AI",U20:"公民參與"};
+const PR=[["U05","U14",88,104,1],["U06","U05",71,79,1],["U04","U13",64,70,1],["U01","U15",9,22,1.25],["U07","U11",14,27,1.25],["U09","U06",6,15,1.5],["U19","U01",4,13,1.25],["U17","U07",3,9,1.5],["U12","U13",41,46,1],["U08","U18",33,52,1.5],["U02","U19",11,17,1],["U20","U09",5,8,1],["U14","U15",12,14,1],["U18","U17",18,26,1.25],["U01","U05",37,40,1],["U11","U12",21,23,1],["U04","U09",1,2,1.25],["U15","U19",0,2,1],["U17","U06",1,1,1.5]];
+const PRc=PR.map(([i,j,p,c,w])=>{const g=((c-p)/Math.max(p,1))/2;return{i,j,p,c,w,g,G:g/(Math.log(1+c)+1)*w}});
+const ranked=PRc.filter(x=>x.c>=3),med=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
+const mC=med(ranked.map(x=>x.c)),mG=med(ranked.map(x=>x.g));
+(function(){const s=$("#mx"),X=c=>60+Math.log(c+1)/Math.log(110)*470,Y=g=>330-Math.min(1,g/1.2)*300;
+ s.append(sv("rect",{x:60,y:30,width:X(mC)-60,height:Y(mG)-30,fill:css("--hi")}));
+ const lab=(x,y,t,a={})=>{const e=sv("text",Object.assign({x,y,"font-size":12,fill:css("--soft")},a));e.textContent=t;s.append(e)};
+ lab(66,48,"小而快");lab(530,48,"大而快",{"text-anchor":"end"});
+ s.append(sv("line",{x1:60,y1:330,x2:530,y2:330,stroke:css("--line")}));s.append(sv("line",{x1:60,y1:30,x2:60,y2:330,stroke:css("--line")}));
+ s.append(sv("line",{x1:X(mC),y1:30,x2:X(mC),y2:330,stroke:css("--soft"),"stroke-dasharray":"4 4"}));s.append(sv("line",{x1:60,y1:Y(mG),x2:530,y2:Y(mG),stroke:css("--soft"),"stroke-dasharray":"4 4"}));lab(530,Y(mG)+16,"大而穩",{"text-anchor":"end"});
+ lab(295,365,"今年共現數（對數刻度）",{"text-anchor":"middle"});lab(18,180,"成長率 g",{transform:"rotate(-90 18 180)","text-anchor":"middle"});
+ [1,3,10,30,100].forEach(v=>lab(X(v),346,v,{"text-anchor":"middle"}));[0,.3,.6,.9].forEach(v=>lab(54,Y(v)+4,Math.round(v*100)+"%",{"text-anchor":"end"}));
+ ranked.forEach((p,k)=>{const q=p.c<mC&&p.g>mG,c=sv("circle",{cx:X(p.c),cy:Y(p.g),r:0,fill:q?css("--ochre"):css("--jade"),"fill-opacity":.85,stroke:css("--panel")});
+  c.addEventListener("mousemove",e=>showTip(e,`${p.i} ${IS[p.i]} × ${p.j} ${IS[p.j]}<br>今年 ${p.c}｜前年 ${p.p}｜g ${(p.g*100).toFixed(0)}%｜G ${p.G.toFixed(3)}`));c.addEventListener("mouseleave",hideTip);s.append(c);
+  setTimeout(()=>{c.style.transition="r .5s";c.setAttribute("r",4+Math.sqrt(p.c)*.9)},150+k*60)})})();
+$("#g4").innerHTML=ranked.filter(p=>p.c<mC&&p.g>mG).sort((a,b)=>b.G-a.G).map((p,k)=>`<div class="box" style="margin-bottom:6px;padding:10px 14px"><b>${k+1}. ${IS[p.i]} × ${IS[p.j]}</b>　<span style="color:var(--soft);font-size:13px">今年 ${p.c}｜成長 ${(p.g*100).toFixed(0)}%｜G ${p.G.toFixed(3)}｜國際權重 ${p.w}</span><br><span style="font-size:13px">待驗證假設：${IS[p.i]}與${IS[p.j]}的交集正在形成新需求，需要找兩個以上委託方確認。</span></div>`).join("");
+$("#obs").innerHTML=PRc.filter(x=>x.c<3).map(p=>`<span class="tag">${IS[p.i]} × ${IS[p.j]}（${p.c}）</span>`).join(" ");
+
+/* ---------- 季報 ---------- */
+(function(){const top=Wn.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,10).map(x=>x[1]),fast=ranked.filter(p=>p.c<mC&&p.g>mG).sort((a,b)=>b.G-a.G);
+ $("#rep").innerHTML=`<p style="color:var(--soft);margin:0">2027 年第 3 季｜季度選題會議｜資料截至 2027-09-15｜專案 12,486 筆（信心 A 61%、B 31%、C 8%）</p>
+ <h2 style="font-size:26px;margin:10px 0 4px">臺灣永續大數據庫 2027 年第 3 季季報</h2>
+ <h3>白地指數前十名與變化</h3><p>${top.slice(0,5).map((i,k)=>`${k+1}. ${TW[i][0]}（${TW[i][2]}，信心 ${CONF(i)}）`).join("　")}。新進前十：${TW[top[3]][0]}、${TW[top[7]][0]}。${top.filter(i=>TW[i][5]==0).map(i=>TW[i][0]).join("、")}近三年零專案，已排電話確認。</p>
+ <h3>區域 × 模式熱力表更新</h3><p>原鄉社區營造分數最高（0.74，n=88，信心 A/B）；原鄉場域活動最低（−0.44，n=61）。離島 M5、M6 與原鄉 M6 仍樣本不足。</p>
+ <h3>本季新增混合型案例</h3><p>新增 4 件，以月灣鄉友善稻作契作（影響力投資 500 萬）規模最大；3 件屬慈善或公部門先行、後來進入商業資金。只比較相對分布，絕對金額低估。</p>
+ <h3>跨域矩陣新進入「小而快」的組合</h3><p>${fast.slice(0,3).map(p=>`${IS[p.i]} × ${IS[p.j]}（今年 ${p.c} 件，成長 ${(p.g*100).toFixed(0)}%）`).join("、")}。皆為待驗證假設。</p>
+ <h3>本季建議討論的三個決策</h3><ol><li>標案 go/no-go：東岸縣原鄉場域活動型標案，動員力排末位且同議題已有 6 家執行團隊，建議不投。</li><li>新服務開發：以白地前兩名${TW[top[0]][0]}、${TW[top[1]][0]}為試點，設計「農村產業輔導＋青年培力」組合服務。</li><li>論壇選題：下季論壇以「${fast[0]?IS[fast[0].i]+" × "+IS[fast[0].j]:"跨域議題"}」為主題，同步發一篇專欄。</li></ol>`})();
+
+/* ---------- 投標評估 ---------- */
+TW.slice(0,20).forEach((t,i)=>$("#bTown").append(el("option",{value:i},`${t[1]} ${t[0]}`)));
+MD.forEach((m,i)=>$("#bMode").append(el("option",{value:i},`${m[0]} ${m[1]}`)));
+Object.keys(IS).forEach(k=>$("#bIssue").append(el("option",{value:k},`${k} ${IS[k]}`)));
+$("#bTown").value=1;$("#bMode").value=3;$("#bIssue").value="U12";
+function bid(){const i=+$("#bTown").value,m=+$("#bMode").value,u=$("#bIssue").value,t=TW[i],ri=RT.indexOf(t[2]),[v,n]=HM[ri][m];
+ const rank=v===null?null:HM[ri].map((x,k)=>[x[0]??-9,k]).sort((a,b)=>b[0]-a[0]).findIndex(x=>x[1]==m)+1,comp=(i*3+m+u.charCodeAt(2))%7,own=(i+m)%3;
+ const verdict=v===null?"證據不足":(rank<=2&&Rn[i]<=10)?"支持投標":(rank>=5||comp>=5)?"反對投標":"證據不足，需補充";
+ $("#bOut").innerHTML=`<p><b style="font-size:18px">${verdict}</b></p><p>${v===null?`${t[2]}的${MD[m][1]}只有 ${n} 筆專案，樣本不足，動員力無法評分。`:`${t[0]}屬${t[2]}，${t[2]}×${MD[m][1]}的動員力為 ${v.toFixed(2)}，在六種模式中排第 ${rank}（n=${n}）。`}白地指數全國第 ${Rn[i]} 名（信心 ${CONF(i)}），近三年同議題${comp?`有 ${comp} 個專案、${Math.max(1,comp-1)} 個主要執行組織`:"沒有專案紀錄"}。優樂地在${t[2]}做${MD[m][1]}的過往成果${["好（2 件）","普通（1 件）","沒有紀錄"][own]}，${verdict.startsWith("支持")?"建議投標並以在地組織為協力。":verdict.startsWith("反對")?"建議不投，或改用排名較高的模式重新設計。":"建議補做在地訪談後再決定。"}</p>`;
+ $("#bFacts").innerHTML=`<table><tr><th>查詢項目</th><th>結果</th></tr><tr><td>地區類型</td><td>${t[2]}</td></tr><tr><td>動員力（排名）</td><td>${v===null?"樣本不足":v.toFixed(2)+"（第 "+rank+"）"}</td></tr><tr><td>白地指數排名</td><td>${Rn[i]}　${conf(CONF(i))}</td></tr><tr><td>同議題近三年專案</td><td>${comp}</td></tr><tr><td>自有專案成果</td><td>${["好","普通","無紀錄"][own]}</td></tr></table>`}
+["#bTown","#bMode","#bIssue"].forEach(s=>$(s).onchange=bid);bid();
+
+/* ---------- 治理 ---------- */
+$("#tl").innerHTML=[["0 準備","2026/11","Project 指示 v1.0、六表範本","done"],["1 規則定版","2026/12","規則 v1.1","done"],["2 試點蒐集","2027/01–02","1,640 筆、第一份試算","done"],["閘門一","2027/02 底","錯誤率 7.9%，引用 2 個決策：通過","gate"],["3 全台結構化","2027/03–05","1.2 萬筆、4 月第一份季報","done"],["閘門二","2027/05 底","引用 5 個決策：通過","gate"],["4–5 抽取與常態","2027/06 起","資金事件 1.9 萬筆、每季季報","done"]].map(x=>`<div class="${x[3]}"><b>${x[0]}</b><span style="color:var(--soft)">${x[1]}</span><br>${x[2]}</div>`).join("");
+$("#qual").innerHTML=`<p style="font-size:13px;color:var(--soft)">信心等級分布（專案表）</p><div class="stack"><span style="flex-grow:61;background:var(--jade)">A 61%</span><span style="flex-grow:31;background:var(--ochre)">B 31%</span><span style="flex-grow:8;background:var(--rose)">C</span></div>
+<p style="font-size:13px;color:var(--soft)">各批抽檢錯誤率（門檻 10%）</p><svg viewBox="0 0 400 130" style="width:100%;max-width:440px;height:auto" id="err"></svg>`;
+(function(){const s=$("#err"),d=[14.2,11.5,7.9,8.4,6.1,5.8,4.9],X=i=>30+i*58,Y=v=>112-v*6;
+ s.append(sv("line",{x1:30,x2:390,y1:Y(10),y2:Y(10),stroke:css("--rose"),"stroke-dasharray":"4 4"}));
+ const t=sv("text",{x:392,y:Y(10)-4,"text-anchor":"end","font-size":11,fill:css("--rose")});t.textContent="10%";s.append(t);
+ s.append(sv("polyline",{points:d.map((v,i)=>`${X(i)},${Y(v)}`).join(" "),fill:"none",stroke:css("--jade"),"stroke-width":2}));
+ d.forEach((v,i)=>{s.append(sv("circle",{cx:X(i),cy:Y(v),r:3.5,fill:css("--jade")}));const l=sv("text",{x:X(i),y:v>10?Y(v)-8:Y(v)+16,"text-anchor":"middle","font-size":10,fill:css("--soft")});l.textContent=v+"%";s.append(l)})})();
+$("#cost").innerHTML=`<tr><th>項目</th><th class="num">新台幣</th></tr>`+[["Claude 方案 2 席 × 10 月","16,000–19,000"],["API 批次抽取 PDF","3,000–10,000"],["工讀生抽檢 150 小時","30,000"],["田野／電話驗證白地","10,000"],["現金合計","約 60,000–70,000"],["研究同仁工時（機會成本）","約 240,000"]].map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join("");
+
+/* nav highlight */
+const secs=[...document.querySelectorAll("main section")],links=[...document.querySelectorAll("#nav a")];
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.toggle("on",a.getAttribute("href")=="#"+e.target.id));const a=links.find(a=>a.classList.contains("on")),nav=$("#nav");if(a)nav.scrollLeft=a.offsetLeft-nav.clientWidth/2+a.clientWidth/2}}),{rootMargin:"-40% 0px -55% 0px"});secs.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
