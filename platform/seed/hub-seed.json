@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "updatedDate": "2026/11/04",
+    "headlineNote": "8 個系統：3 個完成並在用，5 個未開始。未開始的 5 個規格都已寫好，但還沒有計畫、程式和測試。",
+    "nextStep": "請主管回答 docs/manager_questions.md 的問題，最重要的是：財務資料能不能提供；剩下 4 個系統（工時、業務漏斗、案例庫、合約）的優先順序。",
+    "nextStepUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/manager_questions.md",
+    "foundationHours": { "min": 6, "max": 8 },
+    "weeklyHours": { "min": 6, "max": 8 },
+    "progressMethod": "已完成的估計時數 ÷（已完成＋剩下的估計時數）。已完成：階段 0 骨架 6–8 小時、系統 7 8–10、系統 1 8–10、系統 5 6–8，共 28–36 小時。剩下：系統 2 10–14，系統 3、4、6、8 各 8–14，共 42–70 小時。時數來自 docs/roadmap.md。"
+  },
+  "modules": [
+    {
+      "id": "m7", "no": 7, "name": "外部情報摘要（含每日郵件）", "status": "live", "stage": 5, "phase": "階段 1",
+      "dataLevel": "公開", "hours": { "min": 8, "max": 10 },
+      "summary": "主管版每天寄給副執行長，品牌行銷部版每天寄給品牌行銷部。",
+      "blockers": ["「摘要」和「對優樂地的意涵」要接大模型才能自動產生，還沒接", "有 3–4 個來源抓不到", "最近每天只有 3–7 則，關鍵字需要調整"],
+      "nextStep": "決定是否接大模型產生摘要（雲端模型只限公開資料），並調整關鍵字",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/intel.md"
+    },
+    {
+      "id": "m1", "no": 1, "name": "項目進度與預警看板（含會議紀錄回填）", "status": "done", "stage": 4, "phase": "階段 2",
+      "dataLevel": "內部一般", "hours": { "min": 8, "max": 10 },
+      "summary": "已用真實看板跑過。",
+      "blockers": ["看板最新只有 10/5 版", "58 案中有 40 案沒填「下一個日期」", "需要有人每週更新看板", "會議紀錄回填的第二輪驗收結果還沒收到"],
+      "nextStep": "每週會後更新看板，並補齊「下一個日期」",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/progress.md"
+    },
+    {
+      "id": "m5", "no": 5, "name": "管理層週報（含 Google 試算表同步）", "status": "built", "stage": 4, "phase": "階段 4",
+      "dataLevel": "內部一般", "hours": { "min": 6, "max": 8 },
+      "summary": "程式完成。",
+      "blockers": ["還沒真正同步到 Google 試算表：沒有服務帳號，也沒有試算表", "週報的資料等級、每週由誰執行，都還沒決定"],
+      "nextStep": "公司管理員依 docs/handover/google_sheets.md 建立服務帳號與試算表",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/digest.md"
+    },
+    {
+      "id": "m2", "no": 2, "name": "項目財務總覽", "status": "notstarted", "stage": 1, "phase": "階段 3",
+      "dataLevel": "內部敏感", "hours": { "min": 10, "max": 14 },
+      "summary": "規格已寫好，尚無計畫、程式和測試。",
+      "blockers": ["要執行長先核准可以提供的財務資料範圍"],
+      "nextStep": "執行長回答 manager_questions 第 2 題",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/finance.md"
+    },
+    {
+      "id": "m8", "no": 8, "name": "客戶與合約總覽", "status": "notstarted", "stage": 1, "phase": "階段 5",
+      "dataLevel": "客戶機密", "hours": { "min": 8, "max": 14 },
+      "summary": "規格已寫好，尚無計畫、程式和測試。",
+      "blockers": ["合約屬於客戶機密，資料等級和存放位置要先經管理層同意"],
+      "nextStep": "管理層決定合約資料的存放位置與可看的人",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/contracts.md"
+    },
+    {
+      "id": "m3", "no": 3, "name": "顧問工時與產能", "status": "notstarted", "stage": 1, "phase": "階段 5",
+      "dataLevel": "內部敏感", "hours": { "min": 8, "max": 14 },
+      "summary": "規格已寫好，尚無計畫、程式和測試。只呈現團隊層級，不做個人排名。",
+      "blockers": ["等主管訪談決定優先順序", "工時屬於內部敏感，而且只能呈現團隊層級"],
+      "nextStep": "主管訪談後排定優先順序",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/workload.md"
+    },
+    {
+      "id": "m4", "no": 4, "name": "業務漏斗與商機", "status": "notstarted", "stage": 1, "phase": "階段 5",
+      "dataLevel": "客戶機密", "hours": { "min": 8, "max": 14 },
+      "summary": "規格與開工前訪談問卷已寫好，尚無計畫、程式和測試。",
+      "blockers": ["等主管訪談決定優先順序", "之後應該接「優樂地資料庫」的投標評估"],
+      "nextStep": "用系統 4／6 訪談問卷訪談主管",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/pipeline.md"
+    },
+    {
+      "id": "m6", "no": 6, "name": "案例與方案庫", "status": "notstarted", "stage": 1, "phase": "階段 5",
+      "dataLevel": "公開、內部一般", "hours": { "min": 8, "max": 14 },
+      "summary": "規格與開工前訪談問卷已寫好，尚無計畫、程式和測試。",
+      "blockers": ["等主管訪談決定優先順序", "之後應該接資料庫的自有專案"],
+      "nextStep": "用系統 4／6 訪談問卷訪談主管",
+      "specUrl": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/specs/casebase.md"
+    }
+  ],
+  "initiatives": [
+    {
+      "id": "mgmt", "order": 1, "name": "優樂地管理層系統（八大系統）", "status": "進行中",
+      "summary": "給執行長與主管的八個管理系統。輸出放在 Excel、Google 試算表、Word 與郵件。",
+      "phase": "已完成階段 0、1、2、4；剩下系統 2、3、4、6、8",
+      "links": [
+        { "label": "程式與規格（GitHub）", "url": "https://github.com/unitygood-digisev/demo/tree/claude/unity-mgmt-suite-prompts-l8zqz1" },
+        { "label": "階段順序與驗收", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/roadmap.md" },
+        { "label": "需要主管回答的問題", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/manager_questions.md" },
+        { "label": "需要主管提供的資料", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/data_requests.md" }
+      ],
+      "steps": [
+        { "name": "階段 0 專案骨架與共用層", "status": "完成" },
+        { "name": "階段 1 系統 7 外部情報摘要", "status": "完成" },
+        { "name": "階段 2 系統 1 項目進度看板", "status": "完成" },
+        { "name": "階段 3 系統 2 項目財務總覽", "status": "等待決定" },
+        { "name": "階段 4 系統 5 管理層週報", "status": "完成" },
+        { "name": "階段 5 系統 3、4、6、8（依訪談排序）", "status": "等待決定" }
+      ]
+    },
+    {
+      "id": "ulddb", "order": 2, "name": "優樂地永續大數據庫", "status": "進行中",
+      "summary": "全台 368 鄉鎮的永續專案、組織與資金資料庫，用來支援標案 go/no-go 與季度選題。",
+      "phase": "階段 0 準備（2026/11/03–11/30）：A 主指示與 B0 範本完成；B1、B4 等自有專案檔案；B2、B3 等試點縣市",
+      "links": [
+        { "label": "資料庫資料夾（Drive）", "url": "https://drive.google.com/drive/folders/1vJUS6nj29rcfXha51mnah_W6JYul9gKz" },
+        { "label": "主資料表", "url": "https://docs.google.com/spreadsheets/d/1yBOYm8czm5N6xmYva8JSLOQVfcoBGuOE_SJfvwYJENs/edit" },
+        { "label": "可行性、時程、工具、預算評估", "url": "https://docs.google.com/document/d/1HHIte5kdYZ69ii8P7rqkifiknjJPRDT81dTNTWTqDas/edit" },
+        { "label": "完成版示範網站（Vercel）", "url": "https://site-kappa-hazel-58.vercel.app" }
+      ],
+      "steps": [
+        { "name": "A 主指示", "status": "完成", "note": "還要貼進 Claude Project" },
+        { "name": "B0 Sheets 範本", "status": "完成", "note": "另加 368 鄉鎮、SDG 草稿、參數、抽檢紀錄、資料來源分頁" },
+        { "name": "B1 分類測試", "status": "等待資料", "note": "ULD 資料夾還是空的；也需要五大服務類別名稱" },
+        { "name": "B4 自有專案校準", "status": "等待資料", "note": "與 B1 用同一批檔案" },
+        { "name": "B2 採購網決標資料", "status": "等待決定", "note": "等試點縣市" },
+        { "name": "B3 地方創生、USR", "status": "等待決定", "note": "等試點縣市" },
+        { "name": "B5 PDF 抽取", "status": "未開始", "note": "階段 4（2027/06）" },
+        { "name": "B6 抽檢與規則修正", "status": "未開始", "note": "抽檢紀錄分頁已備，第一批資料後使用" },
+        { "name": "B7–B10 計算、季報、投標評估、閘門審查", "status": "未開始", "note": "試點與第一次季度會議後" }
+      ]
+    },
+    {
+      "id": "radar", "order": 3, "name": "永續情報雷達", "status": "完成",
+      "summary": "每週外部情報台：法規、碳價、同業與客戶動態，含碳價試算與一鍵週報。2026-10-21 已備份到 Drive。",
+      "phase": "已完成並封存；規則與 36 個 RSS 來源與管理層系統一致",
+      "links": [
+        { "label": "Claude 版", "url": "https://claude.ai/artifact/A6hHCHB45D4zZiMMEyMpAF" },
+        { "label": "網站版（Vercel）", "url": "https://rushing-jade-nnj8apr.vercel.app/" },
+        { "label": "Drive 備份", "url": "https://drive.google.com/drive/folders/1CefjOWGOXg76w_eiKT_nFKEmuEh2pCEC" }
+      ],
+      "steps": [
+        { "name": "前端與兩支 Vercel 函式", "status": "完成" },
+        { "name": "對齊管理層系統的關鍵字與來源", "status": "完成" },
+        { "name": "網站版 AI（需 ANTHROPIC_API_KEY）", "status": "未開始", "note": "預設不設金鑰，網站免費、走離線規則引擎" }
+      ]
+    },
+    {
+      "id": "platform", "order": 4, "name": "優樂地管理中樞（本平台）", "status": "進行中",
+      "summary": "原「決策平台」，2026-11-04 改寫成彙整所有系統進度、待辦與文件的後台。三位 AI 員工從 10/17 起每週執行。",
+      "phase": "三位 AI 員工正常執行，但專案財務頁一直沒有資料，週報都寫「面板尚無資料」",
+      "links": [
+        { "label": "平台", "url": "https://claude.ai/artifact/WRwZtths21n7A2CVemw6RU" },
+        { "label": "程式（GitHub）", "url": "https://github.com/unitygood-digisev/demo/tree/claude/lucid-allen-1pvly5" }
+      ],
+      "steps": [
+        { "name": "外部情報摘要員（每週一）", "status": "完成", "note": "10/17 起已寫 4 篇" },
+        { "name": "公司知識顧問（每週一）", "status": "完成", "note": "知識庫素材資料夾一直沒有新素材" },
+        { "name": "管理層週報彙整員（每週五）", "status": "進行中", "note": "週報有寫，但沒有 Gmail 連接器，寄不出" },
+        { "name": "專案財務頁", "status": "等待決定", "note": "等系統 2 核准，目前沒有資料" }
+      ]
+    }
+  ],
+  "tasks": [
+    { "id": "t01", "title": "回答 manager_questions：財務資料能不能提供、剩下 4 個系統的優先順序", "owner": "執行長", "area": "mgmt", "kind": "決策", "priority": "高", "status": "等待決定", "due": "", "source": "管理層系統下一步建議", "note": "這是整個管理層系統往下走的前提。" },
+    { "id": "t02", "title": "核准系統 2 可提供的財務資料範圍（合約、專案結算、應收）", "owner": "執行長", "area": "m2", "kind": "決策", "priority": "高", "status": "等待決定", "due": "", "source": "manager_questions 第 2 題", "note": "核准前只用假資料開發。" },
+    { "id": "t03", "title": "同意合約資料的資料等級與存放位置", "owner": "執行長", "area": "m8", "kind": "決策", "priority": "中", "status": "等待決定", "due": "", "source": "系統 8 規格", "note": "合約屬客戶機密。" },
+    { "id": "t04", "title": "主管訪談：決定系統 3、4、6 的優先順序", "owner": "各部門主管", "area": "mgmt", "kind": "決策", "priority": "高", "status": "等待決定", "due": "", "source": "系統 4／6 訪談問卷", "note": "問卷已備（docs/interviews）。" },
+    { "id": "t05", "title": "決定週報的資料等級與每週由誰執行", "owner": "執行長", "area": "m5", "kind": "決策", "priority": "中", "status": "等待決定", "due": "", "source": "系統 5", "note": "" },
+    { "id": "t06", "title": "建立 Google 服務帳號與試算表，讓週報同步", "owner": "公司管理員", "area": "m5", "kind": "行動", "priority": "中", "status": "待辦", "due": "", "source": "docs/handover/google_sheets.md", "note": "" },
+    { "id": "t07", "title": "每週會後更新項目進度看板並放到指定資料夾", "owner": "專案負責人", "area": "m1", "kind": "行動", "priority": "高", "status": "待辦", "due": "", "source": "data_requests 二", "note": "最新只有 10/5 版。" },
+    { "id": "t08", "title": "補上看板的「下一個日期」（58 案中 40 案未填）", "owner": "專案負責人", "area": "m1", "kind": "資料", "priority": "高", "status": "待辦", "due": "", "source": "data_requests 二", "note": "其中進行中、結案中、卡關的有 20 案，先補這 20 案。" },
+    { "id": "t09", "title": "回覆會議紀錄回填的第二輪驗收結果", "owner": "各部門主管", "area": "m1", "kind": "決策", "priority": "中", "status": "等待決定", "due": "", "source": "phase2b", "note": "" },
+    { "id": "t10", "title": "決定情報摘要是否接大模型產生「摘要」與「對優樂地的意涵」", "owner": "副執行長", "area": "m7", "kind": "決策", "priority": "中", "status": "等待決定", "due": "", "source": "系統 7", "note": "情報屬公開資料，可用雲端模型。" },
+    { "id": "t11", "title": "調整情報關鍵字，修正 3–4 個抓不到的來源", "owner": "實習生", "area": "m7", "kind": "行動", "priority": "中", "status": "待辦", "due": "", "source": "系統 7", "note": "最近每天只有 3–7 則。" },
+    { "id": "t12", "title": "主管人工標記 30 篇情報文章「相關／不相關」", "owner": "副執行長", "area": "m7", "kind": "資料", "priority": "低", "status": "待辦", "due": "", "source": "data_requests 一.3", "note": "用來調整門檻。" },
+    { "id": "t13", "title": "補填品牌行銷部表單的「現有與目標客戶」", "owner": "品牌行銷部", "area": "m7", "kind": "資料", "priority": "低", "status": "待辦", "due": "", "source": "phase1c 已知限制", "note": "" },
+    { "id": "t14", "title": "確認大數據庫試點縣市（建議一個都會區＋花蓮縣）", "owner": "副營運長", "area": "ulddb", "kind": "決策", "priority": "高", "status": "等待決定", "due": "2026/11/30", "source": "兩週行動清單 #1", "note": "B2、B3 等這一項。" },
+    { "id": "t15", "title": "指定資料管理員並確認每週工時", "owner": "副營運長", "area": "ulddb", "kind": "決策", "priority": "高", "status": "等待決定", "due": "2026/11/30", "source": "兩週行動清單 #2", "note": "" },
+    { "id": "t16", "title": "建立 Claude Project 並貼上 Project 主指示", "owner": "資料管理員", "area": "ulddb", "kind": "行動", "priority": "中", "status": "待辦", "due": "2026/11/30", "source": "兩週行動清單 #3", "note": "在 claude.ai 約兩分鐘。" },
+    { "id": "t17", "title": "上傳近三年投標與專案清單到 ULD 資料夾", "owner": "副營運長", "area": "ulddb", "kind": "資料", "priority": "高", "status": "等待資料", "due": "2026/11/30", "source": "兩週行動清單 #5", "note": "B1、B4 等這一項。" },
+    { "id": "t18", "title": "提供五大服務類別名稱", "owner": "副營運長", "area": "ulddb", "kind": "資料", "priority": "中", "status": "等待資料", "due": "", "source": "B1", "note": "用來填 issues 的對應服務類別欄。" },
+    { "id": "t19", "title": "決定花蓮市、臺東市算原鄉，或依人口密度分類", "owner": "副營運長", "area": "ulddb", "kind": "決策", "priority": "低", "status": "等待決定", "due": "", "source": "主資料表 regions", "note": "" },
+    { "id": "t20", "title": "核定 2,000／300 人口密度門檻與 SDG 對應草稿", "owner": "副營運長", "area": "ulddb", "kind": "決策", "priority": "低", "status": "等待決定", "due": "", "source": "主資料表", "note": "" },
+    { "id": "t21", "title": "排定 2027 年 4 月第一次季度選題會議", "owner": "副營運長", "area": "ulddb", "kind": "決策", "priority": "中", "status": "待辦", "due": "", "source": "兩週行動清單 #6", "note": "閘門審查要用被引用的決策數。" },
+    { "id": "t22", "title": "刪除誤建的空白文件「（空白誤建檔，可刪除）」", "owner": "實習生", "area": "ulddb", "kind": "行動", "priority": "低", "status": "待辦", "due": "", "source": "00_規劃與決策", "note": "" },
+    { "id": "t23", "title": "把大數據庫示範網站網域改成 uld-demo.vercel.app", "owner": "實習生", "area": "ulddb", "kind": "行動", "priority": "低", "status": "待辦", "due": "", "source": "Vercel 部署", "note": "被占用就改 uld-esg-db.vercel.app；在 Vercel 專案 Settings → Domains 設定。" },
+    { "id": "t24", "title": "替「管理層週報彙整員」排程加上 Gmail 連接器", "owner": "實習生", "area": "platform", "kind": "行動", "priority": "中", "status": "待辦", "due": "", "source": "本平台", "note": "在 claude.ai 的 Routines 頁面設定；沒加之前週報只寫進筆記。" },
+    { "id": "t25", "title": "決定是否在專案財務頁匯入資料（等系統 2 核准）", "owner": "執行長", "area": "platform", "kind": "決策", "priority": "低", "status": "等待決定", "due": "", "source": "本平台", "note": "沒有資料時，週報無法判斷應收逾期與合約到期。" },
+    { "id": "t26", "title": "管理層系統：完成階段 0、1、2、4（系統 7、1、5）", "owner": "實習生", "area": "mgmt", "kind": "行動", "priority": "中", "status": "完成", "due": "", "source": "roadmap", "note": "約 28–36 小時。" },
+    { "id": "t27", "title": "大數據庫：完成主指示與 B0 範本、368 鄉鎮地區表", "owner": "實習生", "area": "ulddb", "kind": "行動", "priority": "中", "status": "完成", "due": "2026/11/02", "source": "B0", "note": "" }
+  ],
+  "milestones": [
+    { "id": "ms01", "date": "2026/10/05", "title": "數位轉型實習生入職", "area": "mgmt", "type": "里程碑" },
+    { "id": "ms02", "date": "2026/10/14", "title": "系統 5 週報與試算表同步計畫確認", "area": "m5", "type": "完成" },
+    { "id": "ms03", "date": "2026/10/15", "title": "系統 7 每日情報郵件上線（副執行長）", "area": "m7", "type": "上線" },
+    { "id": "ms04", "date": "2026/10/15", "title": "系統 1 會議紀錄回填實作完成", "area": "m1", "type": "完成" },
+    { "id": "ms05", "date": "2026/10/17", "title": "決策平台與三位 AI 員工上線", "area": "platform", "type": "上線" },
+    { "id": "ms06", "date": "2026/10/20", "title": "品牌行銷部版情資日報上線", "area": "m7", "type": "上線" },
+    { "id": "ms07", "date": "2026/10/21", "title": "永續情報雷達完成並備份到 Drive", "area": "radar", "type": "完成" },
+    { "id": "ms08", "date": "2026/11/02", "title": "大數據庫 B0 範本與 368 鄉鎮完成；示範網站部署", "area": "ulddb", "type": "完成" },
+    { "id": "ms09", "date": "2026/11/04", "title": "決策平台改寫為優樂地管理中樞", "area": "platform", "type": "上線" },
+    { "id": "ms10", "date": "2026/11/03", "end": "2026/11/30", "title": "大數據庫階段 0 準備", "area": "ulddb", "type": "階段" },
+    { "id": "ms11", "date": "2026/12", "title": "大數據庫階段 1 規則定版（搬遷月）", "area": "ulddb", "type": "階段" },
+    { "id": "ms12", "date": "2027/01", "end": "2027/02/28", "title": "大數據庫階段 2 試點蒐集", "area": "ulddb", "type": "階段" },
+    { "id": "ms13", "date": "2027/02/28", "title": "大數據庫閘門一：是否改變至少一個決策、抽檢錯誤率 ≤10%", "area": "ulddb", "type": "閘門" },
+    { "id": "ms14", "date": "2027/04", "title": "第一次季度選題會議", "area": "ulddb", "type": "里程碑" },
+    { "id": "ms15", "date": "2027/05/31", "title": "大數據庫閘門二", "area": "ulddb", "type": "閘門" },
+    { "id": "ms16", "date": "2027/06", "end": "2027/08/31", "title": "大數據庫階段 4 文件抽取", "area": "ulddb", "type": "階段" },
+    { "id": "ms17", "date": "2027/09", "title": "大數據庫進入常態運作", "area": "ulddb", "type": "里程碑" }
+  ],
+  "docs": [
+    { "id": "d01", "group": "管理層系統（GitHub）", "title": "CLAUDE.md：原則、資料分級、禁止事項", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/CLAUDE.md" },
+    { "id": "d02", "group": "管理層系統（GitHub）", "title": "階段順序與驗收（roadmap）", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/roadmap.md" },
+    { "id": "d03", "group": "管理層系統（GitHub）", "title": "需要主管回答的問題", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/manager_questions.md" },
+    { "id": "d04", "group": "管理層系統（GitHub）", "title": "需要主管提供的資料清單", "url": "https://github.com/unitygood-digisev/demo/blob/claude/unity-mgmt-suite-prompts-l8zqz1/docs/data_requests.md" },
+    { "id": "d05", "group": "管理層系統（GitHub）", "title": "系統 4／6 訪談問卷", "url": "https://github.com/unitygood-digisev/demo/tree/claude/unity-mgmt-suite-prompts-l8zqz1/docs/interviews" },
+    { "id": "d06", "group": "管理層系統（GitHub）", "title": "移交手冊（每日郵件、週報、試算表、進度看板）", "url": "https://github.com/unitygood-digisev/demo/tree/claude/unity-mgmt-suite-prompts-l8zqz1/docs/handover" },
+    { "id": "d07", "group": "永續大數據庫（Drive）", "title": "可行性、時程、工具、預算評估 v1.0", "url": "https://docs.google.com/document/d/1HHIte5kdYZ69ii8P7rqkifiknjJPRDT81dTNTWTqDas/edit" },
+    { "id": "d08", "group": "永續大數據庫（Drive）", "title": "Project 主指示 v1.0", "url": "https://docs.google.com/document/d/1knc5n3KW_ONoCl-1Wnlm6J1Xmbo9KdEd7_Oko_5VD1g/edit" },
+    { "id": "d09", "group": "永續大數據庫（Drive）", "title": "任務提示詞 B0–B10 v1.0", "url": "https://docs.google.com/document/d/1rOPDmoXSGf_tzJGpRZ_671dce6pY32b-qE7F7XxQxJc/edit" },
+    { "id": "d10", "group": "永續大數據庫（Drive）", "title": "主資料表 v1.0", "url": "https://docs.google.com/spreadsheets/d/1yBOYm8czm5N6xmYva8JSLOQVfcoBGuOE_SJfvwYJENs/edit" },
+    { "id": "d11", "group": "永續大數據庫（Drive）", "title": "05_原始資料（各來源資料夾）", "url": "https://drive.google.com/drive/folders/1i3RcKtyeTelHb6fhHeRjt4M_2kOzB88z" },
+    { "id": "d12", "group": "永續情報雷達（Drive）", "title": "對話紀錄", "url": "https://docs.google.com/document/d/1L-xiHxt5Jq-0X3EwdKx2iU8BlRDVZCiJrNRC5z2uQkE/edit" },
+    { "id": "d13", "group": "永續情報雷達（Drive）", "title": "README（部署與費用保護說明）", "url": "https://docs.google.com/document/d/1utuyLGoKXGsDKxtTsz2N7RtlGzfur7J5HTHSol6AMuw/edit" },
+    { "id": "d14", "group": "永續情報雷達（Drive）", "title": "查證報告", "url": "https://docs.google.com/document/d/1CkxyPQpN0WMbMZXcoN4pOgBZ091LfuKfo6bLVFvlG6Q/edit" },
+    { "id": "d15", "group": "上線中的網站", "title": "永續情報雷達（Claude 版）", "url": "https://claude.ai/artifact/A6hHCHB45D4zZiMMEyMpAF" },
+    { "id": "d16", "group": "上線中的網站", "title": "永續情報雷達（Vercel）", "url": "https://rushing-jade-nnj8apr.vercel.app/" },
+    { "id": "d17", "group": "上線中的網站", "title": "臺灣永續大數據庫完成版示範（Vercel，公開）", "url": "https://site-kappa-hazel-58.vercel.app" }
+  ],
+  "routines": [
+    { "id": "r1", "name": "永續情報日報（副執行長）", "schedule": "週一到週五 07:52", "module": "m7", "recipient": "副執行長", "lastRun": "2026/11/04", "lastStatus": "成功" },
+    { "id": "r2", "name": "每日情報郵件（品牌行銷部版）", "schedule": "週一到週五 07:50", "module": "m7", "recipient": "品牌行銷部", "lastRun": "2026/11/04", "lastStatus": "成功" },
+    { "id": "r3", "name": "外部情報摘要員", "schedule": "每週一 09:00", "module": "platform", "recipient": "寫入本平台筆記", "lastRun": "2026/11/02", "lastStatus": "成功" },
+    { "id": "r4", "name": "公司知識顧問", "schedule": "每週一 08:00", "module": "platform", "recipient": "寫入本平台知識庫", "lastRun": "2026/11/02", "lastStatus": "成功" },
+    { "id": "r5", "name": "管理層週報彙整員", "schedule": "每週五 17:00", "module": "platform", "recipient": "寫入本平台筆記（Gmail 未接）", "lastRun": "2026/10/30", "lastStatus": "成功" },
+    { "id": "r6", "name": "後台更新員", "schedule": "每週一 07:30", "module": "platform", "recipient": "更新本平台排程狀態與後台更新紀錄", "lastRun": "", "lastStatus": "未執行" }
+  ]
+}

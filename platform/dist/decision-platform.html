@@ -1,9 +1,9 @@
-<title>優樂地決策平台</title>
+<title>優樂地管理中樞</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap">
 <style>
-/* 版面：頂部分頁列，下面是摘要在上、清單與詳情左右並排的工作區。 */
+/* 版面：頂部品牌列與分頁，下方工作區；總覽先給一句結論，再給數字、待決事項與八大系統。 */
 :root {
   --bg: #f3f5f2;
   --surface: #ffffff;
@@ -13,12 +13,16 @@
   --accent: #1d5c57;
   --accent-ink: #ffffff;
   --accent-soft: #e2eeec;
+  --good: #2f6b3a;
+  --good-soft: #e5f1e6;
   --crit: #a52a21;
   --crit-soft: #f8e8e6;
   --warn: #8a5800;
   --warn-soft: #fbf0db;
   --info: #2f4f86;
   --info-soft: #e6ecf7;
+  --idle: #6b6f6d;
+  --idle-soft: #eceeed;
   --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
 }
@@ -26,14 +30,16 @@
   :root:not([data-theme="light"]) {
     --bg: #121816; --surface: #1a2220; --ink: #e3ebe7; --muted: #95a49d; --line: #2e3a36;
     --accent: #6dbab2; --accent-ink: #0d1513; --accent-soft: #1f3330;
-    --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17; --info: #a7c0ea; --info-soft: #1d283a;
+    --good: #8fd09a; --good-soft: #1c3021; --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17;
+    --info: #a7c0ea; --info-soft: #1d283a; --idle: #a3aaa6; --idle-soft: #262d2a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #121816; --surface: #1a2220; --ink: #e3ebe7; --muted: #95a49d; --line: #2e3a36;
   --accent: #6dbab2; --accent-ink: #0d1513; --accent-soft: #1f3330;
-  --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17; --info: #a7c0ea; --info-soft: #1d283a;
+  --good: #8fd09a; --good-soft: #1c3021; --crit: #f0a199; --crit-soft: #3a1f1c; --warn: #eec27a; --warn-soft: #362b17;
+  --info: #a7c0ea; --info-soft: #1d283a; --idle: #a3aaa6; --idle-soft: #262d2a;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -42,16 +48,19 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 h1 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: .02em; }
 h2 { font-size: 1.02rem; font-weight: 700; }
 h3 { font-size: .92rem; font-weight: 700; margin-top: 1rem; margin-bottom: .4rem; }
+a { color: var(--accent); }
 .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1320px; margin: 0 auto; }
 header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
 header.top .wrap { padding-block: 1rem .25rem; display: grid; gap: .6rem; }
 .brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; }
 .brand p { margin: 0; color: var(--muted); font-size: .85rem; }
-nav.tabs { display: flex; gap: .25rem; overflow-x: auto; }
-nav.tabs button { font: inherit; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: .5rem .8rem; cursor: pointer; white-space: nowrap; }
+nav.tabs { display: flex; gap: .15rem; overflow-x: auto; }
+nav.tabs button { font: inherit; font-size: .93rem; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: .5rem .7rem; cursor: pointer; white-space: nowrap; }
 nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
 main.wrap { padding-block: 1rem 3rem; }
 .status { font-size: .85rem; color: var(--muted); margin: 0 0 .75rem; }
+.lead { font-size: 1.08rem; margin: 0 0 1rem; max-width: 60em; }
+.lead strong { color: var(--accent); }
 .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 .toolbar .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .btn { font: inherit; font-size: .9rem; background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 6px; padding: .4rem .85rem; cursor: pointer; }
@@ -59,21 +68,53 @@ main.wrap { padding-block: 1rem 3rem; }
 .btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); }
 .btn.small { font-size: .82rem; padding: .2rem .6rem; }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn:focus-visible, .chip:focus-visible, nav.tabs button:focus-visible, .rowbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 1rem; }
-.figures > div { padding: .8rem 1rem; border-left: 1px solid var(--line); }
+.btn:focus-visible, .chip:focus-visible, nav.tabs button:focus-visible, .rowbtn:focus-visible, .check:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 1rem; }
+.figures.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.figures > div { padding: .8rem 1rem; border-left: 1px solid var(--line); min-width: 0; }
 .figures > div:first-child { border-left: 0; }
 .figures .k { font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
 .figures .v { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.figures .s { font-size: .78rem; color: var(--muted); }
 .figures .crit .v { color: var(--crit); }
-@media (max-width: 720px) { .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); } .figures > div:nth-child(3) { border-left: 0; } .figures > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.figures .good .v { color: var(--good); }
+@media (max-width: 980px) { .figures.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } .figures.six > div:nth-child(4) { border-left: 0; } .figures.six > div:nth-child(n+4) { border-top: 1px solid var(--line); } }
+@media (max-width: 720px) {
+  .figures, .figures.six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .figures > div:nth-child(odd) { border-left: 0; } .figures > div:nth-child(even) { border-left: 1px solid var(--line); }
+  .figures > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
 .split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
-@media (max-width: 900px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.split.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .split, .split.even { grid-template-columns: minmax(0, 1fr); } }
 .stack { display: grid; gap: 1rem; min-width: 0; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; min-width: 0; }
 .panel > h2 { margin-bottom: .7rem; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .7rem; }
+.next { background: var(--accent-soft); border-left: 4px solid var(--accent); }
+.next p { margin: .3rem 0 0; }
 .detail { position: sticky; top: 1rem; }
 @media (max-width: 900px) { .detail { position: static; } }
+.grid-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.mod { display: grid; gap: .5rem; align-content: start; }
+.mod .no { font-size: .78rem; color: var(--muted); letter-spacing: .06em; }
+.mod ul { margin: 0; padding-left: 1.1rem; font-size: .88rem; }
+.mod .nextline { font-size: .88rem; }
+.track { display: flex; gap: 3px; }
+.track span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.track span.on { background: var(--accent); }
+.track-labels { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
+.mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .4rem; }
+.mini button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto; gap: .5rem; align-items: center; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: .9rem; }
+.mini button:hover { background: var(--accent-soft); }
+.mini .n { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; font-size: .76rem; padding: 0 .5rem; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.good { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+.pill.info { color: var(--info); border-color: var(--info); background: var(--info-soft); }
+.pill.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.pill.crit { color: var(--crit); border-color: var(--crit); background: var(--crit-soft); }
+.pill.idle { color: var(--idle); border-color: var(--line); background: var(--idle-soft); }
+.pill.accent { color: var(--accent); border-color: var(--accent); }
 .alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .alerts li { display: grid; grid-template-columns: 6.5em 1fr; gap: .6rem; align-items: baseline; padding: .45rem .6rem; border-radius: 6px; border-left: 4px solid; }
 .alerts li.click { cursor: pointer; }
@@ -81,6 +122,24 @@ main.wrap { padding-block: 1rem 3rem; }
 .sev0 { background: var(--crit-soft); border-color: var(--crit); } .sev0 .tag { color: var(--crit); }
 .sev1 { background: var(--warn-soft); border-color: var(--warn); } .sev1 .tag { color: var(--warn); }
 .sev2 { background: var(--info-soft); border-color: var(--info); } .sev2 .tag { color: var(--info); }
+.tasks { list-style: none; margin: 0; padding: 0; }
+.tasks li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: start; padding: .55rem .25rem; border-bottom: 1px solid var(--line); }
+.tasks li.done .t-title { text-decoration: line-through; color: var(--muted); }
+.tasks .t-title { font-weight: 500; }
+.tasks .t-note { font-size: .84rem; color: var(--muted); margin-top: .1rem; }
+.tasks .meta { margin-top: .25rem; }
+.check { width: 1.15rem; height: 1.15rem; margin-top: .2rem; accent-color: var(--accent); cursor: pointer; }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 2px solid var(--line); display: grid; gap: .7rem; }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: calc(-1rem - 6px); top: .5rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.timeline li.late::before { background: var(--crit); }
+.timeline li.future::before { background: var(--surface); border: 2px solid var(--accent); width: 6px; height: 6px; }
+.timeline li.gate::before { background: var(--warn); border-radius: 2px; }
+.timeline .when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; font-size: .9rem; }
+.steps li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.steps .sn { font-size: .82rem; color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font-size: .88rem; margin: 0; padding: 0; list-style: none; }
 .scroll { overflow-x: auto; }
 table.list { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.list th, table.list td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -90,16 +149,12 @@ table.list tbody tr.click:hover, table.list tbody tr.sel { background: var(--acc
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }
 .bar { display: inline-block; width: 4.5em; height: .45em; background: var(--line); border-radius: 99px; vertical-align: middle; margin-left: .4em; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); }
+.bigbar { height: .6rem; background: var(--line); border-radius: 99px; overflow: hidden; position: relative; margin: .4rem 0 .2rem; }
+.bigbar i { display: block; height: 100%; background: var(--accent); }
+.bigbar b { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .3; }
 dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem 1rem; margin: 0; }
 dl.kv dt { color: var(--muted); }
 dl.kv dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.timeline { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 2px solid var(--line); display: grid; gap: .7rem; }
-.timeline li { position: relative; }
-.timeline li::before { content: ""; position: absolute; left: calc(-1rem - 6px); top: .5rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-.timeline li.late::before { background: var(--crit); }
-.pill { display: inline-block; font-size: .76rem; padding: 0 .5rem; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
-.pill.crit { color: var(--crit); border-color: var(--crit); }
-.pill.accent { color: var(--accent); border-color: var(--accent); }
 .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
 .empty { text-align: center; padding: 2.5rem 1rem; background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; display: grid; gap: .6rem; justify-items: center; }
 .empty p { margin: 0; color: var(--muted); max-width: 34em; }
@@ -111,14 +166,14 @@ textarea { min-height: 7rem; resize: vertical; }
 .chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: .6rem 0; }
 .chip { font: inherit; font-size: .84rem; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 99px; padding: .1rem .7rem; cursor: pointer; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .5rem; margin-bottom: .6rem; }
 ul.items { list-style: none; margin: 0; padding: 0; }
 ul.items li { border-bottom: 1px solid var(--line); }
 .rowbtn { all: unset; box-sizing: border-box; display: block; width: 100%; padding: .55rem .5rem; cursor: pointer; }
 .rowbtn:hover, li.sel .rowbtn { background: var(--accent-soft); }
 .meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .2rem; }
-.notice { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: .45rem .7rem; border-radius: 6px; font-size: .87rem; margin: 0; }
+.notice { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: .45rem .7rem; border-radius: 6px; font-size: .87rem; margin: 0 0 1rem; }
 .prose { white-space: pre-wrap; overflow-wrap: anywhere; }
-.prose a { color: var(--accent); }
 dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 0; width: min(780px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
 dialog::backdrop { background: rgb(0 0 0 / .45); }
 dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
@@ -127,10 +182,9 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
 .req { color: var(--crit); }
 .errs { color: var(--crit); font-size: .87rem; margin: 0; padding-left: 1.2rem; }
 .agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.agent { display: grid; gap: .5rem; align-content: start; }
-.agent .when { font-size: .85rem; color: var(--accent); font-weight: 500; }
-.agent p { margin: 0; font-size: .9rem; }
 .answer { border-top: 1px solid var(--line); padding-top: .75rem; }
+.docgroup + .docgroup { margin-top: 1rem; }
+.doclist { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .25rem; font-size: .92rem; }
 #toast { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: .5rem 1rem; border-radius: 6px; font-size: .9rem; max-width: calc(100vw - 32px); z-index: 20; }
 @media (prefers-reduced-motion: no-preference) { #toast { transition: opacity .2s; } }
 </style>
@@ -138,14 +192,19 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
 <header class="top">
   <div class="wrap">
     <div class="brand">
-      <h1>優樂地決策平台</h1>
-      <p>給執行長與主管：這週先催哪筆款、先救哪個專案、哪個約要續。</p>
+      <h1>優樂地管理中樞</h1>
+      <p>八大系統、數位轉型專案、待辦與時程，一頁看完。</p>
     </div>
     <nav class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="dash" id="tab-dash">管理層總覽</button>
-      <button role="tab" data-tab="kb" id="tab-kb">公司知識庫</button>
-      <button role="tab" data-tab="notes" id="tab-notes">筆記</button>
-      <button role="tab" data-tab="team" id="tab-team">員工</button>
+      <button role="tab" data-tab="home" id="tab-home">總覽</button>
+      <button role="tab" data-tab="mods" id="tab-mods">八大系統</button>
+      <button role="tab" data-tab="inits" id="tab-inits">數轉專案</button>
+      <button role="tab" data-tab="tasks" id="tab-tasks">待辦清單</button>
+      <button role="tab" data-tab="time" id="tab-time">時程</button>
+      <button role="tab" data-tab="notes" id="tab-notes">情報與週報</button>
+      <button role="tab" data-tab="kb" id="tab-kb">知識庫</button>
+      <button role="tab" data-tab="dash" id="tab-dash">專案財務</button>
+      <button role="tab" data-tab="docs" id="tab-docs">文件與排程</button>
     </nav>
   </div>
 </header>
@@ -153,28 +212,138 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
 <main class="wrap">
   <p class="status" id="conn">正在連線到資料庫…</p>
 
-  <!-- 管理層總覽 -->
-  <section id="view-dash" hidden>
+  <!-- 總覽 -->
+  <section id="view-home" hidden>
+    <p class="lead" id="homeLead">正在載入進度…</p>
+    <div class="figures six" id="homeFigures"></div>
+    <div class="split even">
+      <div class="stack">
+        <section class="panel next" id="homeNext"></section>
+        <section class="panel">
+          <div class="panel-head"><h2>需要主管決定的事</h2><button type="button" class="btn small ghost" data-goto="tasks">全部待辦</button></div>
+          <ul class="tasks" id="homeDecisions"></ul>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><h2>八大系統</h2><button type="button" class="btn small ghost" data-goto="mods">看細節</button></div>
+          <div class="mini" id="homeMods"></div>
+        </section>
+        <section class="panel">
+          <h2>數位轉型進度</h2>
+          <div id="homeProgress"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>接下來的時程</h2><button type="button" class="btn small ghost" data-goto="time">完整時程</button></div>
+          <ul class="timeline" id="homeTimeline"></ul>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- 八大系統 -->
+  <section id="view-mods" hidden>
     <div class="toolbar">
-      <p class="muted small" style="margin:0">金額只在這一頁顯示；週報與知識顧問只拿到不含金額的摘要。客戶請只填代號。</p>
+      <div class="chips" id="modFilter" style="margin:0"></div>
+      <p class="muted small" style="margin:0">依系統編號排列；點「更新」修改狀態與卡點。</p>
+    </div>
+    <div class="grid-mods" id="modCards"></div>
+  </section>
+
+  <!-- 數轉專案 -->
+  <section id="view-inits" hidden>
+    <div class="grid-mods" id="initCards" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))"></div>
+  </section>
+
+  <!-- 待辦清單 -->
+  <section id="view-tasks" hidden>
+    <div class="toolbar">
+      <div class="figures" id="taskFigures" style="margin:0;flex:1 1 32rem"></div>
+      <div class="actions"><button class="btn w" id="btnNewTask" type="button">新增待辦</button></div>
+    </div>
+    <section class="panel">
+      <div class="filters">
+        <label class="f">負責人<select id="fOwner"></select></label>
+        <label class="f">狀態<select id="fStatus"></select></label>
+        <label class="f">所屬系統或專案<select id="fArea"></select></label>
+        <label class="f">類型<select id="fKind"><option value="">全部</option><option>決策</option><option>資料</option><option>行動</option></select></label>
+        <label class="f">搜尋<input type="search" id="fQuery" placeholder="關鍵字"></label>
+      </div>
+      <ul class="tasks" id="taskList"></ul>
+    </section>
+  </section>
+
+  <!-- 時程 -->
+  <section id="view-time" hidden>
+    <div class="split even">
+      <section class="panel"><h2>接下來</h2><ul class="timeline" id="timeUp" style="margin-top:.7rem"></ul></section>
+      <section class="panel"><h2>已完成</h2><ul class="timeline" id="timePast" style="margin-top:.7rem"></ul></section>
+    </div>
+  </section>
+
+  <!-- 情報與週報 -->
+  <section id="view-notes" hidden>
+    <div class="toolbar">
+      <div class="chips" id="noteFolders" style="margin:0"></div>
+      <div class="actions"><button class="btn w" id="btnNewNote" type="button">新增筆記</button></div>
+    </div>
+    <div class="split">
+      <section class="panel"><ul class="items" id="noteItems"></ul></section>
+      <section class="panel detail" id="noteDetail"></section>
+    </div>
+  </section>
+
+  <!-- 知識庫 -->
+  <section id="view-kb" hidden>
+    <div class="toolbar">
+      <p class="muted small" style="margin:0">內部敏感與客戶機密只存摘要與「請洽內部」的索引。</p>
       <div class="actions">
-        <button class="btn" id="btnImport" type="button">匯入 Excel／CSV</button>
+        <button class="btn w" id="btnNewFact" type="button">新增公司資料</button>
+        <button class="btn w" id="btnNewEntry" type="button">新增知識條目</button>
+      </div>
+    </div>
+    <div class="split">
+      <section class="panel">
+        <input type="search" id="kbSearch" placeholder="搜尋名稱、摘要、全文、標籤、內容" aria-label="搜尋知識庫">
+        <div class="chips" id="kbKinds"></div>
+        <div class="chips" id="kbSubs"></div>
+        <ul class="items" id="kbItems"></ul>
+      </section>
+      <div class="stack">
+        <section class="panel detail" id="kbDetail"></section>
+        <section class="panel">
+          <h2>問公司知識顧問</h2>
+          <p class="muted small" style="margin:.2rem 0 .6rem">只根據知識庫（公開、內部一般全文；敏感與機密只有索引）、八大系統進度與不含金額的專案摘要回答，並附引用。</p>
+          <div class="row">
+            <label class="f" style="flex:1 1 16rem">問題<textarea id="askInput" style="min-height:4rem" placeholder="例如：系統 2 為什麼還沒開始？"></textarea></label>
+            <button class="btn" id="askBtn" type="button">詢問</button>
+          </div>
+          <div class="answer prose" id="askAnswer" hidden></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- 專案財務（系統 2 試作） -->
+  <section id="view-dash" hidden>
+    <p class="notice">系統 2「項目財務總覽」試作頁。執行長核准可提供的財務資料範圍之前，請不要匯入真實財務資料。金額只在這一頁顯示，只有 Contributor 以上權限的人看得到；AI 員工只讀不含金額的摘要。</p>
+    <div class="toolbar">
+      <p class="muted small" style="margin:0">客戶請只填代號。</p>
+      <div class="actions">
+        <button class="btn w" id="btnImport" type="button">匯入 Excel／CSV</button>
         <button class="btn ghost" id="btnTemplate" type="button">下載匯入範本</button>
         <button class="btn ghost" id="btnExport" type="button">匯出 Excel</button>
       </div>
     </div>
     <div class="figures" id="figures"></div>
     <div class="empty" id="dashEmpty" hidden>
-      <h2>還沒有專案資料</h2>
-      <p>先匯入專案清單，再匯入請款紀錄。面板會算出合約總額、已請款、未收款、逾期應收，並列出需要決定的事。</p>
-      <button class="btn" id="btnImportFirst" type="button">匯入第一份資料</button>
+      <h2>還沒有專案財務資料</h2>
+      <p>等執行長核准後，先匯入專案清單，再匯入請款紀錄。面板會算出合約總額、已請款、未收款、逾期應收，並列出需要決定的事。</p>
+      <button class="btn w" id="btnImportFirst" type="button">匯入第一份資料</button>
     </div>
     <div class="split" id="dashBody">
       <div class="stack">
-        <section class="panel">
-          <h2>需要決定的事</h2>
-          <ul class="alerts" id="alerts"></ul>
-        </section>
+        <section class="panel"><h2>需要決定的事</h2><ul class="alerts" id="alerts"></ul></section>
         <section class="panel">
           <h2>專案清單</h2>
           <div class="scroll">
@@ -189,55 +358,19 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     </div>
   </section>
 
-  <!-- 公司知識庫 -->
-  <section id="view-kb" hidden>
-    <div class="toolbar">
-      <p class="muted small" style="margin:0">內部敏感與客戶機密只存摘要與「請洽內部」的索引。</p>
-      <div class="actions">
-        <button class="btn" id="btnNewFact" type="button">新增公司資料</button>
-        <button class="btn" id="btnNewEntry" type="button">新增知識條目</button>
+  <!-- 文件與排程 -->
+  <section id="view-docs" hidden>
+    <div class="split even">
+      <section class="panel"><h2>文件與網站</h2><div id="docGroups" style="margin-top:.6rem"></div></section>
+      <div class="stack">
+        <section class="panel">
+          <h2>AI 排程</h2>
+          <p class="muted small" style="margin:.2rem 0 .6rem">在 claude.ai 的 Routines 頁面管理。這裡的「最近執行」由後台更新員每週一更新。</p>
+          <div class="scroll"><table class="list"><thead><tr><th>排程</th><th>時間（台北）</th><th>產出</th><th>最近執行</th></tr></thead><tbody id="routineRows"></tbody></table></div>
+        </section>
+        <section class="panel"><h2>AI 員工產出</h2><div class="agents" id="agents" style="margin:.6rem 0 0"></div></section>
       </div>
     </div>
-    <div class="empty" id="kbEmpty" hidden>
-      <h2>知識庫還是空的</h2>
-      <p>新增服務項目、部門、流程等公司資料，或 SOP、案例、提案範本等知識條目。公司知識顧問每週一也會從「知識庫素材」筆記整理進來。</p>
-      <button class="btn" id="btnKbFirst" type="button">新增第一筆</button>
-    </div>
-    <div class="split" id="kbBody">
-      <section class="panel">
-        <input type="search" id="kbSearch" placeholder="搜尋名稱、摘要、全文、標籤、內容" aria-label="搜尋知識庫">
-        <div class="chips" id="kbKinds"></div>
-        <div class="chips" id="kbSubs"></div>
-        <ul class="items" id="kbItems"></ul>
-      </section>
-      <section class="panel detail" id="kbDetail"></section>
-    </div>
-  </section>
-
-  <!-- 筆記 -->
-  <section id="view-notes" hidden>
-    <div class="toolbar">
-      <div class="chips" id="noteFolders" style="margin:0"></div>
-      <div class="actions"><button class="btn" id="btnNewNote" type="button">新增筆記</button></div>
-    </div>
-    <div class="split">
-      <section class="panel"><ul class="items" id="noteItems"></ul></section>
-      <section class="panel detail" id="noteDetail"></section>
-    </div>
-  </section>
-
-  <!-- 員工 -->
-  <section id="view-team" hidden>
-    <div class="agents" id="agents"></div>
-    <section class="panel">
-      <h2>問公司知識顧問</h2>
-      <p class="muted small">只根據知識庫（公開、內部一般全文；敏感與機密只有索引）與不含金額的專案摘要回答，每個結論附引用條目。</p>
-      <div class="row" style="margin-top:.6rem">
-        <label class="f" style="flex:1 1 20rem">問題<textarea id="askInput" style="min-height:4rem" placeholder="例如：公司提供哪些碳盤查相關服務？由哪個部門負責？"></textarea></label>
-        <button class="btn" id="askBtn" type="button">詢問</button>
-      </div>
-      <div class="answer prose" id="askAnswer" hidden></div>
-    </section>
   </section>
 </main>
 
@@ -638,49 +771,197 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
 
 </script>
 <script>
-// 優樂地決策平台：畫面與資料存取。資料存在這個 Artifact 的共用資料庫（db），
-// 只有被分享的人看得到；金額只在總覽頁使用，對外只寫不含金額的 shared/briefing。
+// 優樂地管理中樞：八大系統、數位轉型進度、待辦與時程的計算。全部是固定規則，不呼叫大模型。
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Hub = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const MODULE_STATUS = {
+    live: { label: '上線中', tone: 'good', done: true },
+    done: { label: '已完成', tone: 'good', done: true },
+    built: { label: '程式完成', tone: 'good', done: true },
+    building: { label: '開發中', tone: 'info', done: false },
+    planned: { label: '已排定', tone: 'info', done: false },
+    notstarted: { label: '未開始', tone: 'idle', done: false },
+  };
+  const STAGES = ['規格', '計畫', '程式', '測試', '上線'];
+
+  const TASK_STATUS = ['待辦', '進行中', '等待決定', '等待資料', '完成'];
+  const PRIORITY = ['高', '中', '低'];
+  const OWNERS = ['執行長', '副執行長', '副營運長', '各部門主管', '品牌行銷部', '公司管理員', '專案負責人', '資料管理員', '實習生'];
+
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function parseDate(s) {
+    if (!s) return null;
+    const m = String(s).match(/^(\d{4})[\/\-.](\d{1,2})(?:[\/\-.](\d{1,2}))?$/);
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, m[3] ? +m[3] : 1);
+  }
+  function daysBetween(a, b) { return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
+
+  function isDone(m) { return Boolean((MODULE_STATUS[m.status] || {}).done); }
+
+  // 系統數量與狀態分布
+  function moduleSummary(modules) {
+    const byStatus = {};
+    for (const m of modules) byStatus[m.status] = (byStatus[m.status] || 0) + 1;
+    const done = modules.filter(isDone).length;
+    return { total: modules.length, done, notDone: modules.length - done, byStatus };
+  }
+
+  // 數位轉型進度：已完成工作的估計時數 ÷（已完成 + 剩下）。
+  // 低值＝已完成取下限、剩下取上限；高值反過來；中間值兩邊都取中點。
+  // extraDone 是不屬於任何系統、但已完成的共用工作（例如階段 0 骨架）。
+  function transformationProgress(modules, extraDone = { min: 0, max: 0 }, weeklyHours = { min: 6, max: 8 }) {
+    const sum = (list, k) => list.reduce((s, m) => s + (Number((m.hours || {})[k]) || 0), 0);
+    const doneList = modules.filter(isDone);
+    const todoList = modules.filter((m) => !isDone(m));
+    const done = { min: sum(doneList, 'min') + (extraDone.min || 0), max: sum(doneList, 'max') + (extraDone.max || 0) };
+    const remaining = { min: sum(todoList, 'min'), max: sum(todoList, 'max') };
+    const pct = (d, r) => (d + r > 0 ? Math.round((d / (d + r)) * 100) : 0);
+    const mid = (o) => (o.min + o.max) / 2;
+    return {
+      done, remaining,
+      pct: pct(mid(done), mid(remaining)),
+      pctLow: pct(done.min, remaining.max),
+      pctHigh: pct(done.max, remaining.min),
+      weeks: {
+        min: weeklyHours.max > 0 ? Math.ceil(remaining.min / weeklyHours.max) : null,
+        max: weeklyHours.min > 0 ? Math.ceil(remaining.max / weeklyHours.min) : null,
+      },
+    };
+  }
+
+  // 待辦：逾期、近期與排序（未完成在前；優先度高在前；有期限的依期限）
+  function taskState(t, today) {
+    if (t.status === '完成') return 'done';
+    const due = parseDate(t.due);
+    if (!due) return 'open';
+    const d = daysBetween(today, due);
+    if (d < 0) return 'overdue';
+    if (d <= 7) return 'soon';
+    return 'open';
+  }
+  function sortTasks(tasks, today) {
+    const rank = { overdue: 0, soon: 1, open: 2, done: 3 };
+    const pr = (p) => { const i = PRIORITY.indexOf(p); return i < 0 ? 9 : i; };
+    return [...tasks].sort((a, b) => {
+      const sa = taskState(a, today), sb = taskState(b, today);
+      if (rank[sa] !== rank[sb]) return rank[sa] - rank[sb];
+      if (pr(a.priority) !== pr(b.priority)) return pr(a.priority) - pr(b.priority);
+      return String(a.due || '9999').localeCompare(String(b.due || '9999'));
+    });
+  }
+  function filterTasks(tasks, { owner = null, status = null, area = null, kind = null, query = '' } = {}) {
+    const q = query.trim().toLowerCase();
+    return tasks.filter((t) =>
+      (!owner || t.owner === owner) &&
+      (!status || (status === '未完成' ? t.status !== '完成' : t.status === status)) &&
+      (!area || t.area === area) &&
+      (!kind || t.kind === kind) &&
+      (!q || [t.title, t.note, t.source].join('\n').toLowerCase().includes(q)));
+  }
+  function taskSummary(tasks, today) {
+    const open = tasks.filter((t) => t.status !== '完成');
+    return {
+      open: open.length,
+      done: tasks.length - open.length,
+      decisions: open.filter((t) => t.kind === '決策').length,
+      overdue: open.filter((t) => taskState(t, today) === 'overdue').length,
+      soon: open.filter((t) => taskState(t, today) === 'soon').length,
+    };
+  }
+
+  // 時程：依日期排序，分成已發生與即將到來；只有月份的里程碑以當月 1 日排序
+  function splitMilestones(milestones, today) {
+    const sorted = [...milestones].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const t = startOfDay(today);
+    const past = [], upcoming = [];
+    for (const m of sorted) {
+      const end = parseDate(m.end || m.date);
+      (end && end < t ? past : upcoming).push(m);
+    }
+    return { past, upcoming };
+  }
+
+  return {
+    MODULE_STATUS, STAGES, TASK_STATUS, PRIORITY, OWNERS,
+    parseDate, daysBetween, isDone, moduleSummary, transformationProgress,
+    taskState, sortTasks, filterTasks, taskSummary, splitMilestones,
+  };
+});
+
+</script>
+<script>
+// 優樂地管理中樞：畫面與資料存取。資料存在這個 Artifact 的共用資料庫（db），只有被分享的人看得到。
+// 金額只在「專案財務」頁使用；對 AI 員工與知識顧問只提供不含金額的 shared/briefing。
 (function () {
   'use strict';
   const C = window.MgmtCalc;
+  const H = window.Hub;
   const $ = (id) => document.getElementById(id);
-  const S = { projects: [], invoices: [], kb: [], notes: [], briefing: null, loaded: {} };
+  const COLS = ['projects', 'invoices', 'kb', 'notes', 'modules', 'initiatives', 'tasks', 'milestones', 'docs', 'routines'];
+  const S = { meta: null, briefing: null, loaded: {} };
+  COLS.forEach((c) => { S[c] = []; });
   let db = null;
   let canWrite = true;
-  let tab = 'dash';
+  let tab = 'home';
+  const TABS = ['home', 'mods', 'inits', 'tasks', 'time', 'notes', 'kb', 'dash', 'docs'];
   const sel = { project: null, kb: null, note: null };
   const kbFilter = { query: '', kind: null, subtype: null };
+  const taskFilter = { owner: null, status: '未完成', area: null, kind: null, query: '' };
+  let modFilter = null;
   let noteFolder = null;
 
   const FOLDERS = ['管理層週報', '外部情報摘要', '知識庫素材'];
   const AGENTS = [
-    {
-      name: '外部情報摘要員', when: '每週一 09:00', folder: '外部情報摘要',
-      duty: '彙整過去 7 天台灣與國際 ESG 政策法規、永續顧問同業動態、客戶產業的公開永續消息。每則附發布日期與網址；沒有合格內容就寫「本週無相關內容」。',
-      level: '公開',
-    },
-    {
-      name: '公司知識顧問', when: '每週一 08:00；隨時可問', folder: '知識庫素材',
-      duty: '把「知識庫素材」筆記整理成公司資料與知識條目寫進知識庫，標資料等級與證據強度。被詢問時只根據知識庫與不含金額的專案摘要回答，並附引用。',
-      level: '公開、內部一般；敏感與機密只留索引',
-    },
-    {
-      name: '管理層週報彙整員', when: '每週五 17:00', folder: '管理層週報',
-      duty: '讀不含金額的專案摘要與最新外部情報，寫成「本週三件要緊事、專案警示、外部情報、下週待決事項」的週報，並寄到使用者本人信箱。',
-      level: '內部一般，不含金額與客戶機密',
-    },
+    { name: '外部情報摘要員', when: '每週一 09:00', duty: '彙整過去 7 天的 ESG 政策法規、同業與客戶產業公開消息，每則附發布日期與網址。' },
+    { name: '公司知識顧問', when: '每週一 08:00', duty: '把「知識庫素材」筆記整理成公司資料與知識條目，標資料等級與證據強度。' },
+    { name: '管理層週報彙整員', when: '每週五 17:00', duty: '讀不含金額的摘要與最新情報，寫成「本週三件要緊事、專案警示、外部情報、下週待決事項」。' },
+    { name: '後台更新員', when: '每週一 07:30', duty: '更新八大系統的程式進度、AI 排程的最近執行結果，並記錄本週變化。' },
   ];
 
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function linkify(text) {
-    return esc(text).replace(/https?:\/\/[^\s<>"']+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+    return esc(text).replace(/https?:\/\/[^\s<>"'）]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
   }
+  function safeUrl(u) { return /^https:\/\//.test(String(u || '')) ? esc(u) : '#'; }
   const pct = (n) => `${Math.round(n)}%`;
-  const today = () => C.formatDate(new Date());
+  const now = () => new Date();
+  const today = () => C.formatDate(now());
   const newId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const strip = (o) => { const { id, metrics, ...rest } = o; return JSON.parse(JSON.stringify(rest)); };
+  const byOrder = (k) => (a, b) => (Number(a[k]) || 0) - (Number(b[k]) || 0);
+  function areaName(id) {
+    const m = S.modules.find((x) => x.id === id);
+    if (m) return `系統 ${m.no} ${m.name}`;
+    const i = S.initiatives.find((x) => x.id === id);
+    return i ? i.name : (id || '—');
+  }
+  function shortArea(id) {
+    const m = S.modules.find((x) => x.id === id);
+    if (m) return `系統 ${m.no}`;
+    const i = S.initiatives.find((x) => x.id === id);
+    return i ? i.name.replace(/（.*?）/g, '') : (id || '—');
+  }
+  function modPill(status) {
+    const s = H.MODULE_STATUS[status] || { label: status || '—', tone: 'idle' };
+    return `<span class="pill ${s.tone}">${esc(s.label)}</span>`;
+  }
+  function taskPill(t) {
+    const st = H.taskState(t, now());
+    if (st === 'done') return '<span class="pill good">完成</span>';
+    if (st === 'overdue') return '<span class="pill crit">已逾期</span>';
+    const tone = t.status === '等待決定' ? 'warn' : t.status === '等待資料' ? 'info' : 'idle';
+    return `<span class="pill ${tone}">${esc(t.status)}</span>`;
+  }
+  function stepTone(s) {
+    return { 完成: 'good', 進行中: 'info', 等待決定: 'warn', 等待資料: 'info', 未開始: 'idle' }[s] || 'idle';
+  }
 
   let toastTimer;
   function toast(msg) {
@@ -690,28 +971,18 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
   }
-
   function dbError(e) {
     const code = e && e.code;
-    if (code === 'invalid_argument') {
-      canWrite = false;
-      applyWriteMode();
-      return '你目前只有檢視權限，無法修改資料。';
-    }
+    if (code === 'invalid_argument') { canWrite = false; applyWriteMode(); return '你目前只有檢視權限，無法修改資料。'; }
     if (code === 'quota_exceeded') return '資料庫已滿，請刪除舊資料後再試。';
     if (code === 'resource_exhausted') return '操作太頻繁，請稍候再試。';
     return '暫時無法存取資料庫，請稍後再試。';
   }
-
-  async function put(col, id, data) {
-    await db.collection(col).doc(id).set(data);
-  }
-
+  async function put(col, id, data) { await db.collection(col).doc(id).set(data); }
   async function writeBriefing(store) {
-    try { await db.doc('shared/briefing').set(C.buildBriefing(store.projects, store.invoices, new Date())); }
+    try { await db.doc('shared/briefing').set(C.buildBriefing(store.projects, store.invoices, now())); }
     catch (e) { toast(dbError(e)); }
   }
-
   // 兩段式刪除：第一次按變成「確定刪除？」，4 秒內再按才刪。
   function armDelete(btn, action) {
     btn.addEventListener('click', async () => {
@@ -725,32 +996,266 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       try { await action(); } catch (e) { toast(dbError(e)); btn.disabled = false; }
     });
   }
-
   function applyWriteMode() {
     document.querySelectorAll('.w').forEach((el) => { el.hidden = !canWrite || !db; });
+    document.querySelectorAll('input.check').forEach((el) => { el.disabled = !canWrite || !db; });
   }
 
   // ---------- 分頁 ----------
   function setTab(t) {
-    tab = ['dash', 'kb', 'notes', 'team'].includes(t) ? t : 'dash';
+    tab = TABS.includes(t) ? t : 'home';
     for (const b of $('tabs').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    for (const v of ['dash', 'kb', 'notes', 'team']) $('view-' + v).hidden = v !== tab;
+    for (const v of TABS) $('view-' + v).hidden = v !== tab;
     try { localStorage.setItem('udp-tab', tab); } catch (e) { /* 忽略 */ }
     render();
   }
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) setTab(b.dataset.tab); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-goto]'); if (b) { setTab(b.dataset.goto); window.scrollTo(0, 0); } });
 
-  // ---------- 繪製 ----------
   function render() {
-    if (tab === 'dash') renderDash();
-    if (tab === 'kb') renderKb();
-    if (tab === 'notes') renderNotes();
-    if (tab === 'team') renderTeam();
+    ({ home: renderHome, mods: renderMods, inits: renderInits, tasks: renderTasks, time: renderTime,
+      notes: renderNotes, kb: renderKb, dash: renderDash, docs: renderDocs })[tab]();
     applyWriteMode();
   }
 
+  // ---------- 總覽 ----------
+  function progressNumbers() {
+    const meta = S.meta || {};
+    return H.transformationProgress(S.modules, meta.foundationHours, meta.weeklyHours);
+  }
+  function renderHome() {
+    if (!S.loaded.modules || !S.loaded.tasks) {
+      $('homeLead').textContent = db ? '正在載入進度…' : '連上資料庫後會顯示八大系統與待辦。';
+      return;
+    }
+    const ms = H.moduleSummary(S.modules);
+    const ts = H.taskSummary(S.tasks, now());
+    const p = progressNumbers();
+    const meta = S.meta || {};
+    const routinesOk = S.routines.filter((r) => r.lastStatus === '成功').length;
+    const latestReport = S.notes.filter((n) => n.folder === '管理層週報' && n.author === '管理層週報彙整員').sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+
+    $('homeLead').innerHTML = ms.total
+      ? `八大系統中 <strong>${ms.done} 個完成並在用</strong>，${ms.notDone} 個還沒開始；依時數估計，數位轉型約完成 <strong>${p.pct}%</strong>。目前有 <strong>${ts.decisions} 件事等主管決定</strong>${ts.overdue ? `，${ts.overdue} 件待辦已逾期` : ''}。`
+      : '還沒有系統資料。';
+
+    $('homeFigures').innerHTML = [
+      ['系統完成', `${ms.done}／${ms.total}`, `${ms.notDone} 個未開始`, 'good'],
+      ['數位轉型進度', `${p.pct}%`, `區間 ${p.pctLow}–${p.pctHigh}%`, ''],
+      ['剩下工時', `${p.remaining.min}–${p.remaining.max} 小時`, `約 ${p.weeks.min}–${p.weeks.max} 週`, ''],
+      ['等主管決定', `${ts.decisions} 件`, `未完成待辦 ${ts.open} 件`, ts.decisions ? 'crit' : ''],
+      ['AI 排程', `${S.routines.length} 個`, `最近執行成功 ${routinesOk} 個`, ''],
+      ['最新週報', latestReport ? latestReport.date.slice(5) : '—', latestReport ? '管理層週報彙整員' : '尚無', ''],
+    ].map(([k, v, s, c]) => `<div class="${c}"><div class="k">${k}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join('');
+
+    $('homeNext').innerHTML = `<h2>下一步（只列一項）</h2><p>${esc(meta.nextStep || '—')}</p>
+      ${meta.nextStepUrl ? `<p class="small"><a href="${safeUrl(meta.nextStepUrl)}" target="_blank" rel="noopener">打開問題清單</a></p>` : ''}
+      <p class="muted small">資料更新：${esc(meta.updatedDate || '—')}</p>`;
+
+    const decisions = H.sortTasks(S.tasks.filter((t) => t.kind === '決策' && t.status !== '完成'), now()).slice(0, 7);
+    $('homeDecisions').innerHTML = decisions.length ? decisions.map(taskRow).join('') : '<li class="muted" style="display:block">沒有等待決定的事。</li>';
+
+    $('homeMods').innerHTML = [...S.modules].sort(byOrder('no')).map((m) => `
+      <button type="button" data-mod="${esc(m.id)}"><span class="n">${esc(m.no)}</span><span>${esc(m.name.replace(/（.*?）/g, ''))}</span>${modPill(m.status)}</button>`).join('');
+
+    $('homeProgress').innerHTML = `
+      <div class="bigbar" role="img" aria-label="數位轉型約完成 ${p.pct}%"><b style="left:${p.pctLow}%;width:${p.pctHigh - p.pctLow}%"></b><i style="width:${p.pct}%"></i></div>
+      <p class="small" style="margin:.2rem 0">已完成約 ${p.done.min}–${p.done.max} 小時，剩下約 ${p.remaining.min}–${p.remaining.max} 小時；以每週 ${(meta.weeklyHours || {}).min || 6}–${(meta.weeklyHours || {}).max || 8} 小時計算，約還要 ${p.weeks.min}–${p.weeks.max} 週。</p>
+      <p class="muted small" style="margin:0">${esc(meta.progressMethod || '')}</p>`;
+
+    const { upcoming } = H.splitMilestones(S.milestones, now());
+    $('homeTimeline').innerHTML = upcoming.slice(0, 5).map(msRow).join('') || '<li class="muted">沒有排定的時程。</li>';
+  }
+  $('homeMods').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mod]'); if (!b) return;
+    modFilter = null; setTab('mods');
+    const el = document.getElementById('mod-' + b.dataset.mod);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // ---------- 八大系統 ----------
+  function renderMods() {
+    const counts = H.moduleSummary(S.modules).byStatus;
+    const statuses = Object.keys(H.MODULE_STATUS).filter((k) => counts[k]);
+    $('modFilter').innerHTML = chip('全部', !modFilter, 'data-mf=""') + statuses.map((k) => chip(`${H.MODULE_STATUS[k].label} ${counts[k]}`, modFilter === k, `data-mf="${k}"`)).join('');
+    const list = [...S.modules].sort(byOrder('no')).filter((m) => !modFilter || m.status === modFilter);
+    $('modCards').innerHTML = !S.loaded.modules ? '<p class="muted">載入中…</p>' : list.map((m) => {
+      const stage = Number(m.stage) || 0;
+      const open = S.tasks.filter((t) => t.area === m.id && t.status !== '完成');
+      return `<section class="panel mod" id="mod-${esc(m.id)}">
+        <div class="no">系統 ${esc(m.no)}・${esc(m.phase || '')}</div>
+        <div class="panel-head" style="margin:0"><h2>${esc(m.name)}</h2>${modPill(m.status)}</div>
+        <div><div class="track">${H.STAGES.map((s, i) => `<span class="${i < stage ? 'on' : ''}" title="${s}"></span>`).join('')}</div>
+          <div class="track-labels">${H.STAGES.map((s) => `<span>${s}</span>`).join('')}</div></div>
+        <p class="small" style="margin:0">${esc(m.summary || '')}</p>
+        ${(m.blockers || []).length ? `<div><div class="small muted">現在卡在哪裡</div><ul>${m.blockers.map((b) => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
+        <div class="nextline"><span class="muted">下一步：</span>${esc(m.nextStep || '—')}</div>
+        <div class="meta"><span class="pill">資料等級 ${esc(m.dataLevel || '—')}</span><span class="pill">估計 ${esc((m.hours || {}).min)}–${esc((m.hours || {}).max)} 小時</span>${open.length ? `<span class="pill warn">相關待辦 ${open.length}</span>` : ''}</div>
+        <div class="row">${m.specUrl ? `<a class="small" href="${safeUrl(m.specUrl)}" target="_blank" rel="noopener">規格</a>` : ''}
+          <button type="button" class="btn small ghost w" data-editmod="${esc(m.id)}">更新</button>
+          ${open.length ? `<button type="button" class="btn small ghost" data-modtasks="${esc(m.id)}">看待辦</button>` : ''}</div>
+      </section>`;
+    }).join('');
+  }
+  $('modFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-mf]'); if (!b) return; modFilter = b.dataset.mf || null; render(); });
+  $('modCards').addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-editmod]');
+    if (ed) { editModule(S.modules.find((m) => m.id === ed.dataset.editmod)); return; }
+    const tk = e.target.closest('[data-modtasks]');
+    if (tk) { Object.assign(taskFilter, { area: tk.dataset.modtasks, status: '未完成', owner: null, kind: null, query: '' }); setTab('tasks'); }
+  });
+  function editModule(m) {
+    if (!m) return;
+    openEditor({
+      title: `更新系統 ${m.no} ${m.name}`,
+      fields: [
+        { key: 'status', label: '狀態', type: 'select', options: Object.keys(H.MODULE_STATUS), labels: Object.fromEntries(Object.entries(H.MODULE_STATUS).map(([k, v]) => [k, v.label])), required: true },
+        { key: 'stage', label: '完成到哪一步（0–5：規格、計畫、程式、測試、上線）', type: 'text' },
+        { key: 'nextStep', label: '下一步', type: 'text' },
+        { key: 'blockers', label: '現在卡在哪裡（一行一項）', type: 'textarea' },
+      ],
+      values: { ...m, blockers: (m.blockers || []).join('\n'), stage: String(m.stage ?? '') },
+      onSave: async (d) => {
+        const stage = Math.max(0, Math.min(5, parseInt(d.stage, 10) || 0));
+        await put('modules', m.id, { ...strip(m), status: d.status, stage, nextStep: d.nextStep, blockers: d.blockers.split('\n').map((x) => x.trim()).filter(Boolean), updatedDate: today() });
+      },
+    });
+  }
+
+  // ---------- 數轉專案 ----------
+  function renderInits() {
+    $('initCards').innerHTML = !S.loaded.initiatives ? '<p class="muted">載入中…</p>' : [...S.initiatives].sort(byOrder('order')).map((i) => {
+      const steps = i.steps || [];
+      const done = steps.filter((s) => s.status === '完成').length;
+      const open = S.tasks.filter((t) => t.area === i.id && t.status !== '完成').length;
+      const tone = i.status === '完成' ? 'good' : i.status === '暫停' ? 'idle' : 'info';
+      return `<section class="panel mod">
+        <div class="panel-head" style="margin:0"><h2>${esc(i.name)}</h2><span class="pill ${tone}">${esc(i.status)}</span></div>
+        <p class="small" style="margin:0">${esc(i.summary || '')}</p>
+        <p class="small" style="margin:0"><span class="muted">現況：</span>${esc(i.phase || '—')}</p>
+        ${steps.length ? `<div><div class="small muted">步驟 ${done}／${steps.length} 完成</div>
+          <div class="bigbar" style="margin:.3rem 0 .5rem"><i style="width:${steps.length ? Math.round(done / steps.length * 100) : 0}%"></i></div>
+          <ul class="steps">${steps.map((s) => `<li><span><span class="pill ${stepTone(s.status)}">${esc(s.status)}</span></span><span>${esc(s.name)}${s.note ? `<span class="muted small">：${esc(s.note)}</span>` : ''}</span></li>`).join('')}</ul></div>` : ''}
+        ${(i.links || []).length ? `<ul class="links">${i.links.map((l) => `<li><a href="${safeUrl(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a></li>`).join('')}</ul>` : ''}
+        ${open ? `<div><button type="button" class="btn small ghost" data-inittasks="${esc(i.id)}">相關待辦 ${open} 件</button></div>` : ''}
+      </section>`;
+    }).join('');
+  }
+  $('initCards').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-inittasks]'); if (!b) return;
+    Object.assign(taskFilter, { area: b.dataset.inittasks, status: '未完成', owner: null, kind: null, query: '' });
+    setTab('tasks');
+  });
+
+  // ---------- 待辦清單 ----------
+  function taskRow(t) {
+    const done = t.status === '完成';
+    return `<li class="${done ? 'done' : ''}" data-task="${esc(t.id)}">
+      <input type="checkbox" class="check" ${done ? 'checked' : ''} aria-label="標記完成：${esc(t.title)}" data-toggle="${esc(t.id)}">
+      <div><div class="t-title">${esc(t.title)}</div>
+        ${t.note ? `<div class="t-note">${esc(t.note)}</div>` : ''}
+        <div class="meta">${taskPill(t)}<span class="pill accent">${esc(t.owner || '未指定')}</span><span class="pill">${esc(shortArea(t.area))}</span>${t.kind ? `<span class="pill">${esc(t.kind)}</span>` : ''}${t.priority === '高' ? '<span class="pill warn">優先</span>' : ''}${t.due ? `<span class="pill">期限 ${esc(t.due)}</span>` : ''}</div></div>
+      <button type="button" class="btn small ghost w" data-edittask="${esc(t.id)}">編輯</button>
+    </li>`;
+  }
+  function options(el, list, current, allLabel) {
+    el.innerHTML = `<option value="">${allLabel}</option>` + list.map(([v, l]) => `<option value="${esc(v)}" ${v === current ? 'selected' : ''}>${esc(l)}</option>`).join('');
+  }
+  function renderTasks() {
+    const owners = [...new Set([...H.OWNERS, ...S.tasks.map((t) => t.owner).filter(Boolean)])].filter((o) => S.tasks.some((t) => t.owner === o));
+    options($('fOwner'), owners.map((o) => [o, o]), taskFilter.owner, '全部');
+    options($('fStatus'), [['未完成', '未完成（全部）'], ...H.TASK_STATUS.map((s) => [s, s])], taskFilter.status, '全部');
+    const areas = [...[...S.modules].sort(byOrder('no')).map((m) => [m.id, `系統 ${m.no} ${m.name.replace(/（.*?）/g, '')}`]), ...[...S.initiatives].sort(byOrder('order')).map((i) => [i.id, i.name])];
+    options($('fArea'), areas, taskFilter.area, '全部');
+    $('fKind').value = taskFilter.kind || '';
+    const s = H.taskSummary(S.tasks, now());
+    $('taskFigures').innerHTML = [['未完成', s.open, ''], ['等主管決定', s.decisions, s.decisions ? 'crit' : ''], ['7 天內到期', s.soon, ''], ['已完成', s.done, 'good']]
+      .map(([k, v, c]) => `<div class="${c}"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    const list = H.sortTasks(H.filterTasks(S.tasks, taskFilter), now());
+    $('taskList').innerHTML = !S.loaded.tasks ? '<li class="muted" style="display:block">載入中…</li>'
+      : list.length ? list.map(taskRow).join('') : '<li class="muted" style="display:block">沒有符合的待辦。</li>';
+  }
+  [['fOwner', 'owner'], ['fStatus', 'status'], ['fArea', 'area'], ['fKind', 'kind']].forEach(([id, k]) => {
+    $(id).addEventListener('change', (e) => { taskFilter[k] = e.target.value || null; renderTasks(); applyWriteMode(); });
+  });
+  $('fQuery').addEventListener('input', (e) => { taskFilter.query = e.target.value; renderTasks(); applyWriteMode(); });
+
+  async function toggleTask(id, checked) {
+    const t = S.tasks.find((x) => x.id === id);
+    if (!t) return;
+    const next = { ...strip(t), status: checked ? '完成' : (t.prevStatus || '待辦'), doneDate: checked ? today() : '' };
+    if (checked) next.prevStatus = t.status;
+    try { await put('tasks', id, next); toast(checked ? '已標記完成。' : '已改回未完成。'); }
+    catch (e) { toast(dbError(e)); render(); }
+  }
+  document.addEventListener('change', (e) => {
+    const c = e.target.closest('input[data-toggle]');
+    if (c) toggleTask(c.dataset.toggle, c.checked);
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-edittask]');
+    if (b) editTask(S.tasks.find((t) => t.id === b.dataset.edittask));
+  });
+  function taskFields() {
+    const areas = [...[...S.modules].sort(byOrder('no')).map((m) => m.id), ...[...S.initiatives].sort(byOrder('order')).map((i) => i.id)];
+    return [
+      { key: 'title', label: '要做什麼', type: 'text', required: true },
+      { key: 'owner', label: '負責人', type: 'select', options: H.OWNERS, required: true },
+      { key: 'status', label: '狀態', type: 'select', options: H.TASK_STATUS, required: true },
+      { key: 'area', label: '所屬系統或專案', type: 'select', options: areas, labels: Object.fromEntries(areas.map((a) => [a, areaName(a)])), required: true },
+      { key: 'kind', label: '類型', type: 'select', options: ['決策', '資料', '行動'] },
+      { key: 'priority', label: '優先度', type: 'select', options: H.PRIORITY },
+      { key: 'due', label: '期限', type: 'date' },
+      { key: 'source', label: '出處', type: 'text' },
+      { key: 'note', label: '說明', type: 'textarea' },
+    ];
+  }
+  function editTask(t) {
+    openEditor({
+      title: t ? '編輯待辦' : '新增待辦',
+      fields: taskFields(),
+      values: t || { status: '待辦', priority: '中', kind: '行動', area: taskFilter.area || 'mgmt' },
+      onSave: async (d) => { await put('tasks', t ? t.id : newId('t'), { ...(t ? strip(t) : { createdDate: today() }), ...d }); },
+      extraButton: t ? { label: '刪除', action: async () => { await db.collection('tasks').doc(t.id).delete(); } } : null,
+    });
+  }
+  $('btnNewTask').addEventListener('click', () => editTask());
+
+  // ---------- 時程 ----------
+  function msRow(m) {
+    const past = H.splitMilestones([m], now()).past.length > 0;
+    const cls = m.type === '閘門' ? 'gate' : past ? '' : 'future';
+    const when = m.end ? `${m.date}–${m.end}` : m.date;
+    return `<li class="${cls}"><div class="when">${esc(when)}・${esc(m.type || '')}</div><div>${esc(m.title)}</div><div class="muted small">${esc(shortArea(m.area))}</div></li>`;
+  }
+  function renderTime() {
+    const { past, upcoming } = H.splitMilestones(S.milestones, now());
+    $('timeUp').innerHTML = upcoming.map(msRow).join('') || '<li class="muted">沒有排定的時程。</li>';
+    $('timePast').innerHTML = [...past].reverse().map(msRow).join('') || '<li class="muted">還沒有。</li>';
+  }
+
+  // ---------- 文件與排程 ----------
+  function renderDocs() {
+    const groups = {};
+    for (const d of S.docs) (groups[d.group || '其他'] = groups[d.group || '其他'] || []).push(d);
+    $('docGroups').innerHTML = Object.entries(groups).map(([g, list]) => `<div class="docgroup"><h3 style="margin:0">${esc(g)}</h3>
+      <ul class="doclist">${list.sort((a, b) => String(a.id).localeCompare(String(b.id))).map((d) => `<li><a href="${safeUrl(d.url)}" target="_blank" rel="noopener">${esc(d.title)}</a></li>`).join('')}</ul></div>`).join('')
+      || '<p class="muted">載入中…</p>';
+    $('routineRows').innerHTML = S.routines.sort((a, b) => String(a.id).localeCompare(String(b.id))).map((r) => `<tr>
+      <td>${esc(r.name)}</td><td>${esc(r.schedule)}</td><td>${esc(r.recipient || '')}</td>
+      <td>${esc(r.lastRun || '—')} <span class="pill ${r.lastStatus === '成功' ? 'good' : r.lastStatus ? 'crit' : 'idle'}">${esc(r.lastStatus || '未知')}</span></td></tr>`).join('');
+    $('agents').innerHTML = AGENTS.map((a) => {
+      const last = S.notes.filter((n) => n.author === a.name).sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')))[0];
+      return `<div class="agent"><strong>${esc(a.name)}</strong> <span class="muted small">${esc(a.when)}</span>
+        <p class="small" style="margin:.2rem 0">${esc(a.duty)}</p>
+        <p class="small" style="margin:0">最近產出：${last ? `<button type="button" class="chip" data-note="${esc(last.id)}">${esc(last.title)}</button>` : '<span class="muted">尚未產出</span>'}</p></div>`;
+    }).join('');
+  }
+  $('agents').addEventListener('click', (e) => { const b = e.target.closest('[data-note]'); if (!b) return; sel.note = b.dataset.note; noteFolder = null; setTab('notes'); });
+
+  // ---------- 專案財務（系統 2 試作）----------
   function renderDash() {
-    const data = C.computeAll(S.projects, S.invoices, new Date());
+    const data = C.computeAll(S.projects, S.invoices, now());
     const loaded = S.loaded.projects && S.loaded.invoices;
     const empty = loaded && S.projects.length === 0;
     $('dashEmpty').hidden = !empty;
@@ -763,7 +1268,6 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       ['未收款', t.outstanding, ''], ['逾期應收', t.overdue, t.overdue > 0 ? 'crit' : ''],
     ].map(([k, v, c]) => `<div class="${c}"><div class="k">${k}</div><div class="v">${loaded ? C.formatNTD(v) : '—'}</div></div>`).join('');
     if (!loaded) return;
-
     $('alerts').innerHTML = data.alerts.length
       ? data.alerts.map((a) => `<li class="sev${a.severity} click" data-id="${esc(a.projectId)}" tabindex="0"><span class="tag">${esc(a.title)}</span><span>${esc(a.message)}</span></li>`).join('')
       : '<li class="muted" style="border:0;display:block">目前沒有需要決定的事。</li>';
@@ -776,61 +1280,42 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       </tr>`).join('');
     renderProjectDetail(data);
   }
-
   function renderProjectDetail(data) {
     const el = $('projectDetail');
     const p = data.projects.find((x) => x.id === sel.project);
     if (!p) { el.innerHTML = '<p class="muted" style="margin:0">從左邊點一則警示或一個專案，查看合約、金額與請款紀錄。</p>'; return; }
     const m = p.metrics;
-    const now = new Date();
     const alerts = data.alerts.filter((a) => a.projectId === p.id);
     const invs = [...m.invoices].sort((a, b) => String(a.requestDate || a.dueDate || '').localeCompare(String(b.requestDate || b.dueDate || '')));
     const due = m.daysToDue === null ? '' : `（${m.daysToDue >= 0 ? `剩 ${m.daysToDue} 天` : `已過 ${-m.daysToDue} 天`}）`;
     el.innerHTML = `
       <h2>${esc(p.name)}</h2>
       <h3>合約資訊</h3>
-      <dl class="kv">
-        <dt>客戶代號</dt><dd>${esc(p.clientCode || '—')}</dd>
-        <dt>合約編號</dt><dd>${esc(p.contractNo || '待補（由請款紀錄自動建立）')}</dd>
-        <dt>簽約日</dt><dd>${esc(p.signedDate || '—')}</dd>
-        <dt>合約到期日</dt><dd>${esc(p.dueDate || '—')}${due}</dd>
-        <dt>備註</dt><dd>${esc(p.note || '—')}</dd>
-      </dl>
+      <dl class="kv"><dt>客戶代號</dt><dd>${esc(p.clientCode || '—')}</dd><dt>合約編號</dt><dd>${esc(p.contractNo || '待補（由請款紀錄自動建立）')}</dd>
+        <dt>簽約日</dt><dd>${esc(p.signedDate || '—')}</dd><dt>合約到期日</dt><dd>${esc(p.dueDate || '—')}${due}</dd><dt>備註</dt><dd>${esc(p.note || '—')}</dd></dl>
       <h3>金額</h3>
-      <dl class="kv">
-        <dt>合約總額</dt><dd>${C.formatNTD(p.contractAmount)}</dd>
-        <dt>已請款</dt><dd>${C.formatNTD(m.billed)}（${pct(m.billingProgress)}）</dd>
-        <dt>未請款</dt><dd>${C.formatNTD(m.unbilled)}</dd>
-        <dt>已實收</dt><dd>${C.formatNTD(m.received)}</dd>
-        <dt>未收款</dt><dd>${C.formatNTD(m.outstanding)}</dd>
-      </dl>
+      <dl class="kv"><dt>合約總額</dt><dd>${C.formatNTD(p.contractAmount)}</dd><dt>已請款</dt><dd>${C.formatNTD(m.billed)}（${pct(m.billingProgress)}）</dd>
+        <dt>未請款</dt><dd>${C.formatNTD(m.unbilled)}</dd><dt>已實收</dt><dd>${C.formatNTD(m.received)}</dd><dt>未收款</dt><dd>${C.formatNTD(m.outstanding)}</dd></dl>
       <h3>警示原因</h3>
       ${alerts.length ? `<ul class="alerts">${alerts.map((a) => `<li class="sev${a.severity}"><span class="tag">${esc(a.title)}</span><span>${esc(a.message)}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">沒有警示。</p>'}
-      <div class="w">
-        <h3>更新進度與狀態</h3>
-        <div class="row">
-          <label class="f" style="width:8rem">進度（%）<input type="number" id="pProgress" min="0" max="100" value="${esc(p.progress ?? 0)}"></label>
-          <label class="f" style="width:9rem">狀態<select id="pStatus">${C.PROJECT_STATUSES.map((s) => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
-          <button class="btn small" id="pSave" type="button">儲存</button>
-          <button class="btn small danger" id="pDelete" type="button">刪除</button>
-        </div>
-      </div>
+      <div class="w"><h3>更新進度與狀態</h3><div class="row">
+        <label class="f" style="width:8rem">進度（%）<input type="number" id="pProgress" min="0" max="100" value="${esc(p.progress ?? 0)}"></label>
+        <label class="f" style="width:9rem">狀態<select id="pStatus">${C.PROJECT_STATUSES.map((s) => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+        <button class="btn small" id="pSave" type="button">儲存</button><button class="btn small danger" id="pDelete" type="button">刪除</button></div></div>
       <h3>請款紀錄</h3>
       ${invs.length ? `<ul class="timeline">${invs.map((i) => {
-        const st = C.invoiceDisplayStatus(i, now);
+        const st = C.invoiceDisplayStatus(i, now());
         return `<li class="${st === '逾期' ? 'late' : ''}"><strong>${esc(i.period)}</strong> <span class="pill ${st === '逾期' ? 'crit' : ''}">${st}</span><br>
           <span class="small">請款 ${C.formatNTD(i.amount)}${i.requestDate ? `（${esc(i.requestDate)}）` : ''}；應收日 ${esc(i.dueDate || '—')}<br>
           實收 ${C.formatNTD(i.receivedAmount)}${i.receivedDate ? `（${esc(i.receivedDate)}）` : ''}</span></li>`;
       }).join('')}</ul>` : '<p class="muted" style="margin:0">尚無請款紀錄。</p>'}`;
-
     $('pSave').addEventListener('click', async () => {
       const v = C.parseNumber($('pProgress').value);
       if (v === undefined || v === null || v < 0 || v > 100) { toast('進度請填 0–100 的數字。'); return; }
       const next = { ...strip(S.projects.find((x) => x.id === p.id)), progress: v, status: $('pStatus').value };
       try {
         await put('projects', p.id, next);
-        const store = { projects: S.projects.map((x) => (x.id === p.id ? { id: p.id, ...next } : x)), invoices: S.invoices };
-        await writeBriefing(store);
+        await writeBriefing({ projects: S.projects.map((x) => (x.id === p.id ? { id: p.id, ...next } : x)), invoices: S.invoices });
         toast('已儲存。');
       } catch (e) { toast(dbError(e)); }
     });
@@ -842,18 +1327,16 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       toast('已刪除專案與它的請款紀錄。');
     });
   }
-
   function pickProject(id) {
     sel.project = id;
-    renderDash();
-    applyWriteMode();
+    render();
     if (window.matchMedia('(max-width: 900px)').matches) $('projectDetail').scrollIntoView({ behavior: 'smooth' });
   }
   $('alerts').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li) pickProject(li.dataset.id); });
   $('alerts').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li) pickProject(li.dataset.id); } });
   $('projectRows').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) pickProject(tr.dataset.id); });
 
-  // ---------- 匯入 ----------
+  // 匯入
   const impDlg = $('importDlg');
   let pending = null;
   function openImport() {
@@ -868,7 +1351,6 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   $('btnImportFirst').addEventListener('click', openImport);
   $('impCancel').addEventListener('click', () => impDlg.close());
   $('importForm').addEventListener('submit', (e) => e.preventDefault());
-
   $('impFile').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -881,11 +1363,8 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       const fields = type === 'project' ? C.PROJECT_FIELDS : C.INVOICE_FIELDS;
       pending = { type, rows, fields, headers: Object.keys(rows[0]) };
       showMapping(C.guessMapping(pending.headers, fields));
-    } catch (err) {
-      toast('無法讀取檔案，請確認是 .xlsx 或 UTF-8 編碼的 .csv。');
-    }
+    } catch (err) { toast('無法讀取檔案，請確認是 .xlsx 或 UTF-8 編碼的 .csv。'); }
   });
-
   function currentMapping() {
     const m = {};
     for (const s of $('impMap').querySelectorAll('select')) if (s.value !== '') m[s.dataset.key] = s.value;
@@ -908,27 +1387,22 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       pending.rows.slice(0, 5).map((r) => {
         const res = C.mapRow(r, mapping, fs);
         const rec = res.record || {};
-        return `<tr>${fs.map((f) => {
-          const v = rec[f.key];
-          return `<td>${esc(v === undefined ? '' : (f.type === 'number' && f.key !== 'progress' ? C.formatNTD(v) : v))}</td>`;
-        }).join('')}<td>${res.error ? `<span class="pill crit">${esc(res.error)}</span>` : '可匯入'}</td></tr>`;
+        return `<tr>${fs.map((f) => { const v = rec[f.key]; return `<td>${esc(v === undefined ? '' : (f.type === 'number' && f.key !== 'progress' ? C.formatNTD(v) : v))}</td>`; }).join('')}<td>${res.error ? `<span class="pill crit">${esc(res.error)}</span>` : '可匯入'}</td></tr>`;
       }).join('')}</tbody>`;
   }
-
   $('impGo').addEventListener('click', async () => {
     const { rows, fields, type } = pending;
     const mapping = currentMapping();
     const ok = [], failed = [];
     rows.forEach((r, i) => { const res = C.mapRow(r, mapping, fields); if (res.error) failed.push({ row: i + 2, reason: res.error }); else ok.push(res.record); });
-    const work = { projects: S.projects.map(strip).map((d, i) => ({ id: S.projects[i].id, ...d })), invoices: S.invoices.map(strip).map((d, i) => ({ id: S.invoices[i].id, ...d })) };
+    const work = { projects: S.projects.map((x) => ({ id: x.id, ...strip(x) })), invoices: S.invoices.map((x) => ({ id: x.id, ...strip(x) })) };
     const before = new Map([...work.projects, ...work.invoices].map((x) => [x.id, JSON.stringify(x)]));
     const summary = type === 'project' ? C.upsertProjects(work, ok) : C.upsertInvoices(work, ok);
     const changed = [
       ...work.projects.filter((x) => before.get(x.id) !== JSON.stringify(x)).map((x) => ['projects', x]),
       ...work.invoices.filter((x) => before.get(x.id) !== JSON.stringify(x)).map((x) => ['invoices', x]),
     ];
-    $('impGo').disabled = true;
-    $('imp2').hidden = true; $('imp3').hidden = false;
+    $('impGo').disabled = true; $('imp2').hidden = true; $('imp3').hidden = false;
     let written = 0;
     try {
       for (const [col, x] of changed) {
@@ -950,36 +1424,29 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     $('impGo').hidden = true;
     $('impCancel').textContent = '完成';
   });
-
-  // ---------- 匯出與範本（經過 downloads，由檢視者確認後存檔）----------
+  // 匯出與範本（經過 downloads，由檢視者確認後存檔）
   async function offerFile(filename, wb) {
     const dl = window.claude ? await window.claude.use('downloads') : null;
     if (!dl) { toast('這個檢視無法下載檔案，請在 claude.ai 開啟此頁。'); return; }
     const blob = new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })]);
-    try { await dl.save({ filename, data: blob }); }
-    catch (e) { if (e && e.code !== 'declined') toast('無法下載，請稍後再試。'); }
+    try { await dl.save({ filename, data: blob }); } catch (e) { if (e && e.code !== 'declined') toast('無法下載，請稍後再試。'); }
   }
   $('btnExport').addEventListener('click', () => {
-    const now = new Date();
-    const data = C.computeAll(S.projects, S.invoices, now);
+    const d = now();
+    const data = C.computeAll(S.projects, S.invoices, d);
     const t = data.totals;
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['項目', '金額（新台幣元）'], ['合約總額', t.contractAmount], ['累計已請款', t.billed],
-      ['未收款', t.outstanding], ['逾期應收', t.overdue], [], ['匯出日期', C.formatDate(now)],
-    ]), '總覽');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['項目', '金額（新台幣元）'], ['合約總額', t.contractAmount], ['累計已請款', t.billed], ['未收款', t.outstanding], ['逾期應收', t.overdue], [], ['匯出日期', C.formatDate(d)]]), '總覽');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.projects.map((p) => ({
-      客戶代號: p.clientCode || '', 專案名稱: p.name, 合約編號: p.contractNo || '', 合約總額: Number(p.contractAmount) || 0,
-      簽約日: p.signedDate || '', 合約到期日: p.dueDate || '', 到期倒數天數: p.metrics.daysToDue ?? '', 進度: Number(p.progress) || 0,
-      狀態: p.status || '', 已請款: p.metrics.billed, 請款進度: Math.round(p.metrics.billingProgress), 未請款: p.metrics.unbilled,
-      已實收: p.metrics.received, 未收款: p.metrics.outstanding, 備註: p.note || '',
+      客戶代號: p.clientCode || '', 專案名稱: p.name, 合約編號: p.contractNo || '', 合約總額: Number(p.contractAmount) || 0, 簽約日: p.signedDate || '', 合約到期日: p.dueDate || '',
+      到期倒數天數: p.metrics.daysToDue ?? '', 進度: Number(p.progress) || 0, 狀態: p.status || '', 已請款: p.metrics.billed, 請款進度: Math.round(p.metrics.billingProgress),
+      未請款: p.metrics.unbilled, 已實收: p.metrics.received, 未收款: p.metrics.outstanding, 備註: p.note || '',
     }))), '專案明細');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(S.invoices.map((i) => ({
-      專案名稱: i.projectName, 請款期別: i.period, 請款金額: Number(i.amount) || 0, 請款日: i.requestDate || '', 應收日: i.dueDate || '',
-      實收日: i.receivedDate || '', 實收金額: Number(i.receivedAmount) || 0, 狀態: C.invoiceDisplayStatus(i, now),
+      專案名稱: i.projectName, 請款期別: i.period, 請款金額: Number(i.amount) || 0, 請款日: i.requestDate || '', 應收日: i.dueDate || '', 實收日: i.receivedDate || '', 實收金額: Number(i.receivedAmount) || 0, 狀態: C.invoiceDisplayStatus(i, d),
     }))), '請款紀錄');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.alerts.map((a) => ({ 警示: a.title, 說明: a.message }))), '警示');
-    offerFile(`管理層總覽_${C.formatDate(now).replace(/\//g, '')}.xlsx`, wb);
+    offerFile(`管理層總覽_${C.formatDate(d).replace(/\//g, '')}.xlsx`, wb);
   });
   $('btnTemplate').addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
@@ -991,18 +1458,19 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   // ---------- 共用編輯對話框 ----------
   const editDlg = $('editDlg');
   let editCtx = null;
-  function openEditor({ title, fields, values, onSave, levelNotice }) {
+  function openEditor({ title, fields, values, onSave, levelNotice, extraButton }) {
     editCtx = { onSave };
     $('editTitle').textContent = title;
     $('editFields').innerHTML = fields.map((f) => {
       const v = values[f.key] ?? '';
       const full = f.type === 'textarea' ? ' style="grid-column:1/-1"' : '';
       let input;
-      if (f.type === 'select') input = `<select name="${f.key}" id="ed-${f.key}" ${f.required ? 'required' : ''}><option value="">請選擇</option>${f.options.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+      if (f.type === 'select') input = `<select name="${f.key}" id="ed-${f.key}" ${f.required ? 'required' : ''}><option value="">請選擇</option>${f.options.map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc((f.labels || {})[o] || o)}</option>`).join('')}</select>`;
       else if (f.type === 'textarea') input = `<textarea name="${f.key}" id="ed-${f.key}">${esc(v)}</textarea>`;
       else input = `<input name="${f.key}" id="ed-${f.key}" value="${esc(v)}" ${f.required ? 'required' : ''} ${f.type === 'date' ? 'placeholder="YYYY/MM/DD" pattern="\\d{4}/\\d{2}/\\d{2}"' : ''}>`;
       return `<label class="f"${full}>${esc(f.label)}${f.required ? ' <span class="req">*</span>' : ''}${input}</label>`;
-    }).join('');
+    }).join('') + (extraButton ? `<div style="grid-column:1/-1"><button type="button" class="btn small danger" id="edExtra">${esc(extraButton.label)}</button></div>` : '');
+    if (extraButton) armDelete($('edExtra'), async () => { await extraButton.action(); editDlg.close(); toast('已刪除。'); });
     const level = $('editFields').querySelector('[name="dataLevel"]');
     const notice = () => {
       const on = levelNotice && level && KB.isSensitive(level.value);
@@ -1026,30 +1494,24 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   // ---------- 知識庫 ----------
   function chip(label, on, attrs) { return `<button type="button" class="chip ${on ? 'on' : ''}" ${attrs}>${esc(label)}</button>`; }
   function renderKb() {
-    const loaded = S.loaded.kb;
-    const empty = loaded && S.kb.length === 0;
-    $('kbEmpty').hidden = !empty;
-    $('kbBody').hidden = empty || !loaded;
-    if (!loaded) return;
     $('kbKinds').innerHTML = chip('全部', !kbFilter.kind && !kbFilter.subtype, 'data-kind=""') +
       Object.entries(KB.KINDS).map(([k, l]) => chip(l, kbFilter.kind === k, `data-kind="${k}"`)).join('');
     const subs = kbFilter.kind === 'COMPANY_FACT' ? KB.CATEGORIES : kbFilter.kind === 'KNOWLEDGE_ENTRY' ? KB.ENTRY_TYPES
       : [...KB.CATEGORIES.filter((c) => c !== '其他'), ...KB.ENTRY_TYPES];
     $('kbSubs').innerHTML = subs.map((s) => chip(s, kbFilter.subtype === s, `data-sub="${esc(s)}"`)).join('');
     const list = KB.filterItems(S.kb, kbFilter);
-    $('kbItems').innerHTML = list.length ? list.map((it) => `
+    $('kbItems').innerHTML = !S.loaded.kb ? '<li class="muted" style="padding:.6rem .5rem">載入中…</li>' : list.length ? list.map((it) => `
       <li class="${it.id === sel.kb ? 'sel' : ''}"><button type="button" class="rowbtn" data-id="${esc(it.id)}">
         <div>${esc(it.name)}</div>
         <div class="meta"><span class="pill">${esc(KB.KINDS[it.kind] || '')}・${esc(KB.subtypeOf(it) || '—')}</span>
           <span class="pill ${KB.isSensitive(it.dataLevel) ? 'crit' : ''}">${esc(it.dataLevel || '—')}</span>
           <span class="pill">${esc(it.evidence || '—')}</span><span class="pill">${esc(it.updatedDate || '未填日期')}</span></div>
       </button></li>`).join('') : '<li class="muted" style="padding:.6rem .5rem">沒有符合的資料。</li>';
-
     const it = S.kb.find((x) => x.id === sel.kb);
     const el = $('kbDetail');
     if (!it) { el.innerHTML = '<p class="muted" style="margin:0">從左邊選一筆，查看詳情。</p>'; return; }
     el.innerHTML = `<h2>${esc(it.name)}</h2><p class="muted small" style="margin:.2rem 0 .7rem">${esc(KB.KINDS[it.kind] || '')}</p>
-      ${KB.isSensitive(it.dataLevel) ? `<p class="notice" style="margin-bottom:.7rem">${esc(it.dataLevel)}：${esc(KB.SENSITIVE_WARNING)}。</p>` : ''}
+      ${KB.isSensitive(it.dataLevel) ? `<p class="notice">${esc(it.dataLevel)}：${esc(KB.SENSITIVE_WARNING)}。</p>` : ''}
       <dl class="kv">${(KB.FIELDS[it.kind] || []).filter((f) => f.key !== 'name').map((f) => `<dt>${esc(f.label)}</dt><dd>${linkify(it[f.key] || '—')}</dd>`).join('')}</dl>
       <div class="row w" style="margin-top:.8rem"><button type="button" class="btn small" id="kbEdit">編輯</button><button type="button" class="btn small danger" id="kbDel">刪除</button></div>`;
     $('kbEdit').addEventListener('click', () => editKb(it.kind, it));
@@ -1073,20 +1535,15 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     const k = b.dataset.kind || null;
     kbFilter.kind = k && kbFilter.kind === k ? null : k;
     kbFilter.subtype = null;
-    renderKb();
+    render();
   });
-  $('kbSubs').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-sub]'); if (!b) return;
-    kbFilter.subtype = kbFilter.subtype === b.dataset.sub ? null : b.dataset.sub;
-    renderKb();
-  });
-  $('kbSearch').addEventListener('input', (e) => { kbFilter.query = e.target.value; renderKb(); applyWriteMode(); });
-  $('kbItems').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) { sel.kb = b.dataset.id; renderKb(); applyWriteMode(); } });
+  $('kbSubs').addEventListener('click', (e) => { const b = e.target.closest('[data-sub]'); if (!b) return; kbFilter.subtype = kbFilter.subtype === b.dataset.sub ? null : b.dataset.sub; render(); });
+  $('kbSearch').addEventListener('input', (e) => { kbFilter.query = e.target.value; render(); });
+  $('kbItems').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) { sel.kb = b.dataset.id; render(); } });
   $('btnNewFact').addEventListener('click', () => editKb('COMPANY_FACT'));
   $('btnNewEntry').addEventListener('click', () => editKb('KNOWLEDGE_ENTRY'));
-  $('btnKbFirst').addEventListener('click', () => editKb('COMPANY_FACT'));
 
-  // ---------- 筆記 ----------
+  // ---------- 情報與週報（筆記）----------
   const NOTE_FIELDS = [
     { key: 'folder', label: '資料夾', type: 'select', options: FOLDERS, required: true },
     { key: 'title', label: '標題', type: 'text', required: true },
@@ -1106,7 +1563,7 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       : `<li class="muted" style="padding:.6rem .5rem">${noteFolder === '知識庫素材' ? '把訪談紀錄、SOP、案例、提案範本放進來，公司知識顧問每週一會整理進知識庫。' : '這個資料夾還沒有筆記。'}</li>`;
     const n = S.notes.find((x) => x.id === sel.note);
     const el = $('noteDetail');
-    if (!n) { el.innerHTML = '<p class="muted" style="margin:0">從左邊選一篇筆記。週報、外部情報摘要由員工寫入；知識庫素材由你放入。</p>'; return; }
+    if (!n) { el.innerHTML = '<p class="muted" style="margin:0">從左邊選一篇筆記。週報、外部情報摘要由 AI 員工寫入；知識庫素材由你放入。</p>'; return; }
     el.innerHTML = `<h2>${esc(n.title)}</h2>
       <div class="meta" style="margin:.3rem 0 .8rem"><span class="pill accent">${esc(n.folder)}</span><span class="pill">${esc(n.author || '使用者')}</span><span class="pill">${esc(n.date || '')}</span><span class="pill">${esc(n.dataLevel || '—')}</span></div>
       <div class="prose">${linkify(n.body || '')}</div>
@@ -1127,28 +1584,11 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
       },
     });
   }
-  $('noteFolders').addEventListener('click', (e) => { const b = e.target.closest('[data-folder]'); if (!b) return; noteFolder = b.dataset.folder || null; renderNotes(); applyWriteMode(); });
-  $('noteItems').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) { sel.note = b.dataset.id; renderNotes(); applyWriteMode(); } });
+  $('noteFolders').addEventListener('click', (e) => { const b = e.target.closest('[data-folder]'); if (!b) return; noteFolder = b.dataset.folder || null; render(); });
+  $('noteItems').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) { sel.note = b.dataset.id; render(); } });
   $('btnNewNote').addEventListener('click', () => editNote());
 
-  // ---------- 員工 ----------
-  function renderTeam() {
-    $('agents').innerHTML = AGENTS.map((a) => {
-      const last = S.notes.filter((n) => n.author === a.name).sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')))[0];
-      return `<section class="panel agent">
-        <h2>${esc(a.name)}</h2>
-        <div class="when">${esc(a.when)}（台北時間）</div>
-        <p>${esc(a.duty)}</p>
-        <p class="muted small">資料等級：${esc(a.level)}</p>
-        <p class="small">最近產出：${last ? `<button type="button" class="chip" data-note="${esc(last.id)}">${esc(last.title)}</button>` : '<span class="muted">尚未產出</span>'}</p>
-      </section>`;
-    }).join('');
-  }
-  $('agents').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-note]'); if (!b) return;
-    sel.note = b.dataset.note; noteFolder = null; setTab('notes');
-  });
-
+  // ---------- 問公司知識顧問 ----------
   let asking = null;
   $('askBtn').addEventListener('click', async () => {
     const q = $('askInput').value.trim();
@@ -1161,21 +1601,24 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     const knowledge = S.kb.map((it) => KB.isSensitive(it.dataLevel)
       ? { 名稱: it.name, 類型: KB.KINDS[it.kind], 資料等級: it.dataLevel, 說明: '摘要＋請洽內部（全文不提供）', 摘要: it.summary || '' }
       : Object.fromEntries((KB.FIELDS[it.kind] || []).map((f) => [f.label, it[f.key] || '']).concat([['類型', KB.KINDS[it.kind]]])));
-    const briefing = S.projects.length ? C.buildBriefing(S.projects, S.invoices, new Date()) : S.briefing;
+    const systems = [...S.modules].sort(byOrder('no')).map((m) => ({ 名稱: `系統 ${m.no} ${m.name}`, 狀態: (H.MODULE_STATUS[m.status] || {}).label, 卡點: m.blockers, 下一步: m.nextStep, 資料等級: m.dataLevel }));
+    const initiatives = S.initiatives.map((i) => ({ 名稱: i.name, 狀態: i.status, 現況: i.phase, 步驟: (i.steps || []).map((s) => `${s.name}：${s.status}`) }));
+    const openTasks = S.tasks.filter((t) => t.status !== '完成').map((t) => ({ 待辦: t.title, 負責人: t.owner, 狀態: t.status, 期限: t.due || '' }));
+    const briefing = S.projects.length ? C.buildBriefing(S.projects, S.invoices, now()) : S.briefing;
     const prompt = `你是優樂地永續服務股份有限公司的「公司知識顧問」，服務執行長、主管與數位轉型實習生。
 規則：
-1. 只根據下面的「知識庫」與「專案摘要」回答，用繁體中文，簡潔分點。
-2. 每個結論後面用【條目名稱】標出引用來源。
-3. 資料裡找不到就說「知識庫目前沒有這項資料」，並指出需要補哪一種素材（公司資料、SOP、案例、提案範本、方法論、常見問答）。
-4. 不回答金額、應收明細或客戶機密，請對方直接看「管理層總覽」頁。
+1. 只根據下面提供的資料回答，用繁體中文，第一句講結論，再簡潔分點。
+2. 每個結論後面用【名稱】標出引用來源（知識庫條目、系統名稱、專案名稱或待辦）。
+3. 資料裡找不到就說「目前沒有這項資料」，並指出需要補哪一種素材。
+4. 不回答金額、應收明細或客戶機密，請對方直接看「專案財務」頁。
 5. 合約、保密、智慧財產相關解讀一律標【待法務確認】。
 6. 證據強度為「推測」或「待確認」的資料，回答時要註明。不要編造。
 
-知識庫（JSON）：
-${JSON.stringify(knowledge)}
-
-專案摘要（不含金額，JSON）：
-${JSON.stringify(briefing || { note: '尚無專案資料' })}
+知識庫（JSON）：${JSON.stringify(knowledge)}
+八大系統（JSON）：${JSON.stringify(systems)}
+數位轉型專案（JSON）：${JSON.stringify(initiatives)}
+未完成待辦（JSON）：${JSON.stringify(openTasks)}
+專案摘要（不含金額，JSON）：${JSON.stringify(briefing || { note: '尚無專案財務資料' })}
 
 問題：${q}`;
     out.hidden = false;
@@ -1192,23 +1635,17 @@ ${JSON.stringify(briefing || { note: '尚無專案資料' })}
   });
 
   // ---------- 啟動 ----------
-  let initial = 'dash';
-  try { initial = localStorage.getItem('udp-tab') || 'dash'; } catch (e) { /* 忽略 */ }
+  let initial = 'home';
+  try { initial = localStorage.getItem('udp-tab') || 'home'; } catch (e) { /* 忽略 */ }
   const hash = location.hash.replace('#', '');
-  if (['dash', 'kb', 'notes', 'team'].includes(hash)) initial = hash;
-  document.querySelectorAll('#btnImport,#btnImportFirst,#btnNewFact,#btnNewEntry,#btnKbFirst,#btnNewNote').forEach((b) => b.classList.add('w'));
+  if (TABS.includes(hash)) initial = hash;
   setTab(initial);
 
   (async () => {
     db = window.claude ? await window.claude.use('db') : null;
-    if (!db) {
-      $('conn').textContent = '無法連到資料庫。請登入 claude.ai 並從 Claude 開啟這個頁面。';
-      return;
-    }
+    if (!db) { $('conn').textContent = '無法連到資料庫。請登入 claude.ai 並從 Claude 開啟這個頁面。'; return; }
     const user = await window.claude.use('user');
-    if (user) {
-      try { if ((await user.can('data.write')) === false) canWrite = false; } catch (e) { /* 未知時保留輸入 */ }
-    }
+    if (user) { try { if ((await user.can('data.write')) === false) canWrite = false; } catch (e) { /* 未知時保留輸入 */ } }
     $('conn').hidden = true;
     const subscribe = (name) => db.collection(name).onSnapshot((snap) => {
       S[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -1220,7 +1657,8 @@ ${JSON.stringify(briefing || { note: '尚無專案資料' })}
       $('conn').textContent = '部分資料暫時無法載入，請重新整理頁面。';
       render();
     });
-    ['projects', 'invoices', 'kb', 'notes'].forEach(subscribe);
+    COLS.forEach(subscribe);
+    db.doc('hub/meta').onSnapshot((d) => { S.meta = d.exists ? d.data() : null; render(); }, () => {});
     db.doc('shared/briefing').onSnapshot((d) => { S.briefing = d.exists ? d.data() : null; }, () => {});
     render();
   })();

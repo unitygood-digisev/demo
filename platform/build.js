@@ -8,6 +8,7 @@ const read = (p) => fs.readFileSync(path.join(dir, p), 'utf8');
 const html = read('page.html')
   .replace('/*__CALC__*/', () => read('lib/calc.js'))
   .replace('/*__KB__*/', () => read('lib/kb.js'))
+  .replace('/*__HUB__*/', () => read('lib/hub.js'))
   .replace('/*__UI__*/', () => read('ui.js'));
 
 fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
