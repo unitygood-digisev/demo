@@ -42,6 +42,20 @@
 - AI 員工與知識顧問只讀不含金額的 `shared/briefing`；指示中禁止讀 `projects`、`invoices`。
 - 資料存在 claude.ai，不是公司自有主機。內部敏感與客戶機密的全文不要放進來。
 
+## 網站版（Vercel）
+
+- 網址：https://uld-hub.vercel.app （Vercel 專案 `uld-hub`）
+- 整個網站要密碼（HTTP Basic Auth，帳號欄可填任意文字）。密碼存在 Vercel 環境變數 `SITE_PASSWORD`，不在程式裡；沒設定時網站一律拒絕。搜尋引擎不收錄。
+- 內容是唯讀快照，不含專案財務資料；勾選待辦、更新狀態、問知識顧問要到 Claude 版。
+- 更新快照：用 ArtifactData 把 hub、modules、initiatives、tasks、milestones、docs、routines、notes、kb 各集合 list 到同一個資料夾（out_dir），然後：
+
+```
+node platform/build-vercel.js <快照資料夾>
+cd site && npx vercel deploy --prod --yes
+```
+
+- 改密碼：`npx vercel env rm SITE_PASSWORD production`，再 `npx vercel env add SITE_PASSWORD production`，然後重新部署。
+
 ## 開發與還原
 
 ```
