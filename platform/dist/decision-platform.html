@@ -1426,7 +1426,8 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   });
   // 匯出與範本（經過 downloads，由檢視者確認後存檔）
   async function offerFile(filename, wb) {
-    const dl = window.claude ? await window.claude.use('downloads') : null;
+    if (!window.claude) { XLSX.writeFile(wb, filename); return; }
+    const dl = await window.claude.use('downloads');
     if (!dl) { toast('這個檢視無法下載檔案，請在 claude.ai 開啟此頁。'); return; }
     const blob = new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })]);
     try { await dl.save({ filename, data: blob }); } catch (e) { if (e && e.code !== 'declined') toast('無法下載，請稍後再試。'); }
@@ -1642,6 +1643,16 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   setTab(initial);
 
   (async () => {
+    // 網站版（Vercel）沒有 Claude 的資料庫：改用匯出的唯讀快照，不含專案財務資料。
+    const snap = !window.claude && window.__UDP_SNAPSHOT__;
+    if (snap) {
+      S.meta = snap.meta || null;
+      COLS.forEach((c) => { S[c] = Array.isArray(snap[c]) ? snap[c] : []; S.loaded[c] = true; });
+      canWrite = false;
+      $('conn').innerHTML = `唯讀快照，資料截至 ${esc(snap.exportedAt || '—')}。要更新進度、勾選待辦或問知識顧問，請到 <a href="https://claude.ai/artifact/WRwZtths21n7A2CVemw6RU" target="_blank" rel="noopener">Claude 版</a>。`;
+      render();
+      return;
+    }
     db = window.claude ? await window.claude.use('db') : null;
     if (!db) { $('conn').textContent = '無法連到資料庫。請登入 claude.ai 並從 Claude 開啟這個頁面。'; return; }
     const user = await window.claude.use('user');
