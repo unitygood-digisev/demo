@@ -5,6 +5,7 @@
   sourcedraft verify  初稿.md --sources 往年.docx 自收表.docx         對既有初稿跑 Step 3 檢核
   sourcedraft demo                                                     離線跑內建範例（不呼叫 API）
   sourcedraft serve                                                    啟動網頁介面
+  sourcedraft adduser 帳號                                             新增／重設網頁登入帳號
 """
 
 from __future__ import annotations
@@ -120,9 +121,43 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
+    import os
+
     import uvicorn
 
-    uvicorn.run("sourcedraft.web:app", host=args.host, port=args.port)
+    from .auth import load_users
+
+    if not load_users():
+        if args.host in ("127.0.0.1", "localhost", "::1"):
+            os.environ["SOURCEDRAFT_ALLOW_NO_AUTH"] = "1"
+            print("未設定帳號：僅限本機使用、不需登入。要給團隊用請先 sourcedraft adduser 並設定 SOURCEDRAFT_USERS_FILE。")
+        else:
+            print("未設定帳號，網頁會拒絕所有請求。請先執行 sourcedraft adduser <帳號> 並設定 SOURCEDRAFT_USERS_FILE。",
+                  file=sys.stderr)
+    uvicorn.run("sourcedraft.web:app", host=args.host, port=args.port, proxy_headers=True)
+    return 0
+
+
+def cmd_adduser(args: argparse.Namespace) -> int:
+    import getpass
+    import os
+
+    from .auth import hash_password
+
+    path = Path(args.users_file or os.environ.get("SOURCEDRAFT_USERS_FILE") or "users.txt")
+    password = getpass.getpass(f"設定 {args.name} 的密碼：")
+    if len(password) < 10:
+        print("密碼至少 10 個字元", file=sys.stderr)
+        return 1
+    if getpass.getpass("再輸入一次：") != password:
+        print("兩次輸入不一致", file=sys.stderr)
+        return 1
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    lines = [ln for ln in lines if not ln.startswith(args.name + ":")]
+    lines.append(f"{args.name}:{hash_password(password)}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    print(f"已寫入 {path}（同名帳號會被覆蓋，即重設密碼）")
     return 0
 
 
@@ -158,6 +193,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("adduser", help="新增或重設網頁登入帳號")
+    p.add_argument("name")
+    p.add_argument("--users-file", help="帳號檔路徑（預設 SOURCEDRAFT_USERS_FILE 或 users.txt）")
+    p.set_defaults(func=cmd_adduser)
 
     args = parser.parse_args(argv)
     if getattr(args, "model", "x") is None:

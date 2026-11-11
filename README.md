@@ -83,11 +83,15 @@ sourcedraft draft \
 
 ### 3. 網頁介面
 
+本機自己用：
+
 ```bash
 sourcedraft serve
 ```
 
-開啟 <http://127.0.0.1:8000>，上傳檔案、選模式即可。預設只綁本機；要給團隊共用請自行加上登入保護。
+開啟 <http://127.0.0.1:8000>，上傳檔案、選模式即可（只綁本機時不需登入）。送出後轉到進度頁，產出在背景進行，首頁有所有人的產出紀錄。
+
+**給團隊用：部署到公司伺服器**（Docker＋HTTPS＋帳號登入），步驟見 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 ### 4. 只要提示詞（貼到 Dify／Claude Project／GPTs）
 

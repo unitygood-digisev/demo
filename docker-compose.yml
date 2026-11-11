@@ -1,0 +1,30 @@
+# 溯稿 SourceDraft：app（產線）＋ caddy（HTTPS 反向代理）
+# 使用前：cp .env.example .env 並填入設定，詳見 docs/DEPLOY.md
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data          # 帳號檔 users.txt、上傳物料與產出（內含客戶資料，請納入備份與權限管控）
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:443}
+      TLS_MODE: ${TLS_MODE:-internal}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

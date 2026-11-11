@@ -1,0 +1,9 @@
+.git
+output
+users.txt
+.env
+**/__pycache__
+*.egg-info
+.pytest_cache
+tests
+.DS_Store

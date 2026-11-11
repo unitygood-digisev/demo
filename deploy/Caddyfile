@@ -1,0 +1,18 @@
+# SITE_ADDRESS：伺服器網址，例如 sourcedraft.unitygood.com；只在內網用 IP 時留預設 :443
+# TLS_MODE：internal（內網自簽憑證）或填一個 email（有公開網域時自動申請正式憑證）
+{$SITE_ADDRESS} {
+	tls {$TLS_MODE}
+	request_body {
+		max_size 100MB
+	}
+	reverse_proxy app:8000 {
+		transport http {
+			read_timeout 60s
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+}
