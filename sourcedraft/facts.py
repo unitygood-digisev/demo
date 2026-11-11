@@ -19,7 +19,7 @@ YOY_ALERT_THRESHOLD = 30.0  # percent, per v2 rule 2
 GAP_TYPES = ["mandatory", "partial", "carried_over"]
 CALC_KINDS = ["sum", "average", "ratio", "yoy", "consistency_check"]
 ROUNDINGS = ["percent_1dp", "int", "1dp"]
-ANOMALY_KINDS = ["數據矛盾", "異常波動", "單位不明", "口徑不一致", "往年不自洽"]
+ANOMALY_KINDS = ["數據矛盾", "數值異常", "異常波動", "單位不明", "口徑不一致", "往年不自洽"]
 
 _NULLABLE_STR = {"type": "string"}
 
