@@ -167,3 +167,11 @@ def test_ingest_xlsx(tmp_path):
     wb.save(tmp_path / "s.xlsx")
     text = load(tmp_path / "s.xlsx")
     assert "〔工作表 Q12〕" in text and "| 2 | 基層主管 | 3200 |" in text
+
+
+def test_list_numbering_is_not_a_figure(inputs):
+    draft = ("## 3.2\n| 評核機制 | 1. 年度規劃。<br>7. 追蹤成效。 |\n| 時數 | 30.5 [源自往年完稿] |\n"
+             "## 附錄：本章顧問審校與待補件清單\n| 序號 | 對應小節 | 狀態 | 內容 | 備忘 |\n| :- | :- | :-: | :- | :- |\n")
+    report = verify(draft, "internal", inputs.sources_text())
+    assert [f.detail for f in report.warnings if f.check == "數值溯源"] == [
+        "正文數值「30.5」在輸入物料與事實表中都找不到，請確認非杜撰"]

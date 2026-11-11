@@ -152,6 +152,7 @@ def _check_traceability(body: str, sources_text: str, sheet: FactSheet | None, r
     text = ANY_MARKER.sub(" ", text)
     text = re.sub(r"GRI\s*\d+(?:-\d+)?", " ", text)
     text = re.sub(r"\b\d+(?:\.\d+){2,}\b", " ", text)  # section numbers 3.2.1
+    text = re.sub(r"(?<![\d.,])\d{1,2}[.、）)](?=\s*[^\d\s])", " ", text)  # list numbering "5. 各部門…"
     untraced: list[str] = []
     seen = 0
     for m in NUMBER.finditer(text):
