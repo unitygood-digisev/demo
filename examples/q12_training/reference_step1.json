@@ -1,0 +1,40 @@
+{
+  "facts": [
+    {"id": "F1", "label": "基層主管培訓時數", "value": 3200, "unit": "小時", "period": "2025", "caliber": "年度累計", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": ""},
+    {"id": "F2", "label": "一般員工培訓時數", "value": 8500, "unit": "小時", "period": "2025", "caliber": "年度累計", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": ""},
+    {"id": "F3", "label": "高階主管培訓時數", "value": 600, "unit": "小時", "period": "2025", "caliber": "年度累計", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": ""},
+    {"id": "F4", "label": "年底員工總數", "value": 380, "unit": "人", "period": "2025", "caliber": "期末人數", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": ""},
+    {"id": "F5", "label": "年底員工總數", "value": 350, "unit": "人", "period": "2024", "caliber": "期末人數", "source": "往年完稿: 3.2 員工培育與發展", "origin": "past_final", "kind": "raw", "note": "自收表 Q12 亦記載「去年 350 人」，兩處一致"},
+    {"id": "F6", "label": "總培訓時數", "value": 12450, "unit": "小時", "period": "2024", "caliber": "年度累計", "source": "往年完稿: 3.2 員工培育與發展", "origin": "past_final", "kind": "raw", "note": ""},
+    {"id": "F7", "label": "平均每人受訓時數（往年完稿宣稱）", "value": 35.6, "unit": "小時", "period": "2024", "caliber": "期末人數", "source": "往年完稿: 3.2 員工培育與發展", "origin": "past_final", "kind": "reported_derived", "note": ""},
+    {"id": "F8", "label": "線上 ESG 數位學習平台全員完課率", "value": 92, "unit": "%", "period": "2025", "caliber": "未註明", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": "「全員」範圍與分母未說明"},
+    {"id": "F9", "label": "AI 工具應用課程開辦梯次", "value": 2, "unit": "梯次", "period": "2025 下半年", "caliber": "未註明", "source": "自收表: Q12 培訓時數調查", "origin": "current_survey", "kind": "raw", "note": "僅有梯次數，無參訓人數與時數"}
+  ],
+  "calculations": [
+    {"id": "C1", "label": "2025 總培訓時數", "kind": "sum", "expression": "F1 + F2 + F3", "unit": "小時", "rounding": "int", "caliber": "年度累計", "anchor_basis": "自收表 Q12", "reported_fact_id": ""},
+    {"id": "C2", "label": "驗算往年平均每人受訓時數", "kind": "consistency_check", "expression": "F6 / F5", "unit": "小時", "rounding": "1dp", "caliber": "期末人數", "anchor_basis": "往年完稿 3.2", "reported_fact_id": "F7"},
+    {"id": "C3", "label": "2025 平均每人受訓時數", "kind": "average", "expression": "C1 / F4", "unit": "小時", "rounding": "1dp", "caliber": "期末人數", "anchor_basis": "自收表 Q12", "reported_fact_id": ""},
+    {"id": "C4", "label": "2024 平均每人受訓時數", "kind": "average", "expression": "F6 / F5", "unit": "小時", "rounding": "1dp", "caliber": "期末人數", "anchor_basis": "往年完稿 3.2", "reported_fact_id": ""},
+    {"id": "C5", "label": "總培訓時數同比", "kind": "yoy", "expression": "(C1 - F6) / F6", "unit": "%", "rounding": "percent_1dp", "caliber": "年度累計", "anchor_basis": "自收表 Q12 及往年完稿 3.2", "reported_fact_id": ""},
+    {"id": "C6", "label": "期末員工人數同比", "kind": "yoy", "expression": "(F4 - F5) / F5", "unit": "%", "rounding": "percent_1dp", "caliber": "期末人數", "anchor_basis": "自收表 Q12 及往年完稿 3.2", "reported_fact_id": ""},
+    {"id": "C7", "label": "平均每人受訓時數同比", "kind": "yoy", "expression": "(C3 - C4) / C4", "unit": "%", "rounding": "percent_1dp", "caliber": "期末人數", "anchor_basis": "自收表 Q12 及往年完稿 3.2", "reported_fact_id": ""},
+    {"id": "C8", "label": "基層主管時數占比", "kind": "ratio", "expression": "F1 / C1", "unit": "%", "rounding": "percent_1dp", "caliber": "占當年總培訓時數", "anchor_basis": "自收表 Q12", "reported_fact_id": ""},
+    {"id": "C9", "label": "一般員工時數占比", "kind": "ratio", "expression": "F2 / C1", "unit": "%", "rounding": "percent_1dp", "caliber": "占當年總培訓時數", "anchor_basis": "自收表 Q12", "reported_fact_id": ""},
+    {"id": "C10", "label": "高階主管時數占比", "kind": "ratio", "expression": "F3 / C1", "unit": "%", "rounding": "percent_1dp", "caliber": "占當年總培訓時數", "anchor_basis": "自收表 Q12", "reported_fact_id": ""}
+  ],
+  "gaps": [
+    {"item": "男女員工平均受訓時數拆分", "type": "mandatory", "gri": "GRI 404-1", "section_hint": "年度培訓績效", "reason": "補充要求明確點名，自收表未提供性別別時數與人數", "owner": "人力資源部"},
+    {"item": "各職級員工人數", "type": "mandatory", "gri": "GRI 404-1", "section_hint": "年度培訓績效", "reason": "自收表僅有各職級總時數，缺人數無法計算各職級人均時數", "owner": "人力資源部"},
+    {"item": "人數口徑確認（期末人數或年度平均人數）", "type": "partial", "gri": "", "section_hint": "年度培訓績效", "reason": "兩年度均以年底人數計算人均，需確認客戶是否改採年度平均人數", "owner": "人力資源部"},
+    {"item": "AI 工具應用課程參訓人數與時數", "type": "partial", "gri": "", "section_hint": "多元培育管道與創新賦能", "reason": "自收表僅提供梯次數", "owner": "人力資源部"},
+    {"item": "線上 ESG 數位學習平台完課率之分母與課程範圍", "type": "partial", "gri": "", "section_hint": "多元培育管道與創新賦能", "reason": "「全員」範圍、應完課人數、上線月份未說明", "owner": "人力資源部"},
+    {"item": "人才培育方針與培訓規劃制度", "type": "carried_over", "gri": "GRI 3-3", "section_hint": "人才培育方針", "reason": "當年自收表未重述制度，僅能沿用往年完稿描述", "owner": "人力資源部"},
+    {"item": "次年度培訓目標", "type": "mandatory", "gri": "GRI 3-3", "section_hint": "目標與未來展望", "reason": "自收表未提供量化目標", "owner": "人力資源部"}
+  ],
+  "anomalies": [],
+  "outline": ["### 3.2 員工培育與發展"],
+  "new_initiatives": [
+    {"name": "線上 ESG 數位學習平台", "detail": "2025 年上線，全員完課率 92%", "source": "自收表: Q12 培訓時數調查"},
+    {"name": "AI 工具應用課程", "detail": "回應工會建議，下半年開辦 2 梯次", "source": "自收表: Q12 培訓時數調查"}
+  ]
+}
