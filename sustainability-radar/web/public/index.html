@@ -495,12 +495,12 @@ const CARBON_PRICES = [
   { id:'tw300', name:'台灣碳費・一般費率', price:300, cur:'TWD', unit:'每公噸 CO2e', date:'2024-10-07', src:'環境部 113 年第 6 次碳費費率審議會紀錄', url:'https://service.cca.gov.tw/File/Get/cca/zh-tw/JVJaWd1E9o3ZFXw', verified:true },
   { id:'twA', name:'台灣碳費・優惠費率 A', price:50, cur:'TWD', unit:'每公噸 CO2e', date:'2024-10-07', src:'環境部 113 年第 6 次碳費費率審議會紀錄', url:'https://service.cca.gov.tw/File/Get/cca/zh-tw/JVJaWd1E9o3ZFXw', verified:true, note:'行業別指定削減率' },
   { id:'twB', name:'台灣碳費・優惠費率 B', price:100, cur:'TWD', unit:'每公噸 CO2e', date:'2024-10-07', src:'環境部 113 年第 6 次碳費費率審議會紀錄', url:'https://service.cca.gov.tw/File/Get/cca/zh-tw/JVJaWd1E9o3ZFXw', verified:true, note:'技術標竿指定削減率' },
-  { id:'eu', name:'歐盟 EU ETS（EUA）', price:85.07, cur:'EUR', unit:'每公噸 CO2e', date:'2026-10-16', src:'Trading Economics', url:'https://tradingeconomics.com/commodity/carbon', verified:true, note:'差價合約追蹤價，非 ICE 結算價' },
+  { id:'eu', name:'歐盟 EU ETS（EUA）', price:88.87, cur:'EUR', unit:'每公噸 CO2e', date:'2026-11-13', src:'Trading Economics', url:'https://tradingeconomics.com/commodity/carbon', verified:true, note:'差價合約追蹤價，非 ICE 結算價；10-16 為 85.07' },
   { id:'sg', name:'新加坡碳稅（2026–2027）', price:45, cur:'SGD', unit:'每公噸 CO2e', date:'2026-01', src:'新加坡國家環境局 NEA', url:'https://www.nea.gov.sg/our-services/climate-change-energy-efficiency/climate-change/carbon-tax', verified:true, note:'2024–2025 為 25 新元' },
   { id:'jpL', name:'日本 GX-ETS 價格下限（2026 年度）', price:1700, cur:'JPY', unit:'每公噸 CO2', date:'2026-05-14', src:'IETA', url:'https://www.ieta.org/news/japan-unleashing-the-green-transition', verified:true, note:'政府設定的價格帶，非市場成交價' },
   { id:'jpH', name:'日本 GX-ETS 價格上限（2026 年度）', price:4300, cur:'JPY', unit:'每公噸 CO2', date:'2026-05-14', src:'IETA', url:'https://www.ieta.org/news/japan-unleashing-the-green-transition', verified:true, note:'政府設定的價格帶，非市場成交價' },
-  { id:'kr', name:'韓國 K-ETS（KAU 拍賣結清價）', price:17650, cur:'KRW', unit:'每公噸 CO2e', date:'2026-04-08', src:'Quantum Commodity Intelligence', url:'https://www.qcintel.com/carbon/article/korean-auction-price-jumps-almost-17-on-the-month-62364.html', verified:true, note:'4 月拍賣價；之後價格上漲但未取得可公開查證的數字' },
-  { id:'cn', name:'中國全國碳市場（CEA 收盤價）', price:98.14, cur:'CNY', unit:'每公噸 CO2', date:'2026-10-14', src:'新華財經', url:'https://www.cnfin.com/dz-lb/detail/20261014/4480702_1.html', verified:true },
+  { id:'kr', name:'韓國 K-ETS（KAU 現貨）', price:29600, cur:'KRW', unit:'每公噸 CO2e', date:'2026-11-09', src:'SK證券〈全球排放權價格〉日報', url:'https://file.alphasquare.co.kr/media/pdfs/market-report/SK%EC%A6%9D%EA%B6%8C20261109SK%EC%A6%9D%EA%B6%8C.pdf', verified:true, note:'報表日期；4 月拍賣價為 17,650 韓元' },
+  { id:'cn', name:'中國全國碳市場（CEA 收盤價）', price:91.93, cur:'CNY', unit:'每公噸 CO2', date:'2026-11-10', src:'21經濟網（轉載全國碳交易行情）', url:'https://www.21jingji.com/article/20261110/herald/56bfed0e7212824d7881ba6173829f45.html', verified:true, note:'10-14 為 98.14' },
   { id:'tcxL', name:'臺灣碳交所國際碳權（上架訂價下緣）', price:5, cur:'USD', unit:'每公噸 CO2e', date:'2023-12-08', src:'科技新報', url:'https://finance.technews.tw/2023/12/08/tcx-22th-start-trading/', verified:true, note:'2023 年開市時的訂價區間，未取得近期成交價' },
   { id:'tcxH', name:'臺灣碳交所國際碳權（上架訂價上緣）', price:15, cur:'USD', unit:'每公噸 CO2e', date:'2023-12-08', src:'科技新報', url:'https://finance.technews.tw/2023/12/08/tcx-22th-start-trading/', verified:true, note:'2023 年開市時的訂價區間，未取得近期成交價' },
   { id:'tcxD', name:'臺灣碳交所國內減量額度（平台價下緣）', price:3000, cur:'TWD', unit:'每公噸 CO2e', date:'2026-05-12', src:'聯合報', url:'https://udn.com/news/story/6656/9496308', verified:true, note:'報導稱每公噸約 3,000～4,000 元，僅成交 69 公噸（N16）' },
@@ -508,9 +508,11 @@ const CARBON_PRICES = [
 const KEY_PRICE_IDS = ['tw300', 'eu', 'sg', 'cn'];
 const FEE_THRESHOLD = 25000;
 
-/* 匯率：臺灣銀行牌告即期買賣中價（韓元用現金中價），2026-10-16 收盤牌告，2026-10-17 查詢 */
-const FX = { date:'2026-10-17', src:'臺灣銀行牌告匯率', url:'https://rate.bot.com.tw/xrt?Lang=zh-TW',
-  rates:{ TWD:1, EUR:36.335, USD:32.32, SGD:25.26, JPY:0.2047, KRW:0.02443, CNY:4.835 } };
+/* 匯率：新臺幣兌美元用中央銀行公布的銀行間收盤匯率（2026-11-12）；其他幣別用歐洲央行同日參考匯率交叉換算
+   （例：1 歐元＝32.889 × 1.1081 新臺幣）。臺灣銀行牌告網頁擋程式讀取，未能使用。 */
+const FX = { date:'2026-11-12', src:'中央銀行 新臺幣/美元銀行間收盤匯率＋歐洲央行參考匯率（交叉換算）', url:'https://www.cbc.gov.tw/tw/lp-645-1.html',
+  url2:'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html',
+  rates:{ TWD:1, EUR:36.444, USD:32.889, SGD:25.577, JPY:0.20595, KRW:0.02465, CNY:4.932 } };
 
 /* 市場數據（時間序列）；null = 公開來源中沒有取得 */
 const DATA = {
@@ -536,7 +538,7 @@ const KPIS = [
   { label:'碳費首次繳費', value:'2026-05', unit:'月底', src:'公視新聞網', url:'https://news.pts.org.tw/article/811325', date:'2026-06-03', ref:['N1'] },
   { label:'IFRS 第一階段適用門檻', value:'100', unit:'億元資本額', src:'金管會', url:'https://www.fsc.gov.tw/ch/home.jsp?id=96&parentpath=0,2&mcustomize=news_view.jsp&dataserno=202308170002&dtable=News', date:'2023-08-17', ref:['N3','N4'] },
   { label:'CBAM 首次憑證繳交', value:'2027-09-30', unit:'', src:'European Commission', url:'https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism_en', date:'2026-01-01', ref:['N5'] },
-  { label:'EU ETS 最近價格', value:'85.07', unit:'歐元／公噸', src:'Trading Economics', url:'https://tradingeconomics.com/commodity/carbon', date:'2026-10-16', ref:['N10'] },
+  { label:'EU ETS 最近價格', value:'88.87', unit:'歐元／公噸', src:'Trading Economics', url:'https://tradingeconomics.com/commodity/carbon', date:'2026-11-13', ref:['N10'] },
   { label:'2025 永續發展債券發行', value:'2,090.6', unit:'億元', src:'工商時報（櫃買中心資料）', url:'https://www.ctee.com.tw/news/20251222700160-430201', date:'2025-12-22', ref:['N17'] },
 ];
 const KEY_DATA = [
@@ -1080,7 +1082,7 @@ document.addEventListener('scroll', () => { tip.hidden = true; }, true);
 /* =================== 3 碳價戰情 =================== */
 function renderFX() {
   $('#fxBox').innerHTML = Object.keys(FX.rates).map(c => `<label class="f" for="fx-${c}">1 ${c} ＝ 新台幣<input type="number" id="fx-${c}" data-fx="${c}" step="any" min="0" value="${state.fx[c]}"></label>`).join('');
-  $('#fxNote').innerHTML = `預設匯率：${ext(FX.url, FX.src)}，查詢日期 <span class="num">${esc(FX.date)}</span>。可自行修改，所有換算即時更新。`;
+  $('#fxNote').innerHTML = `預設匯率：${ext(FX.url, '中央銀行 新臺幣/美元收盤匯率')}，其他幣別以${ext(FX.url2, '歐洲央行參考匯率')}交叉換算，日期 <span class="num">${esc(FX.date)}</span>。可自行修改，所有換算即時更新。`;
 }
 document.addEventListener('input', e => {
   const c = e.target.dataset && e.target.dataset.fx;
