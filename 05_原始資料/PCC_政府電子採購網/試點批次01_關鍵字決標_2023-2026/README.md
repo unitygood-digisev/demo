@@ -1,5 +1,11 @@
 # 試點批次01：關鍵字決標（2023-01-01 ～ 2026-12-31）
 
+## 本批實際產出（2026-11-17）
+- `pcc_batch01.csv`、`summary.txt`：由 `pcc_batch01_api.py` 產生，**資料來源為第三方 API pcc-api.openfun.app**（g0v／openfun，資料收集自政府電子採購網）。官方網站拒絕雲端 IP，經使用者同意改用此 API。
+  授權依採購網著作權聲明（合理使用、需註明出處），**不是**政府資料開放授權條款。CSV 的「原始公告網址」仍指向採購網官方公告頁，可逐筆回查。
+- 去個資後的原始決標公告存放在 repo 根目錄 `raw/`，檔名格式為 `<公告日期>_<公告檔名>.json`。
+- 若要改用官方來源重跑，請在台灣網路環境執行下方的 `pcc_batch01.py`。
+
 ## 資料來源（只用官方來源）
 - 行政院公共工程委員會「政府電子採購網」開放資料下載頁：<https://web.pcc.gov.tw/tps/tp/OpenData/showList>
 - 商業利用資料集入口（採購網公告）：<https://web.pcc.gov.tw/tpsreport/transfer/dataTransfer.do?method=getOkfnOpenDataXml>
