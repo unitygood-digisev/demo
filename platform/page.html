@@ -137,7 +137,8 @@ main.wrap { padding-block: 1rem 3rem; }
 .timeline li.gate::before { background: var(--warn); border-radius: 2px; }
 .timeline .when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; font-size: .9rem; }
-.steps li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.steps li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.steps li > span:first-child .pill { white-space: normal; text-align: center; max-width: 100%; }
 .steps .sn { font-size: .82rem; color: var(--muted); }
 .links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font-size: .88rem; margin: 0; padding: 0; list-style: none; }
 .scroll { overflow-x: auto; }

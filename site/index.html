@@ -141,7 +141,8 @@ main.wrap { padding-block: 1rem 3rem; }
 .timeline li.gate::before { background: var(--warn); border-radius: 2px; }
 .timeline .when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; font-size: .9rem; }
-.steps li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.steps li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.steps li > span:first-child .pill { white-space: normal; text-align: center; max-width: 100%; }
 .steps .sn { font-size: .82rem; color: var(--muted); }
 .links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font-size: .88rem; margin: 0; padding: 0; list-style: none; }
 .scroll { overflow-x: auto; }
@@ -795,7 +796,7 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
 
   const TASK_STATUS = ['待辦', '進行中', '等待決定', '等待資料', '完成'];
   const PRIORITY = ['高', '中', '低'];
-  const OWNERS = ['執行長', '副執行長', '副營運長', '各部門主管', '品牌行銷部', '公司管理員', '專案負責人', '資料管理員', '實習生'];
+  const OWNERS = ['執行長', '副執行長', '副營運長', '負責人', '各部門主管', '品牌行銷部', '公司管理員', '專案負責人', '專案經理', '資料管理員', '實習生', 'Claude'];
 
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
   function parseDate(s) {
@@ -840,9 +841,15 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   }
 
   // 待辦：逾期、近期與排序（未完成在前；優先度高在前；有期限的依期限）
+  // 期限只寫到月份（例如 2026/12）時，以當月最後一天為期限
+  function dueDate(s) {
+    const d = parseDate(s);
+    if (!d || /^\d{4}[\/\-.]\d{1,2}$/.test(String(s).trim())) return d && new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return d;
+  }
   function taskState(t, today) {
     if (t.status === '完成') return 'done';
-    const due = parseDate(t.due);
+    const due = dueDate(t.due);
     if (!due) return 'open';
     const d = daysBetween(today, due);
     if (d < 0) return 'overdue';
@@ -891,7 +898,22 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     return { past, upcoming };
   }
 
+  // 步驟狀態分三類，與總控試算表的上色規則一致：
+  // 完成；未開始（未開始、未到時程、待辦、可開始…、等待決定、等待資料）；其他都算已有進展。
+  function stepClass(status) {
+    const st = String(status || '');
+    if (st === '完成' || st === '已完成') return 'done';
+    if (/^(未開始|未到時程|待辦|可開始|等待)/.test(st)) return 'todo';
+    return 'doing';
+  }
+  function stepSummary(steps) {
+    const out = { total: (steps || []).length, done: 0, doing: 0, todo: 0 };
+    for (const s of steps || []) out[stepClass(s.status)] += 1;
+    return out;
+  }
+
   return {
+    stepClass, stepSummary,
     MODULE_STATUS, STAGES, TASK_STATUS, PRIORITY, OWNERS,
     parseDate, daysBetween, isDone, moduleSummary, transformationProgress,
     taskState, sortTasks, filterTasks, taskSummary, splitMilestones,
@@ -965,7 +987,8 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     return `<span class="pill ${tone}">${esc(t.status)}</span>`;
   }
   function stepTone(s) {
-    return { 完成: 'good', 進行中: 'info', 等待決定: 'warn', 等待資料: 'info', 未開始: 'idle' }[s] || 'idle';
+    if (s === '等待決定') return 'warn';
+    return { done: 'good', doing: 'info', todo: 'idle' }[H.stepClass(s)];
   }
 
   let toastTimer;
@@ -1066,7 +1089,14 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
     $('homeProgress').innerHTML = `
       <div class="bigbar" role="img" aria-label="數位轉型約完成 ${p.pct}%"><b style="left:${p.pctLow}%;width:${p.pctHigh - p.pctLow}%"></b><i style="width:${p.pct}%"></i></div>
       <p class="small" style="margin:.2rem 0">已完成約 ${p.done.min}–${p.done.max} 小時，剩下約 ${p.remaining.min}–${p.remaining.max} 小時；以每週 ${(meta.weeklyHours || {}).min || 6}–${(meta.weeklyHours || {}).max || 8} 小時計算，約還要 ${p.weeks.min}–${p.weeks.max} 週。</p>
-      <p class="muted small" style="margin:0">${esc(meta.progressMethod || '')}</p>`;
+      <p class="muted small" style="margin:0">${esc(meta.progressMethod || '')}</p>
+      ${[...S.initiatives].sort(byOrder('order')).map((i) => {
+        const c = H.stepSummary(i.steps);
+        if (!c.total) return '';
+        return `<div style="margin-top:.8rem"><div class="small"><strong>${esc(i.name)}</strong>：${c.total} 項中完成 ${c.done}、進行中 ${c.doing}、未開始 ${c.todo}</div>
+          <div class="bigbar" style="margin:.3rem 0 0"><b style="left:${Math.round(c.done / c.total * 100)}%;width:${Math.round(c.doing / c.total * 100)}%"></b><i style="width:${Math.round(c.done / c.total * 100)}%"></i></div></div>`;
+      }).join('')}
+      ${meta.dbNote ? `<p class="muted small" style="margin:.6rem 0 0">${esc(meta.dbNote)}</p>` : ''}`;
 
     const { upcoming } = H.splitMilestones(S.milestones, now());
     $('homeTimeline').innerHTML = upcoming.slice(0, 5).map(msRow).join('') || '<li class="muted">沒有排定的時程。</li>';
@@ -1131,14 +1161,15 @@ dialog form { padding: 1.2rem; display: grid; gap: .8rem; }
   function renderInits() {
     $('initCards').innerHTML = !S.loaded.initiatives ? '<p class="muted">載入中…</p>' : [...S.initiatives].sort(byOrder('order')).map((i) => {
       const steps = i.steps || [];
-      const done = steps.filter((s) => s.status === '完成').length;
+      const sc = H.stepSummary(steps);
+      const done = sc.done;
       const open = S.tasks.filter((t) => t.area === i.id && t.status !== '完成').length;
       const tone = i.status === '完成' ? 'good' : i.status === '暫停' ? 'idle' : 'info';
       return `<section class="panel mod">
         <div class="panel-head" style="margin:0"><h2>${esc(i.name)}</h2><span class="pill ${tone}">${esc(i.status)}</span></div>
         <p class="small" style="margin:0">${esc(i.summary || '')}</p>
         <p class="small" style="margin:0"><span class="muted">現況：</span>${esc(i.phase || '—')}</p>
-        ${steps.length ? `<div><div class="small muted">步驟 ${done}／${steps.length} 完成</div>
+        ${steps.length ? `<div><div class="small muted">${steps.length} 項：完成 ${sc.done}、進行中 ${sc.doing}、未開始 ${sc.todo}</div>
           <div class="bigbar" style="margin:.3rem 0 .5rem"><i style="width:${steps.length ? Math.round(done / steps.length * 100) : 0}%"></i></div>
           <ul class="steps">${steps.map((s) => `<li><span><span class="pill ${stepTone(s.status)}">${esc(s.status)}</span></span><span>${esc(s.name)}${s.note ? `<span class="muted small">：${esc(s.note)}</span>` : ''}</span></li>`).join('')}</ul></div>` : ''}
         ${(i.links || []).length ? `<ul class="links">${i.links.map((l) => `<li><a href="${safeUrl(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a></li>`).join('')}</ul>` : ''}

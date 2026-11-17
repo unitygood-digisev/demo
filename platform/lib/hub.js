@@ -17,7 +17,7 @@
 
   const TASK_STATUS = ['待辦', '進行中', '等待決定', '等待資料', '完成'];
   const PRIORITY = ['高', '中', '低'];
-  const OWNERS = ['執行長', '副執行長', '副營運長', '各部門主管', '品牌行銷部', '公司管理員', '專案負責人', '資料管理員', '實習生'];
+  const OWNERS = ['執行長', '副執行長', '副營運長', '負責人', '各部門主管', '品牌行銷部', '公司管理員', '專案負責人', '專案經理', '資料管理員', '實習生', 'Claude'];
 
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
   function parseDate(s) {
@@ -62,9 +62,15 @@
   }
 
   // 待辦：逾期、近期與排序（未完成在前；優先度高在前；有期限的依期限）
+  // 期限只寫到月份（例如 2026/12）時，以當月最後一天為期限
+  function dueDate(s) {
+    const d = parseDate(s);
+    if (!d || /^\d{4}[\/\-.]\d{1,2}$/.test(String(s).trim())) return d && new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return d;
+  }
   function taskState(t, today) {
     if (t.status === '完成') return 'done';
-    const due = parseDate(t.due);
+    const due = dueDate(t.due);
     if (!due) return 'open';
     const d = daysBetween(today, due);
     if (d < 0) return 'overdue';
@@ -113,7 +119,22 @@
     return { past, upcoming };
   }
 
+  // 步驟狀態分三類，與總控試算表的上色規則一致：
+  // 完成；未開始（未開始、未到時程、待辦、可開始…、等待決定、等待資料）；其他都算已有進展。
+  function stepClass(status) {
+    const st = String(status || '');
+    if (st === '完成' || st === '已完成') return 'done';
+    if (/^(未開始|未到時程|待辦|可開始|等待)/.test(st)) return 'todo';
+    return 'doing';
+  }
+  function stepSummary(steps) {
+    const out = { total: (steps || []).length, done: 0, doing: 0, todo: 0 };
+    for (const s of steps || []) out[stepClass(s.status)] += 1;
+    return out;
+  }
+
   return {
+    stepClass, stepSummary,
     MODULE_STATUS, STAGES, TASK_STATUS, PRIORITY, OWNERS,
     parseDate, daysBetween, isDone, moduleSummary, transformationProgress,
     taskState, sortTasks, filterTasks, taskSummary, splitMilestones,

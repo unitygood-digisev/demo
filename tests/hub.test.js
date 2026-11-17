@@ -61,3 +61,18 @@ test('種子資料彼此對得上', () => {
   const ids = seed.tasks.map((t) => t.id);
   assert.strictEqual(new Set(ids).size, ids.length);
 });
+
+test('只寫月份的期限以月底計算', () => {
+  const t = { status: '待辦', due: '2026/12' };
+  assert.strictEqual(H.taskState(t, new Date(2026, 11, 26)), 'soon');
+  assert.strictEqual(H.taskState(t, new Date(2026, 11, 2)), 'open');
+  assert.strictEqual(H.taskState(t, new Date(2027, 0, 2)), 'overdue');
+});
+
+test('步驟分類與總控試算表上色規則一致', () => {
+  assert.strictEqual(H.stepClass('已完成'), 'done');
+  for (const s of ['未開始', '未到時程', '待辦', '可開始', '可開始（資料不全）', '等待決定']) assert.strictEqual(H.stepClass(s), 'todo', s);
+  for (const s of ['進行中', '修訂清單已核定', '提示詞草稿', '可試用']) assert.strictEqual(H.stepClass(s), 'doing', s);
+  const db = seed.initiatives.find((i) => i.id === 'ulddb');
+  assert.deepStrictEqual(H.stepSummary(db.steps), { total: 25, done: 4, doing: 6, todo: 15 });
+});

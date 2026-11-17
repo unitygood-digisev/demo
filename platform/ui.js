@@ -63,7 +63,8 @@
     return `<span class="pill ${tone}">${esc(t.status)}</span>`;
   }
   function stepTone(s) {
-    return { 完成: 'good', 進行中: 'info', 等待決定: 'warn', 等待資料: 'info', 未開始: 'idle' }[s] || 'idle';
+    if (s === '等待決定') return 'warn';
+    return { done: 'good', doing: 'info', todo: 'idle' }[H.stepClass(s)];
   }
 
   let toastTimer;
@@ -164,7 +165,14 @@
     $('homeProgress').innerHTML = `
       <div class="bigbar" role="img" aria-label="數位轉型約完成 ${p.pct}%"><b style="left:${p.pctLow}%;width:${p.pctHigh - p.pctLow}%"></b><i style="width:${p.pct}%"></i></div>
       <p class="small" style="margin:.2rem 0">已完成約 ${p.done.min}–${p.done.max} 小時，剩下約 ${p.remaining.min}–${p.remaining.max} 小時；以每週 ${(meta.weeklyHours || {}).min || 6}–${(meta.weeklyHours || {}).max || 8} 小時計算，約還要 ${p.weeks.min}–${p.weeks.max} 週。</p>
-      <p class="muted small" style="margin:0">${esc(meta.progressMethod || '')}</p>`;
+      <p class="muted small" style="margin:0">${esc(meta.progressMethod || '')}</p>
+      ${[...S.initiatives].sort(byOrder('order')).map((i) => {
+        const c = H.stepSummary(i.steps);
+        if (!c.total) return '';
+        return `<div style="margin-top:.8rem"><div class="small"><strong>${esc(i.name)}</strong>：${c.total} 項中完成 ${c.done}、進行中 ${c.doing}、未開始 ${c.todo}</div>
+          <div class="bigbar" style="margin:.3rem 0 0"><b style="left:${Math.round(c.done / c.total * 100)}%;width:${Math.round(c.doing / c.total * 100)}%"></b><i style="width:${Math.round(c.done / c.total * 100)}%"></i></div></div>`;
+      }).join('')}
+      ${meta.dbNote ? `<p class="muted small" style="margin:.6rem 0 0">${esc(meta.dbNote)}</p>` : ''}`;
 
     const { upcoming } = H.splitMilestones(S.milestones, now());
     $('homeTimeline').innerHTML = upcoming.slice(0, 5).map(msRow).join('') || '<li class="muted">沒有排定的時程。</li>';
@@ -229,14 +237,15 @@
   function renderInits() {
     $('initCards').innerHTML = !S.loaded.initiatives ? '<p class="muted">載入中…</p>' : [...S.initiatives].sort(byOrder('order')).map((i) => {
       const steps = i.steps || [];
-      const done = steps.filter((s) => s.status === '完成').length;
+      const sc = H.stepSummary(steps);
+      const done = sc.done;
       const open = S.tasks.filter((t) => t.area === i.id && t.status !== '完成').length;
       const tone = i.status === '完成' ? 'good' : i.status === '暫停' ? 'idle' : 'info';
       return `<section class="panel mod">
         <div class="panel-head" style="margin:0"><h2>${esc(i.name)}</h2><span class="pill ${tone}">${esc(i.status)}</span></div>
         <p class="small" style="margin:0">${esc(i.summary || '')}</p>
         <p class="small" style="margin:0"><span class="muted">現況：</span>${esc(i.phase || '—')}</p>
-        ${steps.length ? `<div><div class="small muted">步驟 ${done}／${steps.length} 完成</div>
+        ${steps.length ? `<div><div class="small muted">${steps.length} 項：完成 ${sc.done}、進行中 ${sc.doing}、未開始 ${sc.todo}</div>
           <div class="bigbar" style="margin:.3rem 0 .5rem"><i style="width:${steps.length ? Math.round(done / steps.length * 100) : 0}%"></i></div>
           <ul class="steps">${steps.map((s) => `<li><span><span class="pill ${stepTone(s.status)}">${esc(s.status)}</span></span><span>${esc(s.name)}${s.note ? `<span class="muted small">：${esc(s.note)}</span>` : ''}</span></li>`).join('')}</ul></div>` : ''}
         ${(i.links || []).length ? `<ul class="links">${i.links.map((l) => `<li><a href="${safeUrl(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a></li>`).join('')}</ul>` : ''}
