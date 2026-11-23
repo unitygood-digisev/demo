@@ -122,6 +122,33 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return _print_run(run(inputs, llm, Path(args.out), MODES))
 
 
+def cmd_catalog_build(args: argparse.Namespace) -> int:
+    from . import catalog
+
+    items = []
+    for f in args.listing:
+        data = json.loads(Path(f).read_text(encoding="utf-8"))
+        items += data["files"] if isinstance(data, dict) else data
+    roots = json.loads(Path(args.roots).read_text(encoding="utf-8"))
+    entries = catalog.build(items, roots)
+    catalog.write_csv(entries, Path(args.out))
+    for row in catalog.summarize(entries):
+        print(row)
+    print(f"{len(entries)} 個檔案 → {args.out}")
+    return 0
+
+
+def cmd_catalog_suggest(args: argparse.Namespace) -> int:
+    from . import catalog
+
+    entries = catalog.read_csv(Path(args.catalog))
+    for role, found in catalog.suggest(entries, args.client, args.year).items():
+        print(f"【{role}】{len(found)} 個候選")
+        for e in found[: args.top]:
+            print(f"  {e.modified}  {e.path}／{e.title}  {e.url}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import os
 
@@ -196,6 +223,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("catalog", help="專案索引：建立索引、依客戶與年度找輸入檔")
+    csub = p.add_subparsers(dest="catalog_cmd", required=True)
+    q = csub.add_parser("build", help="由 Drive 檔案清單（JSON）建立索引 CSV")
+    q.add_argument("listing", nargs="+", help="Drive 檔案清單 JSON（files 陣列）")
+    q.add_argument("--roots", required=True, help="JSON：客戶根資料夾 ID → 客戶名稱")
+    q.add_argument("--out", default="catalog.csv")
+    q.set_defaults(func=cmd_catalog_build)
+    q = csub.add_parser("suggest", help="依客戶與報導年度列出建議的往年完稿、自收表、查證意見")
+    q.add_argument("catalog")
+    q.add_argument("--client", required=True)
+    q.add_argument("--year", required=True, help="本次報導年度，例如 2026")
+    q.add_argument("--top", type=int, default=10)
+    q.set_defaults(func=cmd_catalog_suggest)
 
     p = sub.add_parser("adduser", help="新增或重設網頁登入帳號")
     p.add_argument("name")
