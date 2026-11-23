@@ -231,3 +231,14 @@ def test_rerun_from_saved_fact_sheet(tmp_path, inputs, step1):
     result = run(inputs, llm, tmp_path, ("internal",), step1_data=step1)
     assert [c[0] for c in llm.calls] == ["draft"]  # no extraction call
     assert result.drafts[0].report.errors == []
+
+
+def test_flag_counts_as_reflected_by_its_figure(step1, inputs):
+    data = copy.deepcopy(step1)
+    next(f for f in data["facts"] if f["id"] == "F4")["value"] = 500  # headcount +42.9%
+    sheet = facts.compute(data)
+    swing = next(f for f in sheet.flags if f.kind == "異常波動")
+    covered = "## x\n人數增加 +42.9%【待顧問複核：超過 ±30%，請說明】 [源自自收表]\n## 附錄\n"
+    missing = "## x\n人數增加【待顧問複核：請說明】 [源自自收表]\n## 附錄\n"
+    assert not any(swing.item in f.detail for f in verify(covered, "internal", "", sheet).warnings)
+    assert any(swing.item in f.detail for f in verify(missing, "internal", "", sheet).warnings)

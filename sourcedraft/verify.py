@@ -223,9 +223,32 @@ def _check_internal(body: str, appendix: str, sheet: FactSheet | None, report: Q
     if not re.search(r"\[源自", body):
         report.add("error", "模式標記", "internal 版正文沒有任何 [源自…] 溯源錨點")
     if sheet is not None:
+        text = body + appendix
         for f in sheet.flags:
-            if f.item and f.item not in body + appendix and f.kind not in body + appendix:
+            if not _flag_reflected(f, text):
                 report.add("warning", "缺口覆蓋", f"程式檢核旗標未反映在稿件中：【{f.kind}】{f.item}")
+
+
+def _bigrams(s: str) -> set[str]:
+    s = re.sub(r"[\s\W_]+", "", s)
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
+def _flag_reflected(flag, text: str) -> bool:
+    """A flag counts as handled if the draft names its item, repeats one of its distinctive figures
+    (「-31.6%」「93.1」), or a review marker / appendix row shares most of the item's key terms.
+    Drafts rarely reuse the flag's exact wording, so exact matching alone gives false alarms."""
+    core = re.sub(r"[（(][^）)]*[）)]", "", flag.item).strip()  # drop "(F68)" style references
+    if core and core in text:
+        return True
+    figures = re.findall(r"[-+]?\d[\d,]*\.\d+%?|[-+]\d+%", flag.detail)
+    if any(fig.lstrip("+") in text for fig in figures):
+        return True
+    want = _bigrams(core)
+    if len(want) < 3:
+        return False
+    review_lines = [ln for ln in text.splitlines() if "【待" in ln or ln.lstrip().startswith("|")]
+    return any(len(want & _bigrams(ln)) / len(want) >= 0.6 for ln in review_lines)
 
 
 def _check_gap_coverage(draft: str, appendix: str, mode: str, sheet: FactSheet, report: QAReport) -> None:
