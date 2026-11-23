@@ -22,8 +22,10 @@ INTERNAL_MARKERS = [r"\[源自", r"\[沿用", r"\[依[^\]]*計算", r"【待顧�
 
 CALC_MARKER = re.compile(r"\[依([^\]]*?)計算[：:]([^\]]*)\]")
 ANY_MARKER = re.compile(r"\[(?:源自|沿用|依)[^\]]*\]|【[^】]*】|`[^`]*`")
-NUMBER = re.compile(r"(?<![\w.])[-+]?\d{1,3}(?:,\d{3})+(?:\.\d+)?|(?<![\w.,])[-+]?\d+(?:\.\d+)?")
-PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*%")
+# Boundaries are ASCII on purpose: with Unicode \w a digit glued to Chinese text (「段272巷」「率達92%」)
+# would never be matched, so it would neither count as a source number nor get checked in the draft.
+NUMBER = re.compile(r"(?<![A-Za-z0-9_.])[-+]?\d{1,3}(?:,\d{3})+(?:\.\d+)?|(?<![A-Za-z0-9_.,])[-+]?\d+(?:\.\d+)?")
+PERCENT = re.compile(r"(?<![A-Za-z0-9_.])(\d+(?:\.\d+)?)\s*[%％]")
 
 
 @dataclass
@@ -150,7 +152,8 @@ def _check_traceability(body: str, sources_text: str, sheet: FactSheet | None, r
             known |= number_variants(_parse_num(n) or Decimal(0))
     text = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("#"))
     text = ANY_MARKER.sub(" ", text)
-    text = re.sub(r"GRI\s*\d+(?:-\d+)?", " ", text)
+    text = re.sub(r"GRI\s*\d+(?:-\d+)?(?:\s*[、,，及和與/／]\s*\d{3}-\d+)*", " ", text)  # GRI 302-1、302-3
+    text = re.sub(r"\b[A-Z]{2}-[A-Z]{2}-\d{3}[a-z]\.\d+\b", " ", text)  # SASB HC-DY-230a.2
     text = re.sub(r"\b\d+(?:\.\d+){2,}\b", " ", text)  # section numbers 3.2.1
     text = re.sub(r"(?<![\d.,])\d{1,2}[.、）)](?=\s*[^\d\s])", " ", text)  # list numbering "5. 各部門…"
     untraced: list[str] = []
@@ -233,8 +236,9 @@ def _check_gap_coverage(draft: str, appendix: str, mode: str, sheet: FactSheet, 
         if len(rows) < needed:
             report.add("warning", "缺口覆蓋", f"Step 1 共有 {needed} 個資料缺口，客戶補件清單只有 {len(rows)} 列")
         return
-    compact = re.sub(r"\s", "", draft)
+    # Drafts list codes as 「GRI 302-1、302-3」, so match each disclosure number on its own.
     for g in sheet.gaps:
-        gri = re.sub(r"\s", "", g.get("gri") or "")
-        if gri and gri not in compact:
-            report.add("warning", "缺口覆蓋", f"資料缺口「{g['item']}」對應的 {g['gri']} 未出現在稿件中")
+        codes = re.findall(r"\d{1,3}-\d{1,2}[a-z]?(?:\.\d)?", g.get("gri") or "")
+        missing = [c for c in codes if not re.search(r"(?<![\d.-])" + re.escape(c) + r"(?![\d])", draft)]
+        if missing:
+            report.add("warning", "缺口覆蓋", f"資料缺口「{g['item']}」對應的 {'、'.join(missing)} 未出現在稿件中")

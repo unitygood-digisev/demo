@@ -73,7 +73,9 @@ def cmd_draft(args: argparse.Namespace) -> int:
 
     llm = ClaudeLLM(model=args.model, effort=args.effort)
     try:
-        result = run(_inputs(args), llm, Path(args.out), _modes(args.mode), use_fact_sheet=not args.no_fact_sheet)
+        step1 = json.loads(Path(args.facts).read_text(encoding="utf-8")) if args.facts else None
+        result = run(_inputs(args), llm, Path(args.out), _modes(args.mode), use_fact_sheet=not args.no_fact_sheet,
+                     step1_data=step1)
     except LLMError as exc:
         print(f"失敗：{exc}", file=sys.stderr)
         return 2
@@ -171,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model", default=None)
     p.add_argument("--effort", default=None, choices=["low", "medium", "high", "xhigh", "max"])
     p.add_argument("--no-fact-sheet", action="store_true", help="略過 Step 1 程式驗算，只用 v2 提示詞單次起草")
+    p.add_argument("--facts", help="沿用先前產出的事實表 JSON，略過 Step 1 只重新起草（例如事實表經人工修正後）")
     p.set_defaults(func=cmd_draft)
 
     p = sub.add_parser("prompt", help="輸出組好的提示詞，不呼叫 API")

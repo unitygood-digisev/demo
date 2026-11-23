@@ -175,3 +175,59 @@ def test_list_numbering_is_not_a_figure(inputs):
     report = verify(draft, "internal", inputs.sources_text())
     assert [f.detail for f in report.warnings if f.check == "數值溯源"] == [
         "正文數值「30.5」在輸入物料與事實表中都找不到，請確認非杜撰"]
+
+
+def test_numbers_glued_to_chinese_are_traced_and_checked(inputs):
+    sources = "地址：集山路三段272巷16號；完課率達92%"
+    ok = verify("## 1\n位於集山路三段272巷16號，完課率達92% [源自自收表: Q1]\n## 附錄\n", "internal", sources)
+    assert not [f for f in ok.warnings if f.check == "數值溯源"]
+    bad = verify("## 1\n滿意度達87.5分 [源自自收表: Q1]\n## 附錄\n", "internal", sources)
+    assert any("87.5" in f.detail for f in bad.warnings if f.check == "數值溯源")
+
+
+def test_consistency_check_against_reported_percentage():
+    base = {"id": "", "label": "", "unit": "", "period": "2025", "caliber": "", "source": "自收表",
+            "origin": "current_survey", "kind": "raw", "note": ""}
+    def fact(i, v, unit="份", kind="raw"):
+        return {**base, "id": i, "label": i, "value": v, "unit": unit, "kind": kind}
+    calc = {"id": "C1", "label": "回收率驗算", "kind": "consistency_check", "expression": "F2 / F1", "unit": "%",
+            "rounding": "1dp", "caliber": "", "anchor_basis": "自收表", "reported_fact_id": "F3"}
+    good = facts.compute({"facts": [fact("F1", 128), fact("F2", 106), fact("F3", 82.81, "%", "reported_derived")],
+                          "calculations": [calc]})
+    assert good.flags == []
+    bad = facts.compute({"facts": [fact("F1", 21953), fact("F2", 20435), fact("F3", 92.9, "%", "reported_derived")],
+                         "calculations": [calc]})
+    assert [f.kind for f in bad.flags] == ["數據不自洽"] and "93.1%" in bad.flags[0].detail
+
+
+def test_anchor_intermediates_recompute_to_same_rounding(step1):
+    data = copy.deepcopy(step1)
+    data["facts"].append({**data["facts"][0], "id": "F90", "value": 37.2})
+    data["facts"].append({**data["facts"][0], "id": "F91", "value": 39.856})
+    data["calculations"].append({"id": "C90", "label": "x", "kind": "yoy", "expression": "(C91 - F90) / F90",
+                                 "unit": "%", "rounding": "percent_1dp", "caliber": "", "anchor_basis": "自收表",
+                                 "reported_fact_id": ""})
+    data["calculations"].insert(-1, {"id": "C91", "label": "y", "kind": "sum", "expression": "F91 + 0",
+                                     "unit": "噸", "rounding": "1dp", "caliber": "", "anchor_basis": "自收表",
+                                     "reported_fact_id": ""})
+    sheet = facts.compute(data)
+    c = next(c for c in sheet.calcs if c.id == "C90")
+    report = verify(f"## x\n增加 {c.display} {c.anchor} [源自自收表]\n## 附錄\n", "internal", "37.2 39.856")
+    assert c.display == "+7.1%" and not report.errors, (c.anchor, report.to_markdown())
+
+
+def test_gap_gri_codes_matched_without_prefix(step1, inputs):
+    data = copy.deepcopy(step1)
+    data["gaps"] = [{**data["gaps"][0], "gri": "GRI 302-1、GRI 302-3"}]
+    sheet = facts.compute(data)
+    draft = "## x\n能源（GRI 302-1、302-3）【待顧問複核：未提供】 [源自自收表]\n## 附錄\n"
+    assert not [f for f in verify(draft, "internal", "", sheet).warnings if "302" in f.detail]
+    draft2 = "## x\n能源（GRI 302-1）【待顧問複核：未提供】 [源自自收表]\n## 附錄\n"
+    assert [f for f in verify(draft2, "internal", "", sheet).warnings if "302-3" in f.detail]
+
+
+def test_rerun_from_saved_fact_sheet(tmp_path, inputs, step1):
+    llm = ReplayLLM(None, {"internal": (EX / "reference_draft_internal.md").read_text(encoding="utf-8")})
+    result = run(inputs, llm, tmp_path, ("internal",), step1_data=step1)
+    assert [c[0] for c in llm.calls] == ["draft"]  # no extraction call
+    assert result.drafts[0].report.errors == []

@@ -23,7 +23,7 @@ class LLM(Protocol):
 class ClaudeLLM:
     """Streams every request (long inputs/outputs) and lets the server fall back on a refusal."""
 
-    def __init__(self, model: str = DEFAULT_MODEL, effort: str = DEFAULT_EFFORT, max_tokens: int = 64000):
+    def __init__(self, model: str = DEFAULT_MODEL, effort: str = DEFAULT_EFFORT, max_tokens: int = 128000):
         import anthropic
 
         self._anthropic = anthropic

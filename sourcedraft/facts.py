@@ -19,7 +19,7 @@ YOY_ALERT_THRESHOLD = 30.0  # percent, per v2 rule 2
 GAP_TYPES = ["mandatory", "partial", "carried_over"]
 CALC_KINDS = ["sum", "average", "ratio", "yoy", "consistency_check"]
 ROUNDINGS = ["percent_1dp", "int", "1dp"]
-ANOMALY_KINDS = ["數據矛盾", "數值異常", "異常波動", "單位不明", "口徑不一致", "往年不自洽"]
+ANOMALY_KINDS = ["數據矛盾", "數值異常", "異常波動", "單位不明", "口徑不一致", "往年不自洽", "數據不自洽"]
 
 _NULLABLE_STR = {"type": "string"}
 
@@ -308,13 +308,19 @@ def compute(data: dict[str, Any]) -> FactSheet:
             else:
                 rep = Decimal(str(reported["value"]))
                 rep_decimals = max(0, -rep.normalize().as_tuple().exponent)
-                recomputed = raw.quantize(Decimal(1).scaleb(-rep_decimals), rounding=ROUND_HALF_UP)
+                # A reported percentage (82.81 %) is checked against a ratio formula (106 / 128).
+                as_pct = "%" in (reported.get("unit") or "") or "百分" in (reported.get("unit") or "")
+                check = raw * 100 if as_pct and abs(raw) <= 1 else raw
+                recomputed = check.quantize(Decimal(1).scaleb(-rep_decimals), rounding=ROUND_HALF_UP)
                 if recomputed != rep:
+                    past = reported.get("origin") == "past_final"
                     sheet.flags.append(Flag(
-                        "往年不自洽", reported["label"],
-                        f"往年完稿宣稱 {fmt_number(rep)}，以原始數據重算 {numeric} = "
-                        f"{fmt_number(recomputed, rep_decimals)}；同比請以重算值為準並註明"))
-                    env[rid] = raw  # downstream YoY uses the verifiable figure
+                        "往年不自洽" if past else "數據不自洽", reported["label"],
+                        f"{'往年完稿' if past else '自收表'}填報 {fmt_number(rep)}{'%' if as_pct else ''}，"
+                        f"以原始數據重算 {numeric}{' × 100%' if check is not raw else ''} = "
+                        f"{fmt_number(recomputed, rep_decimals)}{'%' if as_pct else ''}；"
+                        f"{'同比請以重算值為準並註明' if past else '請向客戶確認計算方式或原始數據'}"))
+                    env[rid] = check  # downstream calculations use the verifiable figure
 
     for a in data.get("anomalies", []):
         sheet.flags.append(Flag(a["kind"], a["item"], a["detail"], origin="Step 1 判讀"))
@@ -328,7 +334,8 @@ def _numeric_expression(expression: str, env: dict[str, Decimal], facts: dict[st
             return fmt_number(Decimal(str(facts[key]["value"])))
         if key in env:
             v = env[key]
-            return fmt_number(v.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP).normalize())
+            # intermediates keep 4 decimals so a reader re-doing the arithmetic lands on the same rounding
+            return fmt_number(v.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP).normalize())
         return key
 
     out = re.sub(r"[A-Za-z]\w*", repl, normalize_expression(expression))

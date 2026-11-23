@@ -83,12 +83,17 @@ def run_step1(inputs: DraftInputs, llm: LLM) -> facts_mod.FactSheet:
 
 
 def run(inputs: DraftInputs, llm: LLM, out_dir: Path, modes: tuple[str, ...] = ("internal",),
-        use_fact_sheet: bool = True, export: bool = True) -> RunResult:
+        use_fact_sheet: bool = True, export: bool = True,
+        step1_data: dict[str, Any] | None = None) -> RunResult:
+    """step1_data: reuse an earlier Step 1 extraction (fact sheet JSON) and only re-draft."""
     for m in modes:
         if m not in MODES:
             raise ValueError(f"未知的輸出模式：{m}")
     out_dir.mkdir(parents=True, exist_ok=True)
-    sheet = run_step1(inputs, llm) if use_fact_sheet else None
+    if step1_data is not None:
+        sheet = facts_mod.compute(step1_data)
+    else:
+        sheet = run_step1(inputs, llm) if use_fact_sheet else None
     result = RunResult(fact_sheet=sheet, drafts=[])
 
     for mode in modes:
