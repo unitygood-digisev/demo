@@ -309,7 +309,12 @@ def compute(data: dict[str, Any]) -> FactSheet:
                 rep = Decimal(str(reported["value"]))
                 rep_decimals = max(0, -rep.normalize().as_tuple().exponent)
                 # A reported percentage (82.81 %) is checked against a ratio formula (106 / 128).
-                as_pct = "%" in (reported.get("unit") or "") or "百分" in (reported.get("unit") or "")
+                unit = reported.get("unit") or ""
+                as_pct = "%" in unit or "百分" in unit
+                # a percentage reported without its unit (「69.8」 for 192 ÷ 275) is still a percentage
+                if not as_pct and abs(raw) <= 1 < abs(rep):
+                    scaled = (raw * 100).quantize(Decimal(1).scaleb(-rep_decimals), rounding=ROUND_HALF_UP)
+                    as_pct = scaled == rep
                 check = raw * 100 if as_pct and abs(raw) <= 1 else raw
                 recomputed = check.quantize(Decimal(1).scaleb(-rep_decimals), rounding=ROUND_HALF_UP)
                 if recomputed != rep:

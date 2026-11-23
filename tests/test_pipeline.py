@@ -242,3 +242,14 @@ def test_flag_counts_as_reflected_by_its_figure(step1, inputs):
     missing = "## x\n人數增加【待顧問複核：請說明】 [源自自收表]\n## 附錄\n"
     assert not any(swing.item in f.detail for f in verify(covered, "internal", "", sheet).warnings)
     assert any(swing.item in f.detail for f in verify(missing, "internal", "", sheet).warnings)
+
+
+def test_unitless_percentage_not_flagged():
+    base = {"id": "", "label": "", "unit": "人", "period": "2025", "caliber": "", "source": "自收表",
+            "origin": "current_survey", "kind": "raw", "note": ""}
+    data = {"facts": [{**base, "id": "F1", "value": 275}, {**base, "id": "F2", "value": 192},
+                      {**base, "id": "F3", "value": 69.8, "unit": "", "kind": "reported_derived"}],
+            "calculations": [{"id": "C1", "label": "女性占比驗算", "kind": "consistency_check", "expression": "F2 / F1",
+                              "unit": "%", "rounding": "1dp", "caliber": "", "anchor_basis": "自收表",
+                              "reported_fact_id": "F3"}]}
+    assert facts.compute(data).flags == []
