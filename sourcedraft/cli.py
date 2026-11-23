@@ -122,6 +122,36 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return _print_run(run(inputs, llm, Path(args.out), MODES))
 
 
+def cmd_checklist(args: argparse.Namespace) -> int:
+    from . import checklist
+    from .export_docx import markdown_to_docx
+    from .llm import ClaudeLLM, LLMError
+    from .naming import build_stem
+
+    chapters = [(c.split("=", 1)[0], Path(c.split("=", 1)[1])) for c in args.chapter]
+    depts = dict(d.split("=", 1) for d in args.dept)
+    llm = ClaudeLLM(model=args.model, effort=args.effort)
+    try:
+        cl = checklist.run(args.client, args.year, chapters, depts, llm)
+    except LLMError as exc:
+        print(f"失敗：{exc}", file=sys.stderr)
+        return 2
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    stem = build_stem(out, args.client, args.year, "客戶補件清單", "client")
+    md = checklist.to_markdown(cl, due=args.due)
+    (out / f"{stem}.md").write_text(md, encoding="utf-8")
+    markdown_to_docx(md, out / f"{stem}.docx", title=f"{args.client} 補件清單")
+    checklist.to_xlsx(cl, out / f"{stem}_追蹤表.xlsx")
+    print(f"附錄 {len(cl.rows)} 列 → 補件 {len(cl.items)} 項、顧問自行處理 {len(cl.consultant_only)} 列")
+    for p in cl.problems:
+        print(f"   ❌ {p}")
+    print(f"輸出：{out / stem}.docx／.md／_追蹤表.xlsx")
+    for u in llm.usage:
+        print(f"usage: {u}")
+    return 1 if cl.problems else 0
+
+
 def cmd_catalog_build(args: argparse.Namespace) -> int:
     from . import catalog
 
@@ -223,6 +253,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("checklist", help="由顧問版初稿附錄產出客戶補件清單（Word＋追蹤表）")
+    p.add_argument("--chapter", nargs="+", required=True, help="章節代號=顧問版初稿.md，例如 CH4=初稿CH4.md")
+    p.add_argument("--dept", nargs="*", default=[], help="章節代號=建議部室，例如 CH4=醫療部、護理部")
+    p.add_argument("--client", required=True)
+    p.add_argument("--year", required=True)
+    p.add_argument("--due", default="", help="回覆期限，例如 2026/12/5")
+    p.add_argument("--out", default="output")
+    p.add_argument("--model", default=None)
+    p.add_argument("--effort", default=None, choices=["low", "medium", "high", "xhigh", "max"])
+    p.set_defaults(func=cmd_checklist)
 
     p = sub.add_parser("catalog", help="專案索引：建立索引、依客戶與年度找輸入檔")
     csub = p.add_subparsers(dest="catalog_cmd", required=True)

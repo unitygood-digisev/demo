@@ -253,3 +253,32 @@ def test_unitless_percentage_not_flagged():
                               "unit": "%", "rounding": "1dp", "caliber": "", "anchor_basis": "自收表",
                               "reported_fact_id": "F3"}]}
     assert facts.compute(data).flags == []
+
+
+def test_checklist_coverage_and_internal_wording(tmp_path):
+    from sourcedraft import checklist as K
+
+    draft = tmp_path / "ch.md"
+    draft.write_text("## x\n正文\n## 附錄：本章顧問審校與待補件清單\n| 序號 | 對應小節 | 狀態 | 需核對／補件內容 | 風險提示／查證備忘 |\n"
+                     "| :- | :- | :-: | :- | :- |\n| 1 | 4.1 | 待補件 | 男女人數 | GRI 405-1 |\n"
+                     "| 2 | 4.2 | 待複核 | 院長的話待撰寫 | 顧問撰寫 |\n| 3 | 4.3 | 數據矛盾 | 92.9 vs 93.1 | 程式檢核 |\n",
+                     encoding="utf-8")
+
+    class Fake:
+        def extract(self, system, user, schema):
+            assert "CH4-1" in user and "CH4-3" in user
+            return {"items": [
+                {"department": "人事室", "chapter": "CH4", "section": "4.1", "request": "請提供男女人數",
+                 "format": "Excel", "priority": "必要", "source_ids": ["CH4-1"]},
+                {"department": "資訊室", "chapter": "CH4", "section": "4.3", "request": "程式檢核 F12 不一致",
+                 "format": "文字", "priority": "建議", "source_ids": ["CH4-9"]}],
+                "consultant_only": [{"source_id": "CH4-2", "reason": "顧問撰寫"}]}
+
+    cl = K.run("東華醫院", "2025", [("CH4", draft)], {}, Fake())
+    text = "；".join(cl.problems)
+    assert "CH4-3" in text  # row 3 not handled
+    assert "CH4-9" in text  # unknown id
+    assert "內部用語" in text  # 「程式檢核」「F12」 leaked
+    md = K.to_markdown(cl, due="2026/12/5")
+    assert "## 人事室（1 項）" in md and "2026/12/5" in md
+    assert K.to_xlsx(cl, tmp_path / "t.xlsx").exists()
