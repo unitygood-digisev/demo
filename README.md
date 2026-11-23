@@ -102,7 +102,23 @@ sourcedraft serve
 sourcedraft prompt --past 往年.docx --survey 自收表.docx --out output/prompts
 ```
 
-### 5. 檢核既有初稿（人工或外包寫手交回的稿也可用）
+### 5. 專案索引：依客戶與年度找輸入檔
+
+SOP整理 底下各客戶資料夾的檔案，依作業手冊階段（00 商務～09 結案）與溯稿用途（往年完稿／自收表／查證意見／高層訪談／重大主題／同業參考）分類，索引放在 Drive 的 Google 試算表「溯稿專案索引」。顧問可直接在試算表修正分類，總覽會自動重算。
+
+把「檔案清單」分頁下載成 CSV 後，可列出建議的輸入檔：
+
+```bash
+sourcedraft catalog suggest 檔案清單.csv --client 常春醫院 --year 2026
+```
+
+由 Drive 檔案清單（JSON）重建索引：
+
+```bash
+sourcedraft catalog build listing.json --roots roots.json --out catalog.csv
+```
+
+### 6. 檢核既有初稿（人工或外包寫手交回的稿也可用）
 
 ```bash
 sourcedraft verify 初稿.md --mode internal --sources 往年.docx 自收表.docx
