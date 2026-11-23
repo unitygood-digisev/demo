@@ -130,13 +130,32 @@ def run(client: str, year: str, chapters: list[tuple[str, Path]], departments: d
     return cl
 
 
+def chapter_rank(chapter: str) -> tuple[int, str]:
+    """序論 first, then CH1…CH6; 「CH1／CH5」 sorts by its first chapter."""
+    first = re.split(r"[／/、]", chapter)[0].strip()
+    if first.startswith("序論"):
+        return (0, chapter)
+    m = re.search(r"\d+", first)
+    return (int(m.group(0)) + 1 if m else 99, chapter)
+
+
+def to_json(cl: Checklist) -> dict[str, Any]:
+    return {"client": cl.client, "year": cl.year, "items": cl.items, "consultant_only": cl.consultant_only,
+            "rows": [r.__dict__ for r in cl.rows], "problems": cl.problems}
+
+
+def from_json(data: dict[str, Any]) -> Checklist:
+    return Checklist(data["client"], data["year"], data["items"], data["consultant_only"],
+                     [Row(**r) for r in data["rows"]], data.get("problems", []))
+
+
 def _grouped(cl: Checklist) -> list[tuple[str, list[dict[str, Any]]]]:
     order: list[str] = []
     for it in cl.items:
         if it["department"] not in order:
             order.append(it["department"])
     return [(d, sorted([i for i in cl.items if i["department"] == d],
-                       key=lambda i: (PRIORITIES.index(i["priority"]), i["chapter"], i["section"])))
+                       key=lambda i: (PRIORITIES.index(i["priority"]), chapter_rank(i["chapter"]), i["section"])))
             for d in order]
 
 

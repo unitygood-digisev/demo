@@ -138,7 +138,8 @@ def cmd_checklist(args: argparse.Namespace) -> int:
         return 2
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    stem = build_stem(out, args.client, args.year, "客戶補件清單", "client")
+    stem = build_stem(out, args.client, args.year, "", "", doc_type="客戶補件清單")
+    (out / f"{stem}.json").write_text(json.dumps(checklist.to_json(cl), ensure_ascii=False, indent=1), encoding="utf-8")
     md = checklist.to_markdown(cl, due=args.due)
     (out / f"{stem}.md").write_text(md, encoding="utf-8")
     markdown_to_docx(md, out / f"{stem}.docx", title=f"{args.client} 補件清單")
@@ -146,7 +147,7 @@ def cmd_checklist(args: argparse.Namespace) -> int:
     print(f"附錄 {len(cl.rows)} 列 → 補件 {len(cl.items)} 項、顧問自行處理 {len(cl.consultant_only)} 列")
     for p in cl.problems:
         print(f"   ❌ {p}")
-    print(f"輸出：{out / stem}.docx／.md／_追蹤表.xlsx")
+    print(f"輸出：{out / stem}.docx／.md／.json／_追蹤表.xlsx")
     for u in llm.usage:
         print(f"usage: {u}")
     return 1 if cl.problems else 0

@@ -22,8 +22,10 @@ def next_version(out_dir: Path, stem_prefix: str) -> int:
 
 
 def build_stem(out_dir: Path, client: str, year: str, chapter: str, mode: str,
-               today: date | None = None) -> str:
+               today: date | None = None, doc_type: str | None = None) -> str:
+    """doc_type replaces the default 「初稿{chapter}」 (e.g. 客戶補件清單); an empty mode adds no suffix."""
     today = today or date.today()
-    prefix = f"{_clean(client)}_{_clean(year)}_初稿{_clean(chapter)}_{mode}"
+    kind = _clean(doc_type) if doc_type else f"初稿{_clean(chapter)}"
+    prefix = f"{_clean(client)}_{_clean(year)}_{kind}" + (f"_{mode}" if mode else "")
     version = next_version(out_dir, prefix)
     return f"{prefix}_V{version}_{today:%Y%m%d}"

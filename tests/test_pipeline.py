@@ -282,3 +282,10 @@ def test_checklist_coverage_and_internal_wording(tmp_path):
     md = K.to_markdown(cl, due="2026/12/5")
     assert "## 人事室（1 項）" in md and "2026/12/5" in md
     assert K.to_xlsx(cl, tmp_path / "t.xlsx").exists()
+
+
+def test_checklist_chapter_order_and_naming(tmp_path):
+    from sourcedraft import checklist as K
+    assert sorted(["CH6", "序論", "CH1／CH5", "CH2"], key=K.chapter_rank) == ["序論", "CH1／CH5", "CH2", "CH6"]
+    assert build_stem(tmp_path, "東華醫院", "2025", "", "", date(2026, 11, 23), doc_type="客戶補件清單") == \
+        "東華醫院_2025_客戶補件清單_V1_20261123"

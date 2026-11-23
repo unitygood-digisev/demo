@@ -13,7 +13,7 @@ from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_COLOR_INDEX
 from docx.oxml.ns import qn
-from docx.shared import Pt, RGBColor
+from docx.shared import Cm, Pt, RGBColor
 
 TOKEN = re.compile(r"(【[^】]*】|\[(?:源自|沿用|依)[^\]]*\]|\*\*[^*]+\*\*|`[^`]+`)")
 FONT = "Microsoft JhengHei"
@@ -49,6 +49,26 @@ def _add_inline(par, text: str) -> None:
             _style_run(run, size=9)
         else:
             _style_run(par.add_run(part))
+
+
+TEXT_WIDTH_CM = 16.0  # A4 portrait minus default margins
+
+
+def _column_widths(header: list[str], rows: list[list[str]]) -> list[float]:
+    """Share the page width by how much text each column holds (sqrt damps very long cells),
+    with a floor so short columns such as 序號 stay legible."""
+    n = len(header)
+    weights = []
+    for c in range(n):
+        lengths = [len(TOKEN.sub("", r[c])) if c < len(r) else 0 for r in [header, *rows]]
+        avg = sum(lengths) / max(len(lengths), 1)
+        weights.append(max(avg, 2) ** 0.5)
+    total = sum(weights)
+    widths = [TEXT_WIDTH_CM * w / total for w in weights]
+    floor = min(1.4, TEXT_WIDTH_CM / n)
+    short = sum(floor - w for w in widths if w < floor)
+    long_total = sum(w for w in widths if w >= floor) or 1
+    return [floor if w < floor else w - short * w / long_total for w in widths]
 
 
 def _is_sep(line: str) -> bool:
@@ -96,6 +116,11 @@ def markdown_to_docx(markdown: str, out_path: Path, title: str | None = None) ->
             table = doc.add_table(rows=1 + len(rows), cols=len(header))
             table.style = "Table Grid"
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            table.autofit = False
+            for c, width in enumerate(_column_widths(header, rows)):
+                table.columns[c].width = Cm(width)
+                for cell in table.columns[c].cells:
+                    cell.width = Cm(width)
             for c, text in enumerate(header):
                 cell = table.rows[0].cells[c]
                 cell.text = ""
