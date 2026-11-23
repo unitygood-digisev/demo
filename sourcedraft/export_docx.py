@@ -27,6 +27,7 @@ def _style_run(run, *, size: float | None = None) -> None:
 
 
 def _add_inline(par, text: str) -> None:
+    text = re.sub(r"<br\s*/?>", "\n", text)  # python-docx turns \n inside a run into a line break
     for part in TOKEN.split(text):
         if not part:
             continue
