@@ -4,7 +4,7 @@ Input is a flat Drive listing (id, title, mimeType, parentId, modifiedTime, owne
 plus the IDs of the client root folders. Each file is classified by:
 
   stage  作業手冊階段（00 商務 … 09 結案），from its title first, then the nearest folder name
-  role   溯稿用途：往年完稿／自收表／查證意見／高層訪談／重大主題／其他
+  role   溯稿用途：往年完稿／自收表／查證意見／高層訪談／重大主題／同業參考／其他
   year   年度標記 found in the title or path (民國年 converted to 西元)
 
 Classification is keyword based and deliberately conservative: it suggests, and the consultant
@@ -36,8 +36,8 @@ STAGE_RULES: list[tuple[str, str]] = [
 
 DOC_EXT = {"docx", "doc", "pdf"}
 SURVEY_EXT = {"docx", "doc", "xlsx", "xls", "pdf"}
-FINAL_WORDS = re.compile(r"最終版|定稿|final|發證終版|完稿", re.I)
-NOT_REPORT = re.compile(r"意見|對照|索引|頁碼|自評|清單|鉤稽|回覆|說明|議程|簡報|美編修正|差異")
+FINAL_WORDS = re.compile(r"最終版|定稿|final|終版|完稿", re.I)
+NOT_REPORT = re.compile(r"意見|對照|索引|頁碼|自評|清單|鉤稽|回覆|說明|議程|簡報|美編修正|差異|會議|範例|指南|手冊|目標|計畫|總控|樣板|模板")
 SURVEY_WORDS = re.compile(r"資蒐表|資料蒐集表|資料搜集表|資料收集表|蒐集表")
 
 
@@ -57,14 +57,20 @@ class Entry:
     file_id: str
 
 
-def detect_year(text: str) -> str:
-    """Western year 2018–2035, or 民國 107–124 written with 年/年度 or as a 7-digit date (1150715)."""
+def detect_year(text: str, *, weak: bool = True) -> str:
+    """Western year 2018–2035, or 民國 107–124 written with 年 (a range 「114~118年」 takes its first year).
+    With weak=True a 7-digit 民國 date such as 1150828 also counts; it is usually a publication date,
+    so callers prefer explicit years in the title and the folder path first."""
     m = re.search(r"(?<!\d)(20(?:1[89]|2\d|3[0-5]))(?!\d)", text)
     if m:
         return m.group(1)
-    m = re.search(r"(?<!\d)(1(?:0[7-9]|1\d|2[0-4]))(?:年|(?=\d{4}(?!\d)))", text)
+    m = re.search(r"(?<!\d)(1(?:0[7-9]|1\d|2[0-4]))(?:\s*[~～至-]\s*1\d\d)?年", text)
     if m:
         return str(int(m.group(1)) + 1911)
+    if weak:
+        m = re.search(r"(?<!\d)(1(?:0[7-9]|1\d|2[0-4]))(?=\d{4}(?!\d))", text)
+        if m:
+            return str(int(m.group(1)) + 1911)
     return ""
 
 
@@ -76,12 +82,23 @@ def classify_stage(title: str, folders: list[str]) -> str:
     return ""
 
 
+FULL_REPORT = re.compile(r"永續報告書|ESG全文|ESG報告書|CSR報告書|Sustainability Report", re.I)
+DRAFT_MARK = re.compile(r"修|草稿|初稿|整合|S2後|追蹤|第.章|乾淨版|翻譯|第.版")
+PEER = re.compile(r"參考|其他醫院|同業|範例")
+
+
 def classify_role(title: str, ext: str, stage: str, path: str) -> str:
     if ext in SURVEY_EXT and SURVEY_WORDS.search(title):
         return "自收表"
-    if ext in DOC_EXT and not NOT_REPORT.search(title) and (FINAL_WORDS.search(title) or FINAL_WORDS.search(path)) \
-            and re.search(r"報告書|永續|ESG|Sustainability|Report|final", title + path, re.I):
-        return "往年完稿"
+    if ext in DOC_EXT and PEER.search(path):
+        return "同業參考"
+    if ext in DOC_EXT and not NOT_REPORT.search(title):
+        named_final = FINAL_WORDS.search(title) or FINAL_WORDS.search(path)
+        if named_final and re.search(r"報告書|永續|ESG|Sustainability|Report|final", title + path, re.I):
+            return "往年完稿"
+        # a whole-report file (「2025嘉義基督教醫院永續報告書.docx」「1150825-嘉基ESG全文V6.pdf」); the newest wins in suggest()
+        if FULL_REPORT.search(title) and not DRAFT_MARK.search(title) and stage != "07 確信":
+            return "往年完稿"
     if stage == "07 確信":
         return "查證意見"
     if re.search(r"訪談|訪綱", title + path):
@@ -138,7 +155,7 @@ def build(items: Iterable[dict[str, Any]], roots: dict[str, str]) -> list[Entry]
         entries.append(Entry(
             client=client, path=path, title=it["title"], kind=ext, stage=stage,
             role=classify_role(it["title"], ext, stage, path),
-            year=detect_year(it["title"]) or detect_year(path),
+            year=detect_year(it["title"], weak=False) or detect_year(path, weak=False) or detect_year(it["title"]),
             modified=(it.get("modifiedTime") or "")[:10], owner=it.get("owner", ""),
             size=str(it.get("fileSize", "")), url=it.get("viewUrl", ""), file_id=it["id"]))
     entries.sort(key=lambda e: (e.client, e.path, e.title))
@@ -169,11 +186,17 @@ def suggest(entries: list[Entry], client: str, year: str) -> dict[str, list[Entr
     """Candidate inputs for drafting `client`'s report for reporting year `year`."""
     es = [e for e in entries if e.client == client]
     prev = str(int(year) - 1) if year.isdigit() else ""
-    newest = lambda xs: sorted(xs, key=lambda e: e.modified, reverse=True)  # noqa: E731
+
+    def ranked(xs: list[Entry]) -> list[Entry]:
+        # a name that says 定稿／final／終版 beats a plain full-report name; then newest first;
+        # Chinese editions first: drafting is in Chinese
+        return sorted(xs, key=lambda e: (not re.search(r"_EN|英文|\bEN\b", e.title),
+                                         bool(FINAL_WORDS.search(e.title)), e.modified), reverse=True)
+
     return {
-        "往年完稿": newest([e for e in es if e.role == "往年完稿" and (e.year == prev or not e.year)]),
-        "自收表": newest([e for e in es if e.role == "自收表" and (e.year in (year, "") )]),
-        "查證意見": newest([e for e in es if e.role == "查證意見" and e.year in (prev, "")]),
+        "往年完稿": ranked([e for e in es if e.role == "往年完稿" and (e.year == prev or not e.year)]),
+        "自收表": ranked([e for e in es if e.role == "自收表" and e.year in (year, "")]),
+        "查證意見": ranked([e for e in es if e.role == "查證意見" and e.year in (prev, "")]),
     }
 
 

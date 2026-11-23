@@ -63,6 +63,21 @@ def test_detect_year():
     assert C.detect_year("常春組織圖11401.pdf") == ""  # 5-digit 民國年月 is ambiguous, leave blank
     assert C.detect_year("2026報告書") == "2026"
     assert C.detect_year("台北慈濟醫院") == ""
+    assert C.detect_year("114~118年短中長期目標") == "2025"
+
+
+def test_full_report_files_and_publication_dates():
+    listing = [
+        item("p", "2025報告書", "R1", F),
+        item("x1", "1150828-彬台ESG全文-V4.pdf", "p", "application/pdf"),
+        item("x2", "2025嘉義基督教醫院永續報告書.docx", "R2"),
+        item("x3", "2025嘉義基督教醫院永續報告書S2後_整合完成版_修.docx", "R2"),
+    ]
+    es = by_title(C.build(listing, ROOTS))
+    assert es["1150828-彬台ESG全文-V4.pdf"].year == "2025"  # folder year beats the 民國 publication date
+    assert es["1150828-彬台ESG全文-V4.pdf"].role == "往年完稿"
+    assert es["2025嘉義基督教醫院永續報告書.docx"].role == "往年完稿"
+    assert es["2025嘉義基督教醫院永續報告書S2後_整合完成版_修.docx"].role != "往年完稿"
 
 
 def test_suggest_and_csv_roundtrip(tmp_path):
@@ -75,3 +90,19 @@ def test_suggest_and_csv_roundtrip(tmp_path):
     assert C.read_csv(p) == es
     summary = {r["client"]: r for r in C.summarize(es)}
     assert summary["明台產險"]["往年完稿"] == 1 and summary["明台產險"]["自收表"] == 2
+
+
+def test_meeting_decks_and_peer_reports_are_not_finals():
+    listing = [
+        item("q", "顧問建議資料", "R1", F),
+        item("y1", "常春醫院＿永續報告書結案會議1028.pdf", "q", "application/pdf"),
+        item("y2", "永續報告書目標指標範例.docx", "q"),
+        item("r", "參考資料", "R1", F), item("r2", "其他醫院永續報告書", "r", F),
+        item("y3", "2024_中國醫CSR_線上版_-20250805改-最終版.pdf", "r2", "application/pdf"),
+        item("y4", "●擎邦2025永續報告書-S2查證終版V1.docx", "R1"),
+    ]
+    es = by_title(C.build(listing, ROOTS))
+    assert es["常春醫院＿永續報告書結案會議1028.pdf"].role != "往年完稿"
+    assert es["永續報告書目標指標範例.docx"].role != "往年完稿"
+    assert es["2024_中國醫CSR_線上版_-20250805改-最終版.pdf"].role == "同業參考"
+    assert es["●擎邦2025永續報告書-S2查證終版V1.docx"].role == "往年完稿"
